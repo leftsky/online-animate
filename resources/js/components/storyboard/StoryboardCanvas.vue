@@ -52,7 +52,7 @@ onMounted(async () => {
         fabricCanvas.value = new Canvas(canvasElement.value, {
             width: width,
             height: height,
-            backgroundColor: 'hsl(var(--background))',
+            backgroundColor: '#f8f9fa', // 使用更亮的背景色
         });
 
         // 添加网格辅助线
@@ -139,29 +139,29 @@ const addGridLines = (width: number, height: number) => {
     // 创建垂直线
     for (let i = 0; i <= width; i += gridSize) {
         const line = new Line([i, 0, i, height], {
-            stroke: 'hsl(var(--border))',
-            strokeWidth: 0.8,
+            stroke: '#e2e8f0', // 使用更明显的灰色
+            strokeWidth: 1,
             selectable: false,
             evented: false,
-            opacity: 0.6, // 增加透明度
+            opacity: 0.8, // 提高透明度
         });
         (line as any).isGridLine = true;
         canvas.add(line);
-        (canvas as any).sendToBack(line);
+        canvas.sendObjectToBack(line); // 修复API调用
     }
     
     // 创建水平线
     for (let i = 0; i <= height; i += gridSize) {
         const line = new Line([0, i, width, i], {
-            stroke: 'hsl(var(--border))',
-            strokeWidth: 0.8,
+            stroke: '#e2e8f0', // 使用更明显的灰色
+            strokeWidth: 1,
             selectable: false,
             evented: false,
-            opacity: 0.6, // 增加透明度
+            opacity: 0.8, // 提高透明度
         });
         (line as any).isGridLine = true;
         canvas.add(line);
-        (canvas as any).sendToBack(line);
+        canvas.sendObjectToBack(line); // 修复API调用
     }
     
     // 添加中心十字线
@@ -170,29 +170,29 @@ const addGridLines = (width: number, height: number) => {
     
     // 中心垂直线
     const centerVerticalLine = new Line([centerX, 0, centerX, height], {
-        stroke: 'hsl(var(--primary))',
-        strokeWidth: 2, // 增加线宽
+        stroke: '#3b82f6', // 使用蓝色作为中心线
+        strokeWidth: 2,
         selectable: false,
         evented: false,
-        opacity: 0.8, // 增加透明度
-        strokeDashArray: [8, 4], // 调整虚线样式
+        opacity: 0.9, // 提高透明度
+        strokeDashArray: [8, 4],
     });
     (centerVerticalLine as any).isGridLine = true;
     canvas.add(centerVerticalLine);
-    (canvas as any).sendToBack(centerVerticalLine);
+    canvas.sendObjectToBack(centerVerticalLine); // 修复API调用
     
     // 中心水平线
     const centerHorizontalLine = new Line([0, centerY, width, centerY], {
-        stroke: 'hsl(var(--primary))',
-        strokeWidth: 2, // 增加线宽
+        stroke: '#3b82f6', // 使用蓝色作为中心线
+        strokeWidth: 2,
         selectable: false,
         evented: false,
-        opacity: 0.8, // 增加透明度
-        strokeDashArray: [8, 4], // 调整虚线样式
+        opacity: 0.9, // 提高透明度
+        strokeDashArray: [8, 4],
     });
     (centerHorizontalLine as any).isGridLine = true;
     canvas.add(centerHorizontalLine);
-    (canvas as any).sendToBack(centerHorizontalLine);
+    canvas.sendObjectToBack(centerHorizontalLine); // 修复API调用
     
     // 添加三分法辅助线
     const thirdWidth = width / 3;
@@ -201,31 +201,31 @@ const addGridLines = (width: number, height: number) => {
     // 垂直三分线
     for (let i = 1; i < 3; i++) {
         const line = new Line([thirdWidth * i, 0, thirdWidth * i, height], {
-            stroke: 'hsl(var(--primary))',
+            stroke: '#10b981', // 使用绿色作为三分线
             strokeWidth: 1,
             selectable: false,
             evented: false,
-            opacity: 0.5,
+            opacity: 0.7,
             strokeDashArray: [3, 6],
         });
         (line as any).isGridLine = true;
         canvas.add(line);
-        (canvas as any).sendToBack(line);
+        canvas.sendObjectToBack(line); // 修复API调用
     }
     
     // 水平三分线
     for (let i = 1; i < 3; i++) {
         const line = new Line([0, thirdHeight * i, width, thirdHeight * i], {
-            stroke: 'hsl(var(--primary))',
+            stroke: '#10b981', // 使用绿色作为三分线
             strokeWidth: 1,
             selectable: false,
             evented: false,
-            opacity: 0.5,
+            opacity: 0.7,
             strokeDashArray: [3, 6],
         });
         (line as any).isGridLine = true;
         canvas.add(line);
-        (canvas as any).sendToBack(line);
+        canvas.sendObjectToBack(line); // 修复API调用
     }
     
     canvas.renderAll();
@@ -236,7 +236,7 @@ const clearCanvas = () => {
     if (!fabricCanvas.value || !canvasContainer.value) return;
     const { width, height } = getContainerSize();
     fabricCanvas.value.clear();
-    fabricCanvas.value.backgroundColor = 'hsl(var(--background))';
+    fabricCanvas.value.backgroundColor = '#f8f9fa'; // 使用更亮的背景色
     addGridLines(width, height);
     fabricCanvas.value.renderAll();
 };
