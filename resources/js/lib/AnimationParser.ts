@@ -282,15 +282,11 @@ export class AnimationParser {
    * 解析新格式的YAML（支持initial和animations块）
    */
   static parseNewFormat(animationText: string): ParsedAnimationData | null {
-    console.log('🔍 AnimationParser.parseNewFormat 开始解析:', animationText);
-    
     if (!animationText || !animationText.trim()) {
-      console.log('❌ 动画文本为空');
       return null;
     }
 
     const lines = animationText.split('\n').map(line => line.trim()).filter(line => line);
-    console.log('📝 解析行数:', lines.length, '行内容:', lines);
     
     let target = '';
     const initial: InitialPosition = { x: 0, y: 0, opacity: 1, scale: 1, rotation: 0 };
@@ -301,29 +297,23 @@ export class AnimationParser {
     let currentAnimationIndex = -1;
     
     for (const line of lines) {
-      console.log(`🔍 处理行: "${line}" | 当前块: "${currentSection}" | 动画索引: ${currentAnimationIndex}`);
-      
       // 检测块级标识（优先检测，避免被当作目标元素）
       if (line === 'initial:') {
         currentSection = 'initial';
-        console.log('🏷️ 进入 initial 块');
         continue;
       } else if (line === 'animations:') {
         currentSection = 'animations';
         currentAnimationIndex = -1; // 重置动画索引
-        console.log('🏷️ 进入 animations 块');
         continue;
       } else if (line === 'keyframes:' && currentAnimationIndex < 0) {
         // 只有在不是动画属性的情况下才当作顶级块
         currentSection = 'keyframes';
-        console.log('🏷️ 进入 keyframes 块');
         continue;
       }
       
       // 检测目标元素（只在根级别）
       if (line.endsWith(':') && !line.startsWith('-') && !line.includes(' ') && currentSection === '') {
         target = line.slice(0, -1);
-        console.log(`🎯 设置目标元素: ${target}`);
         continue;
       }
       
@@ -363,7 +353,6 @@ export class AnimationParser {
           properties: {}
         };
         animations.push(newAnimation);
-        console.log(`➕ 添加动画 #${currentAnimationIndex}: "${name}"`);
         continue;
       }
       
@@ -373,7 +362,6 @@ export class AnimationParser {
         // 切换到animations模式
         currentSection = 'animations';
         currentAnimationIndex = -1;
-        console.log('🔄 检测到动画项，自动切换到animations模式');
         
         // 处理这个动画项
         const name = line.replace('- name:', '').trim();
@@ -387,7 +375,6 @@ export class AnimationParser {
           properties: {}
         };
         animations.push(newAnimation);
-        console.log(`➕ 添加动画 #${currentAnimationIndex}: "${name}"`);
         continue;
       }
       
@@ -398,12 +385,9 @@ export class AnimationParser {
         
         if (key === 'duration') {
           currentAnim.duration = value;
-          console.log(`⏱️ 设置动画 #${currentAnimationIndex} 持续时间: ${value}`);
         } else if (key === 'easing') {
           currentAnim.easing = value;
-          console.log(`🎨 设置动画 #${currentAnimationIndex} 缓动: ${value}`);
         } else if (key === 'keyframes') {
-          console.log(`🔑 动画 #${currentAnimationIndex} 遇到keyframes，跳过`);
           // keyframes 行本身不需要处理，keyframes内容在后续的 - time: 行中处理
         }
         continue;
@@ -438,9 +422,6 @@ export class AnimationParser {
       animations,
       singleAnimation
     };
-    
-    console.log('✅ 解析完成结果:', result);
-    console.log(`📊 统计: target="${result.target}", initial=${JSON.stringify(result.initial)}, animations=${result.animations.length}个, singleAnimation=${!!result.singleAnimation}`);
     
     return result;
   }

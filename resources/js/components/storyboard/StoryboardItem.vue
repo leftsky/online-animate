@@ -267,29 +267,22 @@ const isExpanded = ref(false);
 
 // 动画数据（从AnimationParser解析）
 const animations = computed(() => {
-  console.log('🎪 StoryboardItem.animations computed 开始解析:', props.item.elementName);
-  
   if (!props.item.animationScript) {
-    console.log('❌ StoryboardItem 动画脚本为空');
     return [];
   }
   
   try {
     // 使用AnimationParser解析动画脚本
     const parsedData = AnimationParser.parseNewFormat(props.item.animationScript);
-    console.log('🎯 StoryboardItem 收到解析结果:', parsedData);
     
     if (parsedData) {
       // 如果有多动画，返回多动画列表
       if (parsedData.animations && parsedData.animations.length > 0) {
-        console.log(`🎭 StoryboardItem 发现多动画，数量: ${parsedData.animations.length}`);
-        const result = parsedData.animations.map(anim => ({
+        return parsedData.animations.map(anim => ({
           name: anim.name,
           duration: anim.duration,
           easing: anim.easing || 'ease'
         }));
-        console.log('🎪 StoryboardItem 返回动画列表:', result);
-        return result;
       }
       
       // 如果是单动画，尝试识别类型
@@ -322,20 +315,17 @@ const animations = computed(() => {
           }
         }
         
-        const result = [{
+        return [{
           name: animationName,
           duration: singleAnim.duration,
           easing: singleAnim.easing || 'ease'
         }];
-        console.log('🎪 StoryboardItem 返回单动画:', result);
-        return result;
       }
     }
     
-    console.log('❌ StoryboardItem 没有找到可解析的动画数据');
     return [];
   } catch (error) {
-    console.error('❌ StoryboardItem 解析动画脚本失败:', error);
+    console.error('解析动画脚本失败:', error);
     return [];
   }
 });

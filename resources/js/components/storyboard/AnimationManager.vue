@@ -515,17 +515,13 @@ const saveAnimations = async () => {
 
 // 解析现有动画脚本
 const parseExistingAnimations = (animationScript: string) => {
-  console.log('🎬 AnimationManager.parseExistingAnimations 开始解析:', animationScript);
-  
   if (!animationScript) {
-    console.log('❌ 动画脚本为空，跳过解析');
     return;
   }
   
   try {
     // 使用AnimationParser解析
     const parsedData = AnimationParser.parseNewFormat(animationScript);
-    console.log('🔄 AnimationManager 收到解析结果:', parsedData);
     
     if (parsedData) {
       // 设置初始位置
@@ -534,9 +530,7 @@ const parseExistingAnimations = (animationScript: string) => {
       // 设置动画效果
       if (parsedData.animations && parsedData.animations.length > 0) {
         // 多动画模式
-        console.log('🎭 设置多动画模式，动画数量:', parsedData.animations.length);
         currentAnimations.value = parsedData.animations.map(anim => ({ ...anim }));
-        console.log('✅ currentAnimations 设置完成:', currentAnimations.value);
       } else if (parsedData.singleAnimation) {
         // 单动画模式，尝试识别动画类型
         const singleAnim = parsedData.singleAnimation;
