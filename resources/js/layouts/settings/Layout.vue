@@ -7,15 +7,15 @@ import { Link } from '@inertiajs/vue3';
 
 const sidebarNavItems: NavItem[] = [
     {
-        title: 'Profile',
+        title: '个人资料',
         href: '/settings/profile',
     },
     {
-        title: 'Password',
+        title: '密码设置',
         href: '/settings/password',
     },
     {
-        title: 'Appearance',
+        title: '外观设置',
         href: '/settings/appearance',
     },
 ];
@@ -25,7 +25,7 @@ const currentPath = window.location.pathname;
 
 <template>
     <div class="px-4 py-6">
-        <Heading title="Settings" description="Manage your profile and account settings" />
+        <Heading title="设置" description="管理您的个人资料和账户设置" />
 
         <div class="flex flex-col space-y-8 md:space-y-0 lg:flex-row lg:space-x-12 lg:space-y-0">
             <aside class="w-full max-w-xl lg:w-48">
