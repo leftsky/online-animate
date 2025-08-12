@@ -1,19 +1,99 @@
 <template>
   <Dialog v-model:open="isOpen">
-    <DialogContent class="max-w-6xl max-h-[90vh]">
+    <DialogContent class="max-w-7xl max-h-[95vh] overflow-hidden">
       <DialogHeader>
         <DialogTitle>动画管理 - {{ item?.elementName }}</DialogTitle>
         <DialogDescription>
-          管理此分镜内容的动画效果
+          管理此分镜内容的动画效果和初始位置
         </DialogDescription>
       </DialogHeader>
       
-      <div class="flex gap-6 h-[60vh]">
-        <!-- 左侧：动画效果库 -->
-        <div class="w-1/3 space-y-4">
+      <div class="flex gap-6 h-[75vh] overflow-hidden">
+        <!-- 左侧：设置面板 -->
+        <div class="w-1/3 space-y-4 overflow-y-auto">
+          <!-- 初始位置设置 -->
+          <div class="space-y-3">
+            <h3 class="text-sm font-medium flex items-center gap-2">
+              <Settings class="w-4 h-4" />
+              初始位置设置
+            </h3>
+            <div class="p-4 border rounded-lg space-y-4">
+              <div class="grid grid-cols-2 gap-3">
+                <div class="space-y-1">
+                  <Label class="text-xs">X 位置</Label>
+                  <Input
+                    v-model="initialPosition.x"
+                    type="number"
+                    placeholder="0"
+                    class="h-8 text-xs"
+                  />
+                </div>
+                <div class="space-y-1">
+                  <Label class="text-xs">Y 位置</Label>
+                  <Input
+                    v-model="initialPosition.y"
+                    type="number"
+                    placeholder="0"
+                    class="h-8 text-xs"
+                  />
+                </div>
+              </div>
+              
+              <div class="grid grid-cols-2 gap-3">
+                <div class="space-y-1">
+                  <Label class="text-xs">透明度</Label>
+                  <Input
+                    v-model="initialPosition.opacity"
+                    type="number"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    placeholder="1"
+                    class="h-8 text-xs"
+                  />
+                </div>
+                <div class="space-y-1">
+                  <Label class="text-xs">缩放</Label>
+                  <Input
+                    v-model="initialPosition.scale"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    placeholder="1"
+                    class="h-8 text-xs"
+                  />
+                </div>
+              </div>
+              
+              <div class="space-y-1">
+                <Label class="text-xs">旋转角度</Label>
+                <Input
+                  v-model="initialPosition.rotation"
+                  type="number"
+                  placeholder="0"
+                  class="h-8 text-xs"
+                />
+              </div>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                @click="resetInitialPosition"
+                class="w-full h-7 text-xs"
+              >
+                <RotateCcw class="w-3 h-3 mr-1" />
+                重置为默认值
+              </Button>
+            </div>
+          </div>
+          
+          <!-- 动画效果库 -->
           <div class="space-y-2">
-            <h3 class="text-sm font-medium">动画效果库</h3>
-            <div class="space-y-1 max-h-96 overflow-y-auto">
+            <h3 class="text-sm font-medium flex items-center gap-2">
+              <Sparkles class="w-4 h-4" />
+              动画效果库
+            </h3>
+            <div class="space-y-1 max-h-64 overflow-y-auto">
               <div
                 v-for="(preset, key) in animationPresets"
                 :key="key"
@@ -33,7 +113,7 @@
         </div>
         
         <!-- 右侧：当前动画列表 -->
-        <div class="flex-1 space-y-4">
+        <div class="flex-1 space-y-4 overflow-hidden flex flex-col">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-medium">当前动画效果</h3>
             <Button
@@ -48,7 +128,7 @@
           </div>
           
           <!-- 动画列表 -->
-          <div class="space-y-2 max-h-80 overflow-y-auto">
+          <div class="flex-1 space-y-2 overflow-y-auto">
             <div
               v-for="(animation, index) in currentAnimations"
               :key="animation.id"
@@ -91,9 +171,9 @@
           </div>
           
           <!-- 生成的YAML预览 -->
-          <div class="space-y-2">
+          <div class="space-y-2 flex-shrink-0">
             <label class="text-sm font-medium">生成的YAML脚本</label>
-            <pre class="bg-muted p-3 rounded text-xs overflow-auto max-h-32"><code>{{ generatedYaml }}</code></pre>
+            <pre class="bg-muted p-3 rounded text-xs overflow-auto h-32"><code>{{ generatedYaml }}</code></pre>
           </div>
         </div>
       </div>
@@ -111,11 +191,19 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { Plus, Play, Edit, Trash2, Zap, Loader2 } from 'lucide-vue-next';
+import { Plus, Play, Edit, Trash2, Zap, Loader2, Settings, Sparkles, RotateCcw } from 'lucide-vue-next';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '../../composables/useToast';
+import { sceneContentApi } from '../../utils/api';
+import { AnimationParser, type InitialPosition, type AnimationEffect } from '../../lib/AnimationParser';
 import type { StoryboardItem } from './types';
+
+const emit = defineEmits<{
+  animationSaved: [item: StoryboardItem];
+}>();
 
 interface AnimationPreset {
   name: string;
@@ -125,19 +213,19 @@ interface AnimationPreset {
   properties: Record<string, any>;
 }
 
-interface CurrentAnimation {
-  id: string;
-  name: string;
-  type: string;
-  duration: string;
-  easing?: string;
-  properties: Record<string, any>;
-}
-
 const isOpen = ref(false);
 const item = ref<StoryboardItem | null>(null);
 const loading = ref(false);
-const currentAnimations = ref<CurrentAnimation[]>([]);
+const currentAnimations = ref<AnimationEffect[]>([]);
+
+// 初始位置设置
+const initialPosition = ref<InitialPosition>({
+  x: 0,
+  y: 0,
+  opacity: 1,
+  scale: 1,
+  rotation: 0
+});
 
 const { toast } = useToast();
 
@@ -229,20 +317,35 @@ const animationPresets: Record<string, AnimationPreset> = {
 
 // 生成YAML脚本
 const generatedYaml = computed(() => {
-  if (!item.value || currentAnimations.value.length === 0) {
-    return `${item.value?.elementName?.toLowerCase().replace(/\s+/g, '_') || 'element'}:
-  duration: 3s
-  easing: ease-in-out
-  keyframes:
-    - time: 0s, x: 0, y: 0, opacity: 1, scale: 1
-    - time: 3s, x: 0, y: 0, opacity: 1, scale: 1`;
-  }
-  
-  const elementKey = item.value.elementName.toLowerCase().replace(/\s+/g, '_');
+  const elementKey = item.value?.elementName?.toLowerCase().replace(/\s+/g, '_') || 'element';
   let yaml = `${elementKey}:\n`;
   
-  // 如果有多个动画，生成序列
-  if (currentAnimations.value.length > 1) {
+  // 添加初始位置
+  yaml += '  initial:\n';
+  yaml += `    x: ${initialPosition.value.x}\n`;
+  yaml += `    y: ${initialPosition.value.y}\n`;
+  yaml += `    opacity: ${initialPosition.value.opacity}\n`;
+  yaml += `    scale: ${initialPosition.value.scale}\n`;
+  if (initialPosition.value.rotation !== 0) {
+    yaml += `    rotation: ${initialPosition.value.rotation}deg\n`;
+  }
+  
+  if (currentAnimations.value.length === 0) {
+    yaml += '  duration: 3s\n';
+    yaml += '  easing: ease-in-out\n';
+    yaml += '  keyframes:\n';
+    yaml += '    - time: 0s, ' + generateInitialKeyframe() + '\n';
+    yaml += '    - time: 3s, ' + generateInitialKeyframe() + '\n';
+  } else if (currentAnimations.value.length === 1) {
+    const animation = currentAnimations.value[0];
+    yaml += `  duration: ${animation.duration}\n`;
+    if (animation.easing) {
+      yaml += `  easing: ${animation.easing}\n`;
+    }
+    yaml += '  keyframes:\n';
+    yaml += '    - time: 0s, ' + generateInitialKeyframe() + '\n';
+    yaml += '    - time: ' + animation.duration + ', ' + generateKeyframe(animation.properties, 1) + '\n';
+  } else {
     yaml += '  animations:\n';
     currentAnimations.value.forEach((animation, index) => {
       yaml += `    - name: ${animation.name}\n`;
@@ -251,26 +354,42 @@ const generatedYaml = computed(() => {
         yaml += `      easing: ${animation.easing}\n`;
       }
       yaml += '      keyframes:\n';
-      yaml += '        - time: 0s, ' + generateKeyframe(animation.properties, 0) + '\n';
+      if (index === 0) {
+        yaml += '        - time: 0s, ' + generateInitialKeyframe() + '\n';
+      } else {
+        yaml += '        - time: 0s, ' + generateKeyframe(currentAnimations.value[index - 1].properties, 1) + '\n';
+      }
       yaml += '        - time: ' + animation.duration + ', ' + generateKeyframe(animation.properties, 1) + '\n';
     });
-  } else if (currentAnimations.value.length === 1) {
-    const animation = currentAnimations.value[0];
-    yaml += `  duration: ${animation.duration}\n`;
-    if (animation.easing) {
-      yaml += `  easing: ${animation.easing}\n`;
-    }
-    yaml += '  keyframes:\n';
-    yaml += '    - time: 0s, ' + generateKeyframe(animation.properties, 0) + '\n';
-    yaml += '    - time: ' + animation.duration + ', ' + generateKeyframe(animation.properties, 1) + '\n';
   }
   
   return yaml;
 });
 
+// 生成初始关键帧
+const generateInitialKeyframe = () => {
+  const parts = [
+    `x: ${initialPosition.value.x}`,
+    `y: ${initialPosition.value.y}`,
+    `opacity: ${initialPosition.value.opacity}`,
+    `scale: ${initialPosition.value.scale}`
+  ];
+  
+  if (initialPosition.value.rotation !== 0) {
+    parts.push(`rotation: ${initialPosition.value.rotation}deg`);
+  }
+  
+  return parts.join(', ');
+};
+
 // 生成关键帧
 const generateKeyframe = (properties: Record<string, any>, frameIndex: number) => {
-  const parts = ['x: 0', 'y: 0', 'opacity: 1', 'scale: 1'];
+  const parts = [
+    `x: ${initialPosition.value.x}`,
+    `y: ${initialPosition.value.y}`,
+    `opacity: ${initialPosition.value.opacity}`,
+    `scale: ${initialPosition.value.scale}`
+  ];
   
   for (const [key, value] of Object.entries(properties)) {
     if (key === 'opacity' && Array.isArray(value)) {
@@ -283,13 +402,36 @@ const generateKeyframe = (properties: Record<string, any>, frameIndex: number) =
       }
       if (transform.includes('translateX')) {
         const match = transform.match(/translateX\(([^)]+)\)/);
-        if (match) parts[0] = `x: ${match[1]}`;
+        if (match) {
+          const xValue = match[1];
+          // 如果是百分比或像素值，转换为相对于初始位置的值
+          if (xValue.includes('%')) {
+            parts[0] = `x: ${xValue}`;
+          } else if (xValue.includes('px')) {
+            parts[0] = `x: ${parseInt(xValue) + initialPosition.value.x}`;
+          } else {
+            parts[0] = `x: ${xValue}`;
+          }
+        }
       }
       if (transform.includes('translateY')) {
         const match = transform.match(/translateY\(([^)]+)\)/);
-        if (match) parts[1] = `y: ${match[1]}`;
+        if (match) {
+          const yValue = match[1];
+          if (yValue.includes('%')) {
+            parts[1] = `y: ${yValue}`;
+          } else if (yValue.includes('px')) {
+            parts[1] = `y: ${parseInt(yValue) + initialPosition.value.y}`;
+          } else {
+            parts[1] = `y: ${yValue}`;
+          }
+        }
       }
     }
+  }
+  
+  if (initialPosition.value.rotation !== 0) {
+    parts.push(`rotation: ${initialPosition.value.rotation}deg`);
   }
   
   return parts.join(', ');
@@ -297,7 +439,7 @@ const generateKeyframe = (properties: Record<string, any>, frameIndex: number) =
 
 // 添加动画
 const addAnimation = (key: string, preset: AnimationPreset) => {
-  const animation: CurrentAnimation = {
+  const animation: AnimationEffect = {
     id: Date.now().toString(),
     name: preset.name,
     type: key,
@@ -318,6 +460,7 @@ const removeAnimation = (index: number) => {
 };
 
 // 编辑动画（暂时简单实现）
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const editAnimation = (index: number) => {
   toast.info('动画编辑功能正在开发中');
 };
@@ -327,22 +470,41 @@ const previewAnimation = () => {
   toast.info('动画预览功能正在开发中');
 };
 
+// 重置初始位置
+const resetInitialPosition = () => {
+  initialPosition.value = {
+    x: 0,
+    y: 0,
+    opacity: 1,
+    scale: 1,
+    rotation: 0
+  };
+  toast.success('已重置为默认值');
+};
+
 // 保存动画
 const saveAnimations = async () => {
   if (!item.value) return;
   
   loading.value = true;
   try {
-    // 这里应该调用API保存动画脚本
-    // await sceneContentApi.update(parseInt(item.value.id), {
-    //   animation_script: generatedYaml.value
-    // });
+    // 调用API保存动画脚本
+    const response = await sceneContentApi.update(parseInt(item.value.id), {
+      animation_script: generatedYaml.value
+    });
     
-    // 暂时只是模拟保存
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    toast.success('动画保存成功！');
-    close();
+    if (response.success) {
+      // 更新本地item的动画脚本
+      item.value.animationScript = generatedYaml.value;
+      
+      // 通知父组件数据已更新
+      emit('animationSaved', item.value);
+      
+      toast.success('动画保存成功！');
+      close();
+    } else {
+      toast.error('保存失败', response.message);
+    }
   } catch (error) {
     console.error('保存动画失败:', error);
     toast.error('保存动画失败，请重试');
@@ -351,10 +513,100 @@ const saveAnimations = async () => {
   }
 };
 
+// 解析现有动画脚本
+const parseExistingAnimations = (animationScript: string) => {
+  console.log('🎬 AnimationManager.parseExistingAnimations 开始解析:', animationScript);
+  
+  if (!animationScript) {
+    console.log('❌ 动画脚本为空，跳过解析');
+    return;
+  }
+  
+  try {
+    // 使用AnimationParser解析
+    const parsedData = AnimationParser.parseNewFormat(animationScript);
+    console.log('🔄 AnimationManager 收到解析结果:', parsedData);
+    
+    if (parsedData) {
+      // 设置初始位置
+      initialPosition.value = { ...parsedData.initial };
+      
+      // 设置动画效果
+      if (parsedData.animations && parsedData.animations.length > 0) {
+        // 多动画模式
+        console.log('🎭 设置多动画模式，动画数量:', parsedData.animations.length);
+        currentAnimations.value = parsedData.animations.map(anim => ({ ...anim }));
+        console.log('✅ currentAnimations 设置完成:', currentAnimations.value);
+      } else if (parsedData.singleAnimation) {
+        // 单动画模式，尝试识别动画类型
+        const singleAnim = parsedData.singleAnimation;
+        
+        // 基于关键帧内容识别动画类型
+        let animationType = 'custom';
+        let animationName = '自定义动画';
+        
+        if (animationScript.includes('opacity')) {
+          if (animationScript.includes('opacity: 0') && animationScript.includes('opacity: 1')) {
+            animationType = 'fadeIn';
+            animationName = '淡入';
+          } else if (animationScript.includes('opacity: 1') && animationScript.includes('opacity: 0')) {
+            animationType = 'fadeOut';
+            animationName = '淡出';
+          }
+        }
+        
+        if (animationScript.includes('scale')) {
+          if (animationScript.includes('scale: 0') && animationScript.includes('scale: 1')) {
+            animationType = 'scaleIn';
+            animationName = '缩放进入';
+          }
+        }
+        
+        if (animationScript.includes('translateX') || animationScript.includes('x:')) {
+          if (animationScript.includes('-100%') || animationScript.includes('translateX(-')) {
+            animationType = 'slideInLeft';
+            animationName = '左侧滑入';
+          } else if (animationScript.includes('100%') || animationScript.includes('translateX(')) {
+            animationType = 'slideInRight';
+            animationName = '右侧滑入';
+          }
+        }
+        
+        currentAnimations.value = [{
+          id: Date.now().toString(),
+          name: animationName,
+          type: animationType,
+          duration: singleAnim.duration,
+          easing: singleAnim.easing,
+          properties: {}
+        }];
+      }
+    }
+  } catch (error) {
+    console.error('解析动画脚本失败:', error);
+    toast.error('解析动画脚本失败，将使用默认值');
+  }
+};
+
 // 打开对话框
 const open = (storyboardItem: StoryboardItem) => {
   item.value = storyboardItem;
   currentAnimations.value = [];
+  
+  // 重置初始位置为默认值
+  initialPosition.value = {
+    x: 0,
+    y: 0,
+    opacity: 1,
+    scale: 1,
+    rotation: 0
+  };
+  
+  // 解析现有的动画脚本
+  if (storyboardItem.animationScript) {
+    parseExistingAnimations(storyboardItem.animationScript);
+  }
+  
   isOpen.value = true;
 };
 
@@ -363,6 +615,15 @@ const close = () => {
   isOpen.value = false;
   item.value = null;
   currentAnimations.value = [];
+  
+  // 重置初始位置
+  initialPosition.value = {
+    x: 0,
+    y: 0,
+    opacity: 1,
+    scale: 1,
+    rotation: 0
+  };
 };
 
 defineExpose({ open, close });

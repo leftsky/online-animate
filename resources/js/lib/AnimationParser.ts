@@ -22,6 +22,37 @@ export interface AnimationConfig {
   keyframes: AnimationKeyframe[];
 }
 
+// 新增接口：初始位置
+export interface InitialPosition {
+  x: number;
+  y: number;
+  opacity: number;
+  scale: number;
+  rotation: number;
+}
+
+// 新增接口：动画效果
+export interface AnimationEffect {
+  id: string;
+  name: string;
+  type: string;
+  duration: string;
+  easing?: string;
+  properties: Record<string, any>;
+}
+
+// 新增接口：完整的动画数据
+export interface ParsedAnimationData {
+  target: string;
+  initial: InitialPosition;
+  animations: AnimationEffect[];
+  singleAnimation?: {
+    duration: string;
+    easing?: string;
+    keyframes: AnimationKeyframe[];
+  };
+}
+
 export class AnimationParser {
   private static readonly EASING_MAP: Record<string, string> = {
     'linear': 'linear',
@@ -35,7 +66,8 @@ export class AnimationParser {
 
   /**
    * 解析自定义简洁语法
-   * 语法示例：
+   * 支持两种格式：
+   * 1. 原有格式：
    * image1:
    *   duration: 3s
    *   easing: ease-in-out
@@ -44,6 +76,25 @@ export class AnimationParser {
    *     - time: 0s, rotate: 0deg, scale: 1, position: [100, 100], opacity: 1
    *     - time: 1.5s, rotate: 180deg, scale: 1.5, position: [200, 150], opacity: 0.8
    *     - time: 3s, rotate: 360deg, scale: 1, position: [300, 100], opacity: 1
+   * 
+   * 2. 新格式（支持初始位置和多动画）：
+   * element_name:
+   *   initial:
+   *     x: 0
+   *     y: 0
+   *     opacity: 1
+   *     scale: 1
+   *     rotation: 0deg
+   *   duration: 1s
+   *   easing: ease-in-out
+   *   keyframes:
+   *     - time: 0s, x: 0, y: 0, opacity: 1, scale: 1
+   *     - time: 1s, x: 100, y: 50, opacity: 0.8, scale: 1.2
+   *   animations:
+   *     - name: 淡入
+   *       duration: 1s
+   *       easing: ease-in-out
+   *       keyframes: [...]
    */
   static parse(animationText: string): AnimationConfig[] {
     const animations: AnimationConfig[] = [];
@@ -228,6 +279,195 @@ export class AnimationParser {
   }
 
   /**
+   * 解析新格式的YAML（支持initial和animations块）
+   */
+  static parseNewFormat(animationText: string): ParsedAnimationData | null {
+    console.log('🔍 AnimationParser.parseNewFormat 开始解析:', animationText);
+    
+    if (!animationText || !animationText.trim()) {
+      console.log('❌ 动画文本为空');
+      return null;
+    }
+
+    const lines = animationText.split('\n').map(line => line.trim()).filter(line => line);
+    console.log('📝 解析行数:', lines.length, '行内容:', lines);
+    
+    let target = '';
+    const initial: InitialPosition = { x: 0, y: 0, opacity: 1, scale: 1, rotation: 0 };
+    const animations: AnimationEffect[] = [];
+    let singleAnimation: ParsedAnimationData['singleAnimation'];
+    
+    let currentSection = '';
+    let currentAnimationIndex = -1;
+    
+    for (const line of lines) {
+      console.log(`🔍 处理行: "${line}" | 当前块: "${currentSection}" | 动画索引: ${currentAnimationIndex}`);
+      
+      // 检测块级标识（优先检测，避免被当作目标元素）
+      if (line === 'initial:') {
+        currentSection = 'initial';
+        console.log('🏷️ 进入 initial 块');
+        continue;
+      } else if (line === 'animations:') {
+        currentSection = 'animations';
+        currentAnimationIndex = -1; // 重置动画索引
+        console.log('🏷️ 进入 animations 块');
+        continue;
+      } else if (line === 'keyframes:' && currentAnimationIndex < 0) {
+        // 只有在不是动画属性的情况下才当作顶级块
+        currentSection = 'keyframes';
+        console.log('🏷️ 进入 keyframes 块');
+        continue;
+      }
+      
+      // 检测目标元素（只在根级别）
+      if (line.endsWith(':') && !line.startsWith('-') && !line.includes(' ') && currentSection === '') {
+        target = line.slice(0, -1);
+        console.log(`🎯 设置目标元素: ${target}`);
+        continue;
+      }
+      
+      // 解析initial块
+      if (currentSection === 'initial' && line.includes(':')) {
+        const [key, value] = line.split(':').map(s => s.trim());
+        switch (key) {
+          case 'x':
+            initial.x = parseFloat(value) || 0;
+            break;
+          case 'y':
+            initial.y = parseFloat(value) || 0;
+            break;
+          case 'opacity':
+            initial.opacity = parseFloat(value) || 1;
+            break;
+          case 'scale':
+            initial.scale = parseFloat(value) || 1;
+            break;
+          case 'rotation':
+            initial.rotation = parseFloat(value.replace('deg', '')) || 0;
+            break;
+        }
+        continue;
+      }
+      
+      // 解析animations块 - 检测新动画项
+      if (currentSection === 'animations' && line.startsWith('- name:')) {
+        const name = line.replace('- name:', '').trim();
+        currentAnimationIndex = animations.length;
+        const newAnimation = {
+          id: this.generateId(),
+          name,
+          type: this.detectAnimationType(name),
+          duration: '1s',
+          easing: 'ease',
+          properties: {}
+        };
+        animations.push(newAnimation);
+        console.log(`➕ 添加动画 #${currentAnimationIndex}: "${name}"`);
+        continue;
+      }
+      
+      // 处理非animations块中的 - name: 行（可能是新动画的开始）
+      if (line.startsWith('- name:') && currentSection !== 'animations') {
+        // 如果不在animations块中遇到 - name:，说明这是一个新的动画项
+        // 切换到animations模式
+        currentSection = 'animations';
+        currentAnimationIndex = -1;
+        console.log('🔄 检测到动画项，自动切换到animations模式');
+        
+        // 处理这个动画项
+        const name = line.replace('- name:', '').trim();
+        currentAnimationIndex = animations.length;
+        const newAnimation = {
+          id: this.generateId(),
+          name,
+          type: this.detectAnimationType(name),
+          duration: '1s',
+          easing: 'ease',
+          properties: {}
+        };
+        animations.push(newAnimation);
+        console.log(`➕ 添加动画 #${currentAnimationIndex}: "${name}"`);
+        continue;
+      }
+      
+      // 解析动画属性
+      if (currentAnimationIndex >= 0 && line.includes(':') && !line.startsWith('-') && currentSection === 'animations') {
+        const [key, value] = line.split(':').map(s => s.trim());
+        const currentAnim = animations[currentAnimationIndex];
+        
+        if (key === 'duration') {
+          currentAnim.duration = value;
+          console.log(`⏱️ 设置动画 #${currentAnimationIndex} 持续时间: ${value}`);
+        } else if (key === 'easing') {
+          currentAnim.easing = value;
+          console.log(`🎨 设置动画 #${currentAnimationIndex} 缓动: ${value}`);
+        } else if (key === 'keyframes') {
+          console.log(`🔑 动画 #${currentAnimationIndex} 遇到keyframes，跳过`);
+          // keyframes 行本身不需要处理，keyframes内容在后续的 - time: 行中处理
+        }
+        continue;
+      }
+      
+      // 解析单个动画（非animations块）
+      if (currentSection === '' && line.includes(':') && !line.startsWith('-')) {
+        const [key, value] = line.split(':').map(s => s.trim());
+        
+        if (key === 'duration' || key === 'easing') {
+          if (!singleAnimation) {
+            singleAnimation = {
+              duration: '3s',
+              easing: 'ease-in-out',
+              keyframes: []
+            };
+          }
+          
+          if (key === 'duration') {
+            singleAnimation.duration = value;
+          } else if (key === 'easing') {
+            singleAnimation.easing = value;
+          }
+        }
+        continue;
+      }
+    }
+    
+    const result = {
+      target: target || 'unknown',
+      initial,
+      animations,
+      singleAnimation
+    };
+    
+    console.log('✅ 解析完成结果:', result);
+    console.log(`📊 统计: target="${result.target}", initial=${JSON.stringify(result.initial)}, animations=${result.animations.length}个, singleAnimation=${!!result.singleAnimation}`);
+    
+    return result;
+  }
+
+  /**
+   * 根据名称检测动画类型
+   */
+  private static detectAnimationType(name: string): string {
+    const nameMap: Record<string, string> = {
+      '淡入': 'fadeIn',
+      '淡出': 'fadeOut',
+      '左侧滑入': 'slideInLeft',
+      '右侧滑入': 'slideInRight',
+      '上方滑入': 'slideInUp',
+      '下方滑入': 'slideInDown',
+      '缩放进入': 'scaleIn',
+      '缩放退出': 'scaleOut',
+      '旋转进入': 'rotateIn',
+      '弹跳进入': 'bounceIn',
+      '摇摆': 'shake',
+      '脉冲': 'pulse'
+    };
+    
+    return nameMap[name] || 'custom';
+  }
+
+  /**
    * 将动画配置转换为 GSAP 时间轴
    */
   static toGSAP(config: AnimationConfig): any {
@@ -249,7 +489,7 @@ export class AnimationParser {
    * 将动画配置转换为 CSS 动画
    */
   static toCSS(config: AnimationConfig): string {
-    const keyframesCSS = config.keyframes.map((kf, index) => {
+    const keyframesCSS = config.keyframes.map((kf) => {
       const percentage = (kf.time / (config.duration / 1000)) * 100;
       const transforms = [];
       

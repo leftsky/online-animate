@@ -225,6 +225,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import ImagePreview from './ImagePreview.vue';
+import { AnimationParser } from '../../lib/AnimationParser';
 
 interface StoryboardItem {
   id: string;
@@ -264,16 +265,79 @@ const imagePreview = ref<InstanceType<typeof ImagePreview>>();
 // 展开状态
 const isExpanded = ref(false);
 
-// 动画数据（示例）
+// 动画数据（从AnimationParser解析）
 const animations = computed(() => {
-  // 这里可以从动画脚本解析出动画效果
-  // 暂时返回示例数据
-  if (!props.item.animationScript) return [];
+  console.log('🎪 StoryboardItem.animations computed 开始解析:', props.item.elementName);
   
-  return [
-    { name: '淡入', duration: '1s', easing: 'ease-in-out' },
-    { name: '缩放', duration: '0.5s', easing: 'ease-out' }
-  ];
+  if (!props.item.animationScript) {
+    console.log('❌ StoryboardItem 动画脚本为空');
+    return [];
+  }
+  
+  try {
+    // 使用AnimationParser解析动画脚本
+    const parsedData = AnimationParser.parseNewFormat(props.item.animationScript);
+    console.log('🎯 StoryboardItem 收到解析结果:', parsedData);
+    
+    if (parsedData) {
+      // 如果有多动画，返回多动画列表
+      if (parsedData.animations && parsedData.animations.length > 0) {
+        console.log(`🎭 StoryboardItem 发现多动画，数量: ${parsedData.animations.length}`);
+        const result = parsedData.animations.map(anim => ({
+          name: anim.name,
+          duration: anim.duration,
+          easing: anim.easing || 'ease'
+        }));
+        console.log('🎪 StoryboardItem 返回动画列表:', result);
+        return result;
+      }
+      
+      // 如果是单动画，尝试识别类型
+      if (parsedData.singleAnimation) {
+        const singleAnim = parsedData.singleAnimation;
+        
+        // 基于脚本内容识别动画类型
+        let animationName = '自定义动画';
+        const script = props.item.animationScript;
+        
+        if (script.includes('opacity')) {
+          if (script.includes('opacity: 0') && script.includes('opacity: 1')) {
+            animationName = '淡入';
+          } else if (script.includes('opacity: 1') && script.includes('opacity: 0')) {
+            animationName = '淡出';
+          }
+        }
+        
+        if (script.includes('scale')) {
+          if (script.includes('scale: 0') && script.includes('scale: 1')) {
+            animationName = '缩放进入';
+          }
+        }
+        
+        if (script.includes('translateX') || script.includes('x:')) {
+          if (script.includes('-100%') || script.includes('translateX(-')) {
+            animationName = '左侧滑入';
+          } else if (script.includes('100%') || script.includes('translateX(')) {
+            animationName = '右侧滑入';
+          }
+        }
+        
+        const result = [{
+          name: animationName,
+          duration: singleAnim.duration,
+          easing: singleAnim.easing || 'ease'
+        }];
+        console.log('🎪 StoryboardItem 返回单动画:', result);
+        return result;
+      }
+    }
+    
+    console.log('❌ StoryboardItem 没有找到可解析的动画数据');
+    return [];
+  } catch (error) {
+    console.error('❌ StoryboardItem 解析动画脚本失败:', error);
+    return [];
+  }
 });
 
 // 开始编辑名称

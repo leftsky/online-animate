@@ -159,6 +159,16 @@ const handleManageAnimations = (item: StoryboardItemType) => {
     animationManager.value?.open(item);
 };
 
+// 处理动画保存成功后的更新
+const handleAnimationSaved = (updatedItem: StoryboardItemType) => {
+    const index = storyboardItems.value.findIndex(item => item.id === updatedItem.id);
+    if (index > -1) {
+        // 更新本地数据
+        storyboardItems.value[index].animationScript = updatedItem.animationScript;
+        storyboardItems.value[index].duration = parseDurationToString(updatedItem.animationScript);
+    }
+};
+
 const handleDuplicate = async (item: StoryboardItemType) => {
     try {
         loading.value = true;
@@ -410,7 +420,10 @@ onMounted(() => {
         />
         <ConfirmDialog />
         <SourceCodeViewer ref="sourceCodeViewer" />
-        <AnimationManager ref="animationManager" />
+        <AnimationManager 
+            ref="animationManager" 
+            @animation-saved="handleAnimationSaved"
+        />
     </div>
 </template>
 
