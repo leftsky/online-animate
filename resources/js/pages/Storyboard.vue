@@ -105,7 +105,7 @@ onMounted(() => {
                     <div class="text-sm text-muted-foreground">
                         <!-- 占位内容 -->
                         <div class="space-y-4">
-                            <div class="font-medium">工具面板</div>
+                            <div class="font-medium">分镜</div>
                             <div class="h-32 rounded border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
                                 <span class="text-xs text-muted-foreground/60">占位区域</span>
                             </div>
