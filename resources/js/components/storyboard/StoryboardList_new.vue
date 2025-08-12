@@ -8,8 +8,6 @@ import { useConfirm } from '../../composables/useConfirm';
 import CreateContentDialog from './CreateContentDialog.vue';
 import ConfirmDialog from './ConfirmDialog.vue';
 import StoryboardItem from './StoryboardItem.vue';
-import SourceCodeViewer from './SourceCodeViewer.vue';
-import AnimationManager from './AnimationManager.vue';
 import type { StoryboardItem as StoryboardItemType, ApiSceneContent } from './types';
 
 const emit = defineEmits<{
@@ -32,8 +30,6 @@ const { confirm } = useConfirm();
 
 // 组件引用
 const createContentDialog = ref<InstanceType<typeof CreateContentDialog>>();
-const sourceCodeViewer = ref<InstanceType<typeof SourceCodeViewer>>();
-const animationManager = ref<InstanceType<typeof AnimationManager>>();
 
 // 从API数据转换为StoryboardItem
 const convertApiDataToStoryboardItem = (apiData: ApiSceneContent): StoryboardItemType => {
@@ -152,11 +148,13 @@ const handleToggleVisibility = async (id: string) => {
 };
 
 const handleViewSource = (item: StoryboardItemType) => {
-    sourceCodeViewer.value?.open(item);
+    // TODO: 实现源码查看功能
+    console.log('查看源码:', item.animationScript);
 };
 
 const handleManageAnimations = (item: StoryboardItemType) => {
-    animationManager.value?.open(item);
+    // TODO: 实现动画管理功能
+    console.log('管理动画:', item);
 };
 
 const handleDuplicate = async (item: StoryboardItemType) => {
@@ -409,8 +407,6 @@ onMounted(() => {
             @confirm="handleCreateContent" 
         />
         <ConfirmDialog />
-        <SourceCodeViewer ref="sourceCodeViewer" />
-        <AnimationManager ref="animationManager" />
     </div>
 </template>
 
