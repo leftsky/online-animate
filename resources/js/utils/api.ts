@@ -138,6 +138,78 @@ export const uploadApi = {
 };
 
 /**
+ * 分镜内容相关 API
+ */
+export const sceneContentApi = {
+    /**
+     * 获取分镜内容列表
+     */
+    getList(params: { 
+        scene_id?: number | null; 
+        element_type?: string; 
+        status?: number;
+        page?: number;
+        per_page?: number;
+    } = {}): Promise<ApiResponse> {
+        const queryParams = new URLSearchParams();
+        
+        if (params.scene_id !== undefined) {
+            queryParams.append('scene_id', params.scene_id === null ? 'null' : String(params.scene_id));
+        }
+        if (params.element_type) queryParams.append('element_type', params.element_type);
+        if (params.status !== undefined) queryParams.append('status', String(params.status));
+        if (params.page) queryParams.append('page', String(params.page));
+        if (params.per_page) queryParams.append('per_page', String(params.per_page));
+        
+        const url = `/scene-contents${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+        return apiGet(url);
+    },
+
+    /**
+     * 创建分镜内容
+     */
+    create(data: {
+        scene_id?: number | null;
+        element_name: string;
+        element_type: string;
+        element_source?: string;
+        animation_script?: string;
+        layer_order?: number;
+        status?: number;
+    }): Promise<ApiResponse> {
+        return apiPost('/scene-contents', data);
+    },
+
+    /**
+     * 获取分镜内容详情
+     */
+    get(id: number): Promise<ApiResponse> {
+        return apiGet(`/scene-contents/${id}`);
+    },
+
+    /**
+     * 更新分镜内容
+     */
+    update(id: number, data: {
+        element_name?: string;
+        element_type?: string;
+        element_source?: string;
+        animation_script?: string;
+        layer_order?: number;
+        status?: number;
+    }): Promise<ApiResponse> {
+        return apiPut(`/scene-contents/${id}`, data);
+    },
+
+    /**
+     * 删除分镜内容
+     */
+    delete(id: number): Promise<ApiResponse> {
+        return apiDelete(`/scene-contents/${id}`);
+    }
+};
+
+/**
  * 错误处理工具
  */
 export const apiUtils = {
@@ -218,6 +290,7 @@ export const apiUtils = {
 export default {
     config: configApi,
     upload: uploadApi,
+    sceneContent: sceneContentApi,
     utils: apiUtils,
     // 直接方法
     get: apiGet,

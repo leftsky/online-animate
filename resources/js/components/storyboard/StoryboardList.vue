@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { Play, Edit3, Trash2, Plus, Copy, Eye, EyeOff, Image } from 'lucide-vue-next';
 import { AnimationParser } from '../../lib/AnimationParser';
 import { uploadImage } from '../../utils/upload';
+import { sceneContentApi, uploadApi } from '../../utils/api';
+import { useToast } from '../../composables/useToast';
+import { useConfirm } from '../../composables/useConfirm';
+import CreateContentDialog from './CreateContentDialog.vue';
+import ConfirmDialog from './ConfirmDialog.vue';
 
 interface StoryboardItem {
     id: string;
@@ -26,86 +31,85 @@ const emit = defineEmits<{
     addNewItem: [];
 }>();
 
-// 默认示例动画数据
-const defaultAnimations = [
-    {
-        id: '1',
-        name: '旋转缩放动画',
-        imagePath: '/images/sample/character1.png',
-        thumbnail: '/images/sample/character1_thumb.png',
-        script: `image1:
-  duration: 3s
-  easing: ease-in-out
-  loop: true
-  keyframes:
-    - time: 0s, rotate: 0deg, scale: 1, position: [100, 100], opacity: 1
-    - time: 1.5s, rotate: 180deg, scale: 1.5, position: [200, 150], opacity: 0.8
-    - time: 3s, rotate: 360deg, scale: 1, position: [300, 100], opacity: 1`
-    },
-    {
-        id: '2', 
-        name: '弹跳动画',
-        imagePath: '/images/sample/ball.png',
-        thumbnail: '/images/sample/ball_thumb.png',
-        script: `image2:
-  duration: 2s
-  easing: bounce
-  keyframes:
-    - time: 0s, x: 0, y: 0, scaleX: 1, scaleY: 1
-    - time: 1s, x: 100, y: 50, scaleX: 1.2, scaleY: 0.8
-    - time: 2s, x: 200, y: 0, scaleX: 1, scaleY: 1`
-    },
-    {
-        id: '3',
-        name: '淡入淡出',
-        imagePath: '/images/sample/star.png',
-        thumbnail: '/images/sample/star_thumb.png',
-        script: `image3:
-  duration: 4s
-  easing: ease-in-out
-  keyframes:
-    - time: 0s, opacity: 0, scale: 0.8
-    - time: 2s, opacity: 1, scale: 1.2
-    - time: 4s, opacity: 0, scale: 0.8`
-    }
-];
+// 默认示例动画数据（空数组，移除默认内容）
+const defaultAnimations: any[] = [];
 
 // 分镜列表数据
 const storyboardItems = ref<StoryboardItem[]>([]);
+const loading = ref(false);
 
-// 初始化默认数据
-const initializeStoryboard = () => {
-    storyboardItems.value = defaultAnimations.map(anim => {
-        try {
-            const parsedAnimations = AnimationParser.parse(anim.script);
-            const animation = parsedAnimations[0];
-            
-            return {
-                id: anim.id,
-                name: anim.name,
-                duration: parseDuration(animation?.duration || 3000), // AnimationParser 返回毫秒数
-                visible: true,
-                selected: anim.id === '1', // 默认选中第一个
-                animation,
-                script: anim.script,
-                imagePath: anim.imagePath,
-                thumbnail: anim.thumbnail
-            };
-        } catch (error) {
-            console.error('解析动画失败:', error);
-            return {
-                id: anim.id,
-                name: anim.name,
-                duration: 3,
-                visible: true,
-                selected: false,
-                animation: null,
-                script: anim.script,
-                imagePath: anim.imagePath,
-                thumbnail: anim.thumbnail
-            };
+// 组合式函数
+const { toast } = useToast();
+const { confirm } = useConfirm();
+
+// 组件引用
+const createContentDialog = ref<InstanceType<typeof CreateContentDialog>>();
+
+// 从API数据转换为StoryboardItem
+const convertApiDataToStoryboardItem = (apiData: any): StoryboardItem => {
+    try {
+        let animation = null;
+        let duration = 3;
+        
+        if (apiData.animation_script) {
+            const parsedAnimations = AnimationParser.parse(apiData.animation_script);
+            animation = parsedAnimations[0];
+            duration = parseDuration(animation?.duration || 3000);
         }
-    });
+        
+        return {
+            id: apiData.id.toString(),
+            name: apiData.element_name,
+            duration,
+            visible: apiData.status === 1,
+            selected: false,
+            animation,
+            script: apiData.animation_script || '',
+            imagePath: apiData.element_source,
+            thumbnail: apiData.element_source
+        };
+    } catch (error) {
+        console.error('转换API数据失败:', error);
+        return {
+            id: apiData.id.toString(),
+            name: apiData.element_name || '未知项目',
+            duration: 3,
+            visible: apiData.status === 1,
+            selected: false,
+            animation: null,
+            script: apiData.animation_script || '',
+            imagePath: apiData.element_source,
+            thumbnail: apiData.element_source
+        };
+    }
+};
+
+// 从API加载分镜内容数据
+const loadStoryboardData = async () => {
+    loading.value = true;
+    try {
+        console.log('开始加载分镜内容数据...');
+        const response = await sceneContentApi.getList({ scene_id: 1 });
+        
+        if (response.success && response.data) {
+            const apiData = response.data.data || response.data;
+            storyboardItems.value = apiData.map(convertApiDataToStoryboardItem);
+            console.log('分镜内容数据加载成功:', storyboardItems.value.length, '项');
+        } else {
+            console.error('加载分镜内容失败:', response.message);
+            storyboardItems.value = [];
+        }
+    } catch (error) {
+        console.error('加载分镜内容出错:', error);
+        storyboardItems.value = [];
+    } finally {
+        loading.value = false;
+    }
+};
+
+// 初始化默认数据（现在从API加载）
+const initializeStoryboard = () => {
+    loadStoryboardData();
 };
 
 // 解析持续时间为数字（秒）
@@ -154,11 +158,43 @@ const editItem = (item: StoryboardItem) => {
 };
 
 // 删除项目
-const deleteItem = (itemId: string) => {
-    const index = storyboardItems.value.findIndex(item => item.id === itemId);
-    if (index > -1) {
-        storyboardItems.value.splice(index, 1);
-        emit('deleteItem', itemId);
+const deleteItem = async (itemId: string) => {
+    if (loading.value) return;
+    
+    const confirmed = await confirm({
+        title: '删除确认',
+        message: '确定要删除这个分镜内容吗？此操作不可撤销。',
+        confirmText: '删除',
+        cancelText: '取消',
+        variant: 'destructive'
+    });
+    
+    if (!confirmed) return;
+    
+    try {
+        loading.value = true;
+        toast.info('正在删除...');
+        
+        // 调用API删除
+        const response = await sceneContentApi.delete(parseInt(itemId));
+        
+        if (response.success) {
+            // 从本地列表移除
+            const index = storyboardItems.value.findIndex(item => item.id === itemId);
+            if (index > -1) {
+                storyboardItems.value.splice(index, 1);
+            }
+            
+            toast.success('分镜内容删除成功！');
+            emit('deleteItem', itemId);
+        } else {
+            toast.error('删除失败', response.message);
+        }
+    } catch (error) {
+        console.error('删除分镜内容出错:', error);
+        toast.error('删除出错，请重试');
+    } finally {
+        loading.value = false;
     }
 };
 
@@ -187,7 +223,73 @@ const toggleVisibility = (itemId: string) => {
 
 // 添加新项目
 const addNewItem = () => {
-    emit('addNewItem');
+    if (loading.value) return;
+    createContentDialog.value?.open();
+};
+
+// 处理创建内容确认
+const handleCreateContent = async (data: { file: File; elementName: string }) => {
+    try {
+        createContentDialog.value?.setLoading(true);
+        toast.info('正在上传图片...');
+        
+        // 1. 上传图片
+        const uploadResult = await uploadApi.uploadFile(data.file, {
+            type: 'image',
+            folder: 'storyboard'
+        });
+        
+        if (!uploadResult.success || !uploadResult.data) {
+            toast.error('图片上传失败', uploadResult.message);
+            return;
+        }
+        
+        toast.info('正在创建分镜内容...');
+        
+        // 2. 准备API数据，使用用户输入的名称
+        const animationScript = `${data.elementName.toLowerCase().replace(/\s+/g, '_')}:
+  duration: 3s
+  easing: ease-in-out
+  keyframes:
+    - time: 0s, x: 0, y: 0, opacity: 1, scale: 1
+    - time: 3s, x: 0, y: 0, opacity: 1, scale: 1`;
+        
+        const createData = {
+            scene_id: 1,
+            element_name: data.elementName,
+            element_type: 'image',
+            element_source: uploadResult.data.url,
+            animation_script: animationScript,
+            layer_order: storyboardItems.value.length + 1,
+            status: 1
+        };
+        
+        // 3. 调用API创建分镜内容
+        const createResult = await sceneContentApi.create(createData);
+        
+        if (createResult.success && createResult.data) {
+            // 4. 转换API数据为本地数据格式
+            const newItem = convertApiDataToStoryboardItem(createResult.data);
+            
+            // 5. 添加到本地列表
+            storyboardItems.value.push(newItem);
+            
+            // 6. 自动选中新添加的项目
+            storyboardItems.value.forEach(item => item.selected = false);
+            newItem.selected = true;
+            
+            toast.success('分镜内容创建成功！');
+            createContentDialog.value?.close();
+            emit('selectItem', newItem);
+        } else {
+            toast.error('创建分镜内容失败', createResult.message);
+        }
+    } catch (error) {
+        console.error('添加分镜内容出错:', error);
+        toast.error('添加分镜内容出错，请重试');
+    } finally {
+        createContentDialog.value?.setLoading(false);
+    }
 };
 
 // 图片加载错误处理
@@ -199,24 +301,40 @@ const handleImageError = (event: Event) => {
 
 // 上传图片
 const uploadImageForItem = async (item: StoryboardItem) => {
+    if (loading.value) return;
+    
     try {
-        console.log('开始上传图片...');
+        loading.value = true;
+        toast.info('正在上传图片...');
         
-        const result = await uploadImage({
+        const uploadResult = await uploadImage({
             folder: 'storyboard'
         });
         
-        if (result.success && result.data) {
-            item.imagePath = result.data.url;
-            item.thumbnail = result.data.url;
-            console.log('图片上传成功:', item.name, result.data);
+        if (uploadResult.success && uploadResult.data) {
+            toast.info('正在更新分镜内容...');
+            
+            // 调用API更新分镜内容
+            const updateResult = await sceneContentApi.update(parseInt(item.id), {
+                element_source: uploadResult.data.url
+            });
+            
+            if (updateResult.success) {
+                // 更新本地数据
+                item.imagePath = uploadResult.data.url;
+                item.thumbnail = uploadResult.data.url;
+                toast.success('图片更新成功！');
+            } else {
+                toast.error('更新失败', updateResult.message);
+            }
         } else {
-            console.error('图片上传失败:', result.message);
-            alert('图片上传失败: ' + result.message);
+            toast.error('图片上传失败', uploadResult.message);
         }
     } catch (error) {
         console.error('图片上传出错:', error);
-        alert('图片上传出错，请重试');
+        toast.error('图片上传出错，请重试');
+    } finally {
+        loading.value = false;
     }
 };
 
@@ -230,8 +348,10 @@ const selectedCount = computed(() => {
     return storyboardItems.value.filter(item => item.selected).length;
 });
 
-// 初始化
-initializeStoryboard();
+// 组件挂载时初始化
+onMounted(() => {
+    initializeStoryboard();
+});
 </script>
 
 <template>
@@ -239,18 +359,20 @@ initializeStoryboard();
         <!-- 标题栏 -->
         <div class="flex items-center justify-between border-b px-4 py-3">
             <div class="flex items-center space-x-2">
-                <h3 class="text-lg font-semibold">分镜列表</h3>
+                <h3 class="text-lg font-semibold">分镜内容</h3>
                 <span class="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
                     {{ storyboardItems.length }} 项
                 </span>
             </div>
             <button
                 @click="addNewItem"
-                class="flex items-center rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90"
+                :disabled="loading"
+                class="flex items-center rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
                 title="添加新动画"
             >
                 <Plus class="mr-1 h-4 w-4" />
-                新建
+                <span v-if="loading">处理中...</span>
+                <span v-else>新建</span>
             </button>
         </div>
 
@@ -418,6 +540,13 @@ initializeStoryboard();
                 </div>
             </div>
         </div>
+        
+        <!-- 对话框组件 -->
+        <CreateContentDialog 
+            ref="createContentDialog" 
+            @confirm="handleCreateContent" 
+        />
+        <ConfirmDialog />
     </div>
 </template>
 

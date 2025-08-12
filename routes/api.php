@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\UploadController;
+use App\Http\Controllers\Api\SceneContentController;
 use Illuminate\Support\Facades\Route;
 
 // Web API 路由 - 用于前端 AJAX 调用
@@ -23,4 +24,7 @@ Route::middleware(['web', 'auth'])->withoutMiddleware([\Illuminate\Foundation\Ht
 
     // 文件上传接口
     Route::post('/upload', [UploadController::class, 'upload'])->name('upload');
+
+    // 分镜内容管理接口
+    Route::apiResource('scene-contents', SceneContentController::class);
 });

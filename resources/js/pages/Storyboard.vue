@@ -7,6 +7,7 @@ import { type BreadcrumbItem } from '@/types'
 import StoryboardCanvas from '@/components/storyboard/StoryboardCanvas.vue'
 import Timeline from '@/components/storyboard/Timeline.vue'
 import StoryboardList from '@/components/storyboard/StoryboardList.vue'
+import ToastProvider from '@/components/ui/toast/ToastProvider.vue'
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -118,7 +119,8 @@ onMounted(() => {
     <Head title="分镜画板" />
     
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-[calc(100vh-4rem)] flex-col bg-muted/50 dark:bg-muted/20">
+        <ToastProvider>
+            <div class="flex h-[calc(100vh-4rem)] flex-col bg-muted/50 dark:bg-muted/20">
             <!-- 主要内容区域 -->
             <div class="flex-1 flex">
                 <!-- 画布区域 -->
@@ -171,6 +173,7 @@ onMounted(() => {
                 />
             </div>
         </div>
+        </ToastProvider>
     </AppLayout>
 </template>
 
