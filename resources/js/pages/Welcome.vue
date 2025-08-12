@@ -2,7 +2,7 @@
 import { Head, Link } from '@inertiajs/vue3';
 import { onMounted } from 'vue';
 import { initializeTheme } from '@/composables/useAppearance';
-import AppearanceTabs from '@/components/AppearanceTabs.vue';
+import WelcomeUserMenu from '@/components/WelcomeUserMenu.vue';
 import Icon from '@/components/Icon.vue';
 import { gsap } from 'gsap';
 
@@ -60,33 +60,8 @@ onMounted(() => {
                     
                     <!-- Right side -->
                     <div class="flex items-center space-x-4">
-                        <!-- Theme Toggle -->
-                        <AppearanceTabs class="scale-90" />
-                        
-                        <!-- Auth Links -->
-                        <div class="flex items-center space-x-2">
-                            <Link
-                                v-if="$page.props.auth.user"
-                                :href="route('dashboard')"
-                                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                            >
-                                控制台
-                            </Link>
-                            <template v-else>
-                                <Link
-                                    :href="route('login')"
-                                    class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white px-4 py-2 text-sm font-medium transition-colors"
-                                >
-                                    登录
-                                </Link>
-                                <Link
-                                    :href="route('register')"
-                                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                                >
-                                    注册
-                                </Link>
-                            </template>
-                        </div>
+                        <!-- User Menu -->
+                        <WelcomeUserMenu />
                     </div>
                 </div>
             </div>
