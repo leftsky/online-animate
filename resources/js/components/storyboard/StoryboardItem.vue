@@ -173,7 +173,7 @@
           variant="outline"
           size="sm"
           @click="viewSourceCode"
-          class="h-7 text-xs"
+          class="h-7 text-xs hover:bg-gray-50 transition-colors"
         >
           <Code class="w-3 h-3 mr-1" />
           查看源码
@@ -182,10 +182,10 @@
           variant="outline"
           size="sm"
           @click="previewAnimation"
-          class="h-7 text-xs"
+          class="h-7 text-xs bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 text-blue-700 hover:from-blue-100 hover:to-indigo-100 hover:border-blue-300 transition-all duration-200 transform hover:scale-105 active:scale-95"
         >
-          <Play class="w-3 h-3 mr-1" />
-          预览动画
+          <Play class="w-3 h-3 mr-1 animate-pulse" />
+          <span class="font-medium">预览动画</span>
         </Button>
       </div>
     </div>
@@ -226,18 +226,7 @@ import {
 import { Button } from '@/components/ui/button';
 import ImagePreview from './ImagePreview.vue';
 import { AnimationParser } from '../../lib/AnimationParser';
-
-interface StoryboardItem {
-  id: string;
-  elementName: string;
-  imagePath: string;
-  thumbnail: string;
-  visible: boolean;
-  layerOrder: number;
-  duration: string;
-  animationScript: string;
-  selected: boolean;
-}
+import type { StoryboardItem } from './types';
 
 interface Props {
   item: StoryboardItem;
@@ -251,6 +240,7 @@ interface Emits {
   duplicate: [item: StoryboardItem];
   delete: [id: string];
   select: [item: StoryboardItem];
+  previewAnimation: [item: StoryboardItem];
 }
 
 const props = defineProps<Props>();
@@ -409,7 +399,8 @@ const viewSourceCode = () => {
 
 const previewAnimation = () => {
   console.log('预览动画:', props.item);
-  // TODO: 实现动画预览逻辑
+  // 发出预览动画事件，让父组件处理动画播放逻辑
+  emit('previewAnimation', props.item);
 };
 </script>
 

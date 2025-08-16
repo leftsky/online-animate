@@ -37,9 +37,12 @@ class SceneContentController extends WebApiController
         // 按图层顺序排序
         $query->orderByLayer();
 
-        // 分页
-        $perPage = $request->get('per_page', 20);
-        $contents = $query->paginate($perPage);
+        // 分页参数
+        $limit = $request->get('limit', 20);
+        $offset = $request->get('offset', 0);
+        
+        // 应用分页
+        $contents = $query->offset($offset)->limit($limit)->get();
 
         return $this->success($contents, '获取分镜内容列表成功');
     }

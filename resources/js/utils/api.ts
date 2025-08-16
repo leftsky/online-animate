@@ -148,8 +148,8 @@ export const sceneContentApi = {
         scene_id?: number | null; 
         element_type?: string; 
         status?: number;
-        page?: number;
-        per_page?: number;
+        limit?: number;
+        offset?: number;
     } = {}): Promise<ApiResponse> {
         const queryParams = new URLSearchParams();
         
@@ -158,8 +158,8 @@ export const sceneContentApi = {
         }
         if (params.element_type) queryParams.append('element_type', params.element_type);
         if (params.status !== undefined) queryParams.append('status', String(params.status));
-        if (params.page) queryParams.append('page', String(params.page));
-        if (params.per_page) queryParams.append('per_page', String(params.per_page));
+        if (params.limit) queryParams.append('limit', String(params.limit));
+        if (params.offset) queryParams.append('offset', String(params.offset));
         
         const url = `/scene-contents${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
         return apiGet(url);

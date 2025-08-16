@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Canvas, Image, Object as FabricObject, Line } from 'fabric';
 import { onMounted, onUnmounted, ref, nextTick } from 'vue';
+import AnimationPlayer from './AnimationPlayer.vue';
+import type { StoryboardItem } from './types';
 
 interface Props {
     width?: number;
@@ -15,10 +17,15 @@ const props = withDefaults(defineProps<Props>(), {
 const canvasContainer = ref<HTMLDivElement>();
 const canvasElement = ref<HTMLCanvasElement>();
 const fabricCanvas = ref<Canvas | null>(null);
+const animationPlayer = ref<InstanceType<typeof AnimationPlayer>>();
+const isAnimating = ref(false);
 
 const emit = defineEmits<{
     objectSelected: [object: FabricObject | null];
     objectModified: [object: FabricObject];
+    animationStart: [];
+    animationEnd: [];
+    animationProgress: [progress: number];
 }>();
 
 // 获取容器尺寸
@@ -258,6 +265,47 @@ const updateObjectProperties = (properties: Partial<FabricObject>) => {
     }
 };
 
+// 动画播放相关方法
+const playAnimation = async (item: StoryboardItem) => {
+    if (animationPlayer.value) {
+        await animationPlayer.value.setAnimation(item);
+        animationPlayer.value.playAnimation();
+    }
+};
+
+const stopAnimation = () => {
+    if (animationPlayer.value) {
+        animationPlayer.value.stopAnimation();
+    }
+};
+
+const pauseAnimation = () => {
+    if (animationPlayer.value) {
+        animationPlayer.value.pauseAnimation();
+    }
+};
+
+const replayAnimation = () => {
+    if (animationPlayer.value) {
+        animationPlayer.value.replayAnimation();
+    }
+};
+
+// 动画事件处理
+const handleAnimationStart = () => {
+    isAnimating.value = true;
+    emit('animationStart');
+};
+
+const handleAnimationEnd = () => {
+    isAnimating.value = false;
+    emit('animationEnd');
+};
+
+const handleAnimationProgress = (progress: number) => {
+    emit('animationProgress', progress);
+};
+
 // 导出方法供父组件使用
 defineExpose({
     addImage,
@@ -267,18 +315,51 @@ defineExpose({
     updateObjectProperties,
     canvas: fabricCanvas,
     resizeCanvas,
+    playAnimation,
+    stopAnimation,
+    pauseAnimation,
+    replayAnimation,
 });
 </script>
 
 <template>
     <div 
         ref="canvasContainer"
-        class="relative h-full w-full overflow-hidden rounded-lg border bg-card shadow-sm p-4"
+        class="relative h-full w-full overflow-hidden rounded-lg border bg-gradient-to-br from-gray-50 to-gray-100 shadow-lg p-4 transition-all duration-300"
+        :class="{ 'ring-2 ring-blue-200 ring-opacity-50': isAnimating }"
     >
+        <!-- 画布背景装饰 -->
+        <div class="absolute inset-4 rounded-md bg-white shadow-inner opacity-90"></div>
+        
+        <!-- 主画布 -->
         <canvas
             ref="canvasElement"
-            class="block"
+            class="relative z-10 block rounded-md"
         />
+        
+        <!-- 动画播放器组件 -->
+        <div class="absolute top-6 right-6 z-20">
+            <div class="backdrop-blur-sm bg-background/90 rounded-lg p-2 shadow-lg border border-border">
+                <AnimationPlayer
+                    ref="animationPlayer"
+                    :canvas="fabricCanvas"
+                    @animation-start="handleAnimationStart"
+                    @animation-end="handleAnimationEnd"
+                    @animation-progress="handleAnimationProgress"
+                />
+            </div>
+        </div>
+        
+        <!-- 动画播放时的视觉效果 -->
+        <Transition name="fade">
+            <div v-if="isAnimating" class="absolute inset-0 pointer-events-none">
+                <div class="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-indigo-500/5 animate-pulse"></div>
+                <div class="absolute top-4 left-4 flex items-center gap-2 text-blue-600 text-sm font-medium">
+                    <div class="w-2 h-2 bg-blue-500 rounded-full animate-ping"></div>
+                    动画播放中...
+                </div>
+            </div>
+        </Transition>
     </div>
 </template>
 
@@ -287,5 +368,16 @@ defineExpose({
     position: relative;
     width: 100%;
     height: 100%;
+}
+
+/* 过渡动画 */
+.fade-enter-active,
+.fade-leave-active {
+    @apply transition-all duration-500 ease-in-out;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+    @apply opacity-0;
 }
 </style>

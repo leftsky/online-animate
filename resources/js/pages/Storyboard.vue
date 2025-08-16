@@ -108,6 +108,15 @@ const handleAddNewItem = () => {
     // 添加新分镜项目的逻辑
 }
 
+// 处理动画预览
+const handlePreviewAnimation = async (item: any) => {
+    console.log('Preview animation for item:', item)
+    // 调用画布组件的动画播放功能
+    if (canvasRef.value) {
+        await canvasRef.value.playAnimation(item)
+    }
+}
+
 // 初始化
 onMounted(() => {
     // 初始化GSAP时间轴
@@ -155,6 +164,7 @@ onMounted(() => {
                         @duplicate-item="handleDuplicateItem"
                         @toggle-visibility="handleToggleVisibility"
                         @add-new-item="handleAddNewItem"
+                        @preview-animation="handlePreviewAnimation"
                     />
                 </div>
             </div>

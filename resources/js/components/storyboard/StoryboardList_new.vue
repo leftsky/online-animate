@@ -58,7 +58,8 @@ const loadStoryboardData = async () => {
         const response = await sceneContentApi.getList({ scene_id: 1 });
         
         if (response.success && response.data) {
-            const apiData = response.data.data || response.data;
+            // 后端现在直接返回数组，不再包含分页信息
+            const apiData = Array.isArray(response.data) ? response.data : [];
             storyboardItems.value = apiData.map(convertApiDataToStoryboardItem);
             console.log('分镜内容数据加载成功:', storyboardItems.value.length, '项');
         } else {

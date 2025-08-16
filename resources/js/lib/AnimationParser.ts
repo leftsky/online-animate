@@ -1,3 +1,5 @@
+import * as yaml from 'js-yaml';
+
 export interface AnimationKeyframe {
   time: number;
   properties: {
@@ -166,6 +168,38 @@ export class AnimationParser {
   }
 
   /**
+   * 解析关键帧数组
+   */
+  private static parseKeyframes(keyframes: any[]): AnimationKeyframe[] {
+    if (!Array.isArray(keyframes)) {
+      return [];
+    }
+
+    return keyframes.map(kf => {
+      if (typeof kf === 'string') {
+        // 处理字符串格式的关键帧
+        return this.parseKeyframe(kf);
+      } else if (typeof kf === 'object' && kf !== null) {
+        // 处理对象格式的关键帧
+        return {
+          time: kf.time || 0,
+          properties: {
+            x: kf.x,
+            y: kf.y,
+            rotation: kf.rotation || kf.rotate,
+            scaleX: kf.scaleX || kf.scale,
+            scaleY: kf.scaleY || kf.scale,
+            opacity: kf.opacity,
+            skewX: kf.skewX,
+            skewY: kf.skewY
+          }
+        };
+      }
+      return { time: 0, properties: {} };
+    });
+  }
+
+  /**
    * 解析关键帧
    */
   private static parseKeyframe(line: string): AnimationKeyframe {
@@ -280,150 +314,97 @@ export class AnimationParser {
 
   /**
    * 解析新格式的YAML（支持initial和animations块）
+   * 使用js-yaml库进行解析
    */
   static parseNewFormat(animationText: string): ParsedAnimationData | null {
     if (!animationText || !animationText.trim()) {
       return null;
     }
 
-    const lines = animationText.split('\n').map(line => line.trim()).filter(line => line);
-    
-    let target = '';
-    const initial: InitialPosition = { x: 0, y: 0, opacity: 1, scale: 1, rotation: 0 };
-    const animations: AnimationEffect[] = [];
-    let singleAnimation: ParsedAnimationData['singleAnimation'];
-    
-    let currentSection = '';
-    let currentAnimationIndex = -1;
-    
-    for (const line of lines) {
-      // 检测块级标识（优先检测，避免被当作目标元素）
-      if (line === 'initial:') {
-        currentSection = 'initial';
-        continue;
-      } else if (line === 'animations:') {
-        currentSection = 'animations';
-        currentAnimationIndex = -1; // 重置动画索引
-        continue;
-      } else if (line === 'keyframes:' && currentAnimationIndex < 0) {
-        // 只有在不是动画属性的情况下才当作顶级块
-        currentSection = 'keyframes';
-        continue;
-      }
+    try {
+      // 预处理内联格式的关键帧，转换为标准YAML格式
+      const preprocessedText = this.preprocessKeyframes(animationText);
       
-      // 检测目标元素（只在根级别）
-      if (line.endsWith(':') && !line.startsWith('-') && !line.includes(' ') && currentSection === '') {
-        target = line.slice(0, -1);
-        continue;
-      }
+      // 使用js-yaml解析YAML
+      const parsed = yaml.load(preprocessedText) as any;
       
-      // 解析initial块
-      if (currentSection === 'initial' && line.includes(':')) {
-        const [key, value] = line.split(':').map(s => s.trim());
-        switch (key) {
-          case 'x':
-            initial.x = parseFloat(value) || 0;
-            break;
-          case 'y':
-            initial.y = parseFloat(value) || 0;
-            break;
-          case 'opacity':
-            initial.opacity = parseFloat(value) || 1;
-            break;
-          case 'scale':
-            initial.scale = parseFloat(value) || 1;
-            break;
-          case 'rotation':
-            initial.rotation = parseFloat(value.replace('deg', '')) || 0;
-            break;
-        }
-        continue;
+      if (!parsed || typeof parsed !== 'object') {
+        return null;
       }
+
+      // 获取第一个元素作为目标
+      const targetKey = Object.keys(parsed)[0];
+      const targetData = parsed[targetKey];
       
-      // 解析animations块 - 检测新动画项
-      if (currentSection === 'animations' && line.startsWith('- name:')) {
-        const name = line.replace('- name:', '').trim();
-        currentAnimationIndex = animations.length;
-        const newAnimation = {
-          id: this.generateId(),
-          name,
-          type: this.detectAnimationType(name),
-          duration: '1s',
-          easing: 'ease',
-          properties: {}
-        };
-        animations.push(newAnimation);
-        continue;
+      if (!targetData || typeof targetData !== 'object') {
+        return null;
       }
-      
-      // 处理非animations块中的 - name: 行（可能是新动画的开始）
-      if (line.startsWith('- name:') && currentSection !== 'animations') {
-        // 如果不在animations块中遇到 - name:，说明这是一个新的动画项
-        // 切换到animations模式
-        currentSection = 'animations';
-        currentAnimationIndex = -1;
-        
-        // 处理这个动画项
-        const name = line.replace('- name:', '').trim();
-        currentAnimationIndex = animations.length;
-        const newAnimation = {
-          id: this.generateId(),
-          name,
-          type: this.detectAnimationType(name),
-          duration: '1s',
-          easing: 'ease',
-          properties: {}
-        };
-        animations.push(newAnimation);
-        continue;
+
+      // 解析初始位置
+      const initial: InitialPosition = {
+        x: 0,
+        y: 0,
+        opacity: 1,
+        scale: 1,
+        rotation: 0
+      };
+
+      if (targetData.initial) {
+        initial.x = targetData.initial.x || 0;
+        initial.y = targetData.initial.y || 0;
+        initial.opacity = targetData.initial.opacity || 1;
+        initial.scale = targetData.initial.scale || 1;
+        initial.rotation = typeof targetData.initial.rotation === 'string' 
+          ? parseFloat(targetData.initial.rotation.replace('deg', '')) || 0
+          : targetData.initial.rotation || 0;
       }
-      
-      // 解析动画属性
-      if (currentAnimationIndex >= 0 && line.includes(':') && !line.startsWith('-') && currentSection === 'animations') {
-        const [key, value] = line.split(':').map(s => s.trim());
-        const currentAnim = animations[currentAnimationIndex];
-        
-        if (key === 'duration') {
-          currentAnim.duration = value;
-        } else if (key === 'easing') {
-          currentAnim.easing = value;
-        } else if (key === 'keyframes') {
-          // keyframes 行本身不需要处理，keyframes内容在后续的 - time: 行中处理
-        }
-        continue;
-      }
-      
-      // 解析单个动画（非animations块）
-      if (currentSection === '' && line.includes(':') && !line.startsWith('-')) {
-        const [key, value] = line.split(':').map(s => s.trim());
-        
-        if (key === 'duration' || key === 'easing') {
-          if (!singleAnimation) {
-            singleAnimation = {
-              duration: '3s',
-              easing: 'ease-in-out',
-              keyframes: []
-            };
-          }
-          
-          if (key === 'duration') {
-            singleAnimation.duration = value;
-          } else if (key === 'easing') {
-            singleAnimation.easing = value;
+
+      // 解析动画列表
+      const animations: AnimationEffect[] = [];
+      if (targetData.animations && Array.isArray(targetData.animations)) {
+        for (const anim of targetData.animations) {
+          if (anim.name) {
+            // 解析关键帧数据
+            let keyframes: AnimationKeyframe[] = [];
+            if (anim.keyframes && Array.isArray(anim.keyframes)) {
+              keyframes = this.parseKeyframes(anim.keyframes);
+            }
+            
+            animations.push({
+              id: this.generateId(),
+              name: anim.name,
+              type: this.detectAnimationType(anim.name),
+              duration: anim.duration || '1s',
+              easing: anim.easing || 'ease',
+              properties: {
+                ...anim.properties || {},
+                keyframes: keyframes
+              }
+            });
           }
         }
-        continue;
       }
+
+      // 解析单个动画（兼容旧格式）
+      let singleAnimation: ParsedAnimationData['singleAnimation'];
+      if (targetData.duration || targetData.keyframes) {
+        singleAnimation = {
+          duration: targetData.duration || '3s',
+          easing: targetData.easing || 'ease-in-out',
+          keyframes: this.parseKeyframes(targetData.keyframes || [])
+        };
+      }
+
+      return {
+        target: targetKey,
+        initial,
+        animations,
+        singleAnimation
+      };
+    } catch (error) {
+      console.error('YAML解析失败:', error);
+      return null;
     }
-    
-    const result = {
-      target: target || 'unknown',
-      initial,
-      animations,
-      singleAnimation
-    };
-    
-    return result;
   }
 
   /**
@@ -446,6 +427,173 @@ export class AnimationParser {
     };
     
     return nameMap[name] || 'custom';
+  }
+
+  /**
+   * 解析完整的 YAML 动画脚本
+   * 使用js-yaml库进行标准YAML解析
+   */
+  static parseYAMLScript(yamlScript: string): ParsedAnimationData | null {
+    if (!yamlScript || !yamlScript.trim()) {
+      return null;
+    }
+
+    try {
+      // 移除 YAML 文档分隔符
+      const cleanScript = yamlScript.replace(/^---\s*\n/, '').replace(/\n\.\.\.$/, '');
+      
+      // 直接使用parseNewFormat方法，它已经使用js-yaml
+      return this.parseNewFormat(cleanScript);
+    } catch (error) {
+      console.error('YAML 解析失败:', error);
+      return this.createDefaultAnimation();
+    }
+  }
+
+
+
+  /**
+   * 预处理关键帧数据，将内联格式转换为标准YAML格式
+   */
+  private static preprocessKeyframes(text: string): string {
+    const lines = text.split('\n');
+    const processedLines: string[] = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // 检测内联格式的关键帧（包含逗号分隔的属性）
+      if (line.trim().startsWith('- ') && line.includes(',') && line.includes(':')) {
+        const indent = line.match(/^\s*/)?.[0] || '';
+        const content = line.trim().substring(2); // 移除 "- "
+        
+        // 解析内联属性
+        const properties = content.split(',').map(prop => prop.trim());
+        
+        // 转换为标准YAML格式
+        processedLines.push(indent + '-');
+        for (const prop of properties) {
+          const [key, value] = prop.split(':').map(s => s.trim());
+          if (key && value) {
+            processedLines.push(indent + '  ' + key + ': ' + value);
+          }
+        }
+      } else {
+        processedLines.push(line);
+      }
+    }
+    
+    return processedLines.join('\n');
+  }
+
+  /**
+   * 创建默认动画
+   */
+  private static createDefaultAnimation(): ParsedAnimationData {
+    return {
+      target: 'all',
+      initial: { x: 0, y: 0, opacity: 1, scale: 1, rotation: 0 },
+      animations: [
+        {
+          id: this.generateId(),
+          name: '淡入',
+          type: 'fadeIn',
+          duration: '1s',
+          easing: 'ease',
+          properties: {}
+        }
+      ]
+    };
+  }
+
+  /**
+   * 将解析后的动画数据转换为 GSAP 可执行的格式
+   */
+  static toGSAPTimeline(data: ParsedAnimationData): any[] {
+    const timeline: any[] = [];
+
+    for (const animation of data.animations) {
+      const gsapConfig = this.animationTypeToGSAP(animation);
+      timeline.push({
+        ...gsapConfig,
+        duration: this.parseDuration(animation.duration),
+        ease: this.EASING_MAP[animation.easing || 'ease'] || animation.easing || 'ease',
+        delay: animation.properties.delay || 0
+      });
+    }
+
+    return timeline;
+  }
+
+  /**
+   * 根据动画类型生成 GSAP 配置
+   */
+  private static animationTypeToGSAP(animation: AnimationEffect): any {
+    const config: any = {};
+
+    switch (animation.type) {
+      case 'fadeIn':
+        config.opacity = 1;
+        config.from = { opacity: 0 };
+        break;
+      case 'fadeOut':
+        config.opacity = 0;
+        config.from = { opacity: 1 };
+        break;
+      case 'slideInLeft':
+        config.x = 0;
+        config.from = { x: -200 };
+        break;
+      case 'slideInRight':
+        config.x = 0;
+        config.from = { x: 200 };
+        break;
+      case 'slideInUp':
+        config.y = 0;
+        config.from = { y: 200 };
+        break;
+      case 'slideInDown':
+        config.y = 0;
+        config.from = { y: -200 };
+        break;
+      case 'scaleIn':
+        config.scaleX = 1;
+        config.scaleY = 1;
+        config.from = { scaleX: 0, scaleY: 0 };
+        break;
+      case 'scaleOut':
+        config.scaleX = 0;
+        config.scaleY = 0;
+        config.from = { scaleX: 1, scaleY: 1 };
+        break;
+      case 'rotateIn':
+        config.rotation = 0;
+        config.from = { rotation: -360 };
+        break;
+      case 'bounceIn':
+        config.scaleX = 1;
+        config.scaleY = 1;
+        config.opacity = 1;
+        config.from = { scaleX: 0.3, scaleY: 0.3, opacity: 0 };
+        config.ease = 'back.out(1.7)';
+        break;
+      case 'shake':
+        config.x = '+=10';
+        config.yoyo = true;
+        config.repeat = 5;
+        break;
+      case 'pulse':
+        config.scaleX = 1.1;
+        config.scaleY = 1.1;
+        config.yoyo = true;
+        config.repeat = 3;
+        break;
+      default:
+        // 自定义动画，使用属性中的配置
+        Object.assign(config, animation.properties);
+    }
+
+    return config;
   }
 
   /**

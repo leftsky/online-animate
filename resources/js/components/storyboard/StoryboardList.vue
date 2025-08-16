@@ -20,6 +20,7 @@ const emit = defineEmits<{
     duplicateItem: [item: StoryboardItemType];
     toggleVisibility: [itemId: string];
     addNewItem: [];
+    previewAnimation: [item: StoryboardItemType];
 }>();
 
 // 分镜列表数据
@@ -62,7 +63,8 @@ const loadStoryboardData = async () => {
         const response = await sceneContentApi.getList({ scene_id: 1 });
         
         if (response.success && response.data) {
-            const apiData = response.data.data || response.data;
+            // 后端现在直接返回数组，不再包含分页信息
+            const apiData = Array.isArray(response.data) ? response.data : [];
             storyboardItems.value = apiData.map(convertApiDataToStoryboardItem);
             console.log('分镜内容数据加载成功:', storyboardItems.value.length, '项');
         } else {
@@ -157,6 +159,12 @@ const handleViewSource = (item: StoryboardItemType) => {
 
 const handleManageAnimations = (item: StoryboardItemType) => {
     animationManager.value?.open(item);
+};
+
+const handlePreviewAnimation = (item: StoryboardItemType) => {
+    // 发出预览动画事件，让父组件处理
+    emit('previewAnimation', item);
+    toast.info(`正在预览 "${item.elementName}" 的动画...`);
 };
 
 // 处理动画保存成功后的更新
@@ -389,6 +397,7 @@ onMounted(() => {
                     @toggle-visibility="handleToggleVisibility"
                     @view-source="handleViewSource"
                     @manage-animations="handleManageAnimations"
+                    @preview-animation="handlePreviewAnimation"
                     @duplicate="handleDuplicate"
                     @delete="deleteItem"
                     @select="selectItem"
