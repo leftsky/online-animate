@@ -24,7 +24,7 @@ Route::get('animation-parser-test', function () {
 })->middleware(['auth', 'verified'])->name('animation-parser-test');
 
 // 包含 API 路由
-require __DIR__.'/api.php';
+// require __DIR__.'/api.php';
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
