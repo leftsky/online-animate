@@ -19,7 +19,7 @@ class UploadController extends WebApiController
     {
         // 验证请求
         $request->validate([
-            'file' => 'required|file|max:10240', // 最大10MB
+            'file' => 'required|file|max:51200', // 最大50MB
             'folder' => 'nullable|string|max:100',
             'type' => 'nullable|string|in:image,document,video,audio'
         ]);
@@ -46,8 +46,6 @@ class UploadController extends WebApiController
         $filePath = $folder . '/' . $datePath . '/' . $fileName;
 
         try {
-            // 检查配置的存储驱动
-
             // 使用七牛云存储
             $content = file_get_contents($file->getRealPath());
             Storage::put($filePath, $content);
@@ -79,7 +77,7 @@ class UploadController extends WebApiController
     private function validateFileType($file, string $type): void
     {
         $rules = [
-            'image' => 'mimes:jpeg,jpg,png,gif,webp|max:5120', // 5MB
+            'image' => 'mimes:jpeg,jpg,png,gif,webp|max:51200', // 50MB
             'document' => 'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,txt|max:10240', // 10MB
             'video' => 'mimes:mp4,avi,mov,wmv,flv|max:51200', // 50MB
             'audio' => 'mimes:mp3,wav,ogg,m4a|max:10240' // 10MB

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\UploadController;
 use App\Http\Controllers\Api\SceneContentController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // Web API 路由 - 用于前端 AJAX 调用
@@ -27,4 +28,16 @@ Route::middleware(['web', 'auth'])->withoutMiddleware([\Illuminate\Foundation\Ht
 
     // 分镜内容管理接口
     Route::apiResource('scene-contents', SceneContentController::class);
+});
+
+// 媒体资源API路由 - 使用原有的认证方式
+Route::middleware(['web', 'auth'])->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])->prefix('web/api')->name('web.api.')->group(function () {
+    // 场景资源
+    Route::apiResource('media-scenarios', \App\Http\Controllers\Api\MediaScenarioController::class);
+    
+    // 人物资源
+    Route::apiResource('media-characters', \App\Http\Controllers\Api\MediaCharacterController::class);
+    
+    // 物品资源
+    Route::apiResource('media-items', \App\Http\Controllers\Api\MediaItemController::class);
 });

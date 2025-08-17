@@ -15,6 +15,10 @@ Route::get('storyboard', function () {
     return Inertia::render('storyboard/Storyboard');
 })->middleware(['auth', 'verified'])->name('storyboard');
 
+Route::get('resource-library', function () {
+    return Inertia::render('ResourceLibrary');
+})->middleware(['auth', 'verified'])->name('resource-library');
+
 Route::get('animation-parser-test', function () {
     return Inertia::render('AnimationParserTest');
 })->middleware(['auth', 'verified'])->name('animation-parser-test');
