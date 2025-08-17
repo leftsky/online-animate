@@ -162,7 +162,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import ImagePreview from './ImagePreview.vue';
-import { AnimationParser } from '../../lib/AnimationParser';
+import { AnimationParser } from '@/lib/AnimationParser';
 import type { StoryboardItem } from './types';
 
 interface Props {

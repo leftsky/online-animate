@@ -2,12 +2,14 @@
 import { ref, computed, onMounted } from 'vue';
 import { Plus, Image } from 'lucide-vue-next';
 import { VueDraggable } from 'vue-draggable-plus';
-import { sceneContentApi, uploadApi } from '../../utils/api';
-import { useToast } from '../../composables/useToast';
-import { useConfirm } from '../../composables/useConfirm';
+import { sceneContentApi, uploadApi } from '../../../utils/api';
+import { useToast } from '../../../composables/useToast';
+import { useConfirm } from '../../../composables/useConfirm';
 import CreateContentDialog from './CreateContentDialog.vue';
 import ConfirmDialog from './ConfirmDialog.vue';
 import StoryboardItem from './StoryboardItem.vue';
+import SourceCodeViewer from './SourceCodeViewer.vue';
+import AnimationManager from './AnimationManager.vue';
 import type { StoryboardItem as StoryboardItemType, ApiSceneContent } from './types';
 
 const emit = defineEmits<{
@@ -18,6 +20,7 @@ const emit = defineEmits<{
     duplicateItem: [item: StoryboardItemType];
     toggleVisibility: [itemId: string];
     addNewItem: [];
+    previewAnimation: [item: StoryboardItemType];
 }>();
 
 // 分镜列表数据
@@ -30,6 +33,8 @@ const { confirm } = useConfirm();
 
 // 组件引用
 const createContentDialog = ref<InstanceType<typeof CreateContentDialog>>();
+const sourceCodeViewer = ref<InstanceType<typeof SourceCodeViewer>>();
+const animationManager = ref<InstanceType<typeof AnimationManager>>();
 
 // 从API数据转换为StoryboardItem
 const convertApiDataToStoryboardItem = (apiData: ApiSceneContent): StoryboardItemType => {
@@ -149,13 +154,27 @@ const handleToggleVisibility = async (id: string) => {
 };
 
 const handleViewSource = (item: StoryboardItemType) => {
-    // TODO: 实现源码查看功能
-    console.log('查看源码:', item.animationScript);
+    sourceCodeViewer.value?.open(item);
 };
 
 const handleManageAnimations = (item: StoryboardItemType) => {
-    // TODO: 实现动画管理功能
-    console.log('管理动画:', item);
+    animationManager.value?.open(item);
+};
+
+const handlePreviewAnimation = (item: StoryboardItemType) => {
+    // 发出预览动画事件，让父组件处理
+    emit('previewAnimation', item);
+    toast.info(`正在预览 "${item.elementName}" 的动画...`);
+};
+
+// 处理动画保存成功后的更新
+const handleAnimationSaved = (updatedItem: StoryboardItemType) => {
+    const index = storyboardItems.value.findIndex(item => item.id === updatedItem.id);
+    if (index > -1) {
+        // 更新本地数据
+        storyboardItems.value[index].animationScript = updatedItem.animationScript;
+        storyboardItems.value[index].duration = parseDurationToString(updatedItem.animationScript);
+    }
 };
 
 const handleDuplicate = async (item: StoryboardItemType) => {
@@ -378,6 +397,7 @@ onMounted(() => {
                     @toggle-visibility="handleToggleVisibility"
                     @view-source="handleViewSource"
                     @manage-animations="handleManageAnimations"
+                    @preview-animation="handlePreviewAnimation"
                     @duplicate="handleDuplicate"
                     @delete="deleteItem"
                     @select="selectItem"
@@ -408,6 +428,11 @@ onMounted(() => {
             @confirm="handleCreateContent" 
         />
         <ConfirmDialog />
+        <SourceCodeViewer ref="sourceCodeViewer" />
+        <AnimationManager 
+            ref="animationManager" 
+            @animation-saved="handleAnimationSaved"
+        />
     </div>
 </template>
 

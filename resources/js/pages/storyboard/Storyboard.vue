@@ -4,9 +4,9 @@ import { gsap } from 'gsap'
 import { Head } from '@inertiajs/vue3'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { type BreadcrumbItem } from '@/types'
-import StoryboardCanvas from '@/components/storyboard/StoryboardCanvas.vue'
-import Timeline from '@/components/storyboard/Timeline.vue'
-import StoryboardList from '@/components/storyboard/StoryboardList.vue'
+import StoryboardCanvas from './components/StoryboardCanvas.vue'
+import Timeline from './components/Timeline.vue'
+import StoryboardList from './components/StoryboardList.vue'
 import ToastProvider from '@/components/ui/toast/ToastProvider.vue'
 
 const breadcrumbs: BreadcrumbItem[] = [

@@ -139,9 +139,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useToast } from '../../composables/useToast';
-import { sceneContentApi } from '../../utils/api';
-import { AnimationParser, type AnimationData, type AnimationSequence, type InitialPosition } from '../../lib/AnimationParser';
+import { useToast } from '../../../composables/useToast';
+import { sceneContentApi } from '../../../utils/api';
+import { AnimationParser, type AnimationData, type AnimationSequence, type InitialPosition } from '@/lib/AnimationParser';
 import type { StoryboardItem } from './types';
 import { animationPresets } from './animationPresets';
 

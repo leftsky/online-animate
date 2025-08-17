@@ -12,7 +12,7 @@ Route::get('dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::get('storyboard', function () {
-    return Inertia::render('Storyboard');
+    return Inertia::render('storyboard/Storyboard');
 })->middleware(['auth', 'verified'])->name('storyboard');
 
 // 包含 API 路由

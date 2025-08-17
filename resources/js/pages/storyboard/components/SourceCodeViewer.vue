@@ -86,7 +86,7 @@ import { ref, computed } from 'vue';
 import { Copy, Code } from 'lucide-vue-next';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { useToast } from '../../composables/useToast';
+import { useToast } from '../../../composables/useToast';
 import type { StoryboardItem } from './types';
 
 const isOpen = ref(false);

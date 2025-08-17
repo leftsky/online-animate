@@ -1,4 +1,4 @@
-import type { AnimationSequence } from '../../lib/AnimationParser';
+import type { AnimationSequence } from '@/lib/AnimationParser';
 
 export const animationPresets: Record<string, AnimationSequence> = {
   fadeIn: {
