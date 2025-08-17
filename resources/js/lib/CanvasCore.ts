@@ -1,42 +1,85 @@
 import { Canvas, FabricObject, Rect, FabricText, Circle, FabricImage, CanvasOptions } from 'fabric';
 import { AnimationData } from './AnimationParser';
 // 本地类型定义，用于内部动画处理
+// 初始位置配置接口
 interface InitialPosition {
+  /** X轴坐标位置 */
   x: number;
+  /** Y轴坐标位置 */
   y: number;
-  scale: number;
+  /** X轴缩放比例，1为原始大小 */
+  scaleX: number;
+  /** Y轴缩放比例，1为原始大小 */
+  scaleY: number;
+  /** 透明度，0-1之间，1为完全不透明 */
   opacity: number;
+  /** 旋转角度，单位为度 */
   rotation: number;
 }
-interface AnimationKeyframe {
-  time: number;
-  properties: {
-    x?: number;
-    y?: number;
-    scale?: number;
-    scaleX?: number;
-    scaleY?: number;
-    opacity?: number;
-    rotation?: number;
-    angle?: number;
-    skewX?: number;
-    skewY?: number;
-  };
+
+// 动画属性接口
+interface AnimationProperties {
+  /** X轴坐标位置 */
+  x?: number;
+  /** Y轴坐标位置 */
+  y?: number;
+  /** 统一缩放比例 */
+  scale?: number;
+  /** X轴缩放比例 */
+  scaleX?: number;
+  /** Y轴缩放比例 */
+  scaleY?: number;
+  /** 透明度，0-1之间 */
+  opacity?: number;
+  /** 旋转角度，单位为度 */
+  rotation?: number;
+  /** 角度别名，与rotation相同 */
+  angle?: number;
+  /** X轴倾斜角度 */
+  skewX?: number;
+  /** Y轴倾斜角度 */
+  skewY?: number;
 }
+
+// 动画关键帧接口
+interface AnimationKeyframe {
+  /** 关键帧时间点，0-1之间的归一化时间 */
+  time: number;
+  /** 关键帧属性配置 */
+  properties: AnimationProperties;
+}
+
+// 动画效果接口
 interface AnimationEffect {
+  /** 动画唯一标识符 */
   id?: string;
+  /** 动画类型 */
   type?: string;
+  /** 动画持续时间，单位为毫秒 */
   duration: number;
+  /** 缓动函数类型，如 'ease', 'linear', 'ease-in-out' 等 */
   easing?: string;
-  properties?: any;
+  /** 动画属性配置 */
+  properties?: AnimationProperties;
+  /** 关键帧序列，定义动画过程中的关键状态 */
   keyframes?: AnimationKeyframe[];
 }
+
 // 扩展的动画数据接口，用于内部处理
 interface ParsedAnimationData {
+  /** 目标对象标识符 */
   target: string;
+  /** 基础X轴缩放比例，用于计算相对缩放 */
+  scaleX: number;
+  /** 基础Y轴缩放比例，用于计算相对缩放 */
+  scaleY: number;
+  /** 初始位置配置 */
   initial: InitialPosition;
+  /** 动画效果列表 */
   animations: AnimationEffect[];
+  /** 单个动画配置（可选） */
   singleAnimation?: {
+    /** 单个动画的关键帧序列 */
     keyframes?: AnimationKeyframe[];
   };
 }
@@ -70,17 +113,23 @@ export class CanvasCore {
   /**
    * 转换AnimationData为内部使用的ParsedAnimationData
    */
-  private convertAnimationData(animationData: AnimationData, target: string = 'default'): ParsedAnimationData {
+  private convertAnimationData(animationData: AnimationData): ParsedAnimationData {
     if (!animationData || typeof animationData !== 'object') {
       throw new Error('Invalid animation data: data must be a valid object');
     }
     const initial: InitialPosition = {
       x: this.validateNumber(animationData.initialPosition?.x, 100, 'initialPosition.x'),
       y: this.validateNumber(animationData.initialPosition?.y, 100, 'initialPosition.y'),
-      scale: this.validateNumber(animationData.initialPosition?.scale, 1, 'initialPosition.scale'),
+      scaleX: this.validateNumber(animationData.initialPosition?.scaleX, 1, 'initialPosition.scaleX'),
+      scaleY: this.validateNumber(animationData.initialPosition?.scaleY, 1, 'initialPosition.scaleY'),
       opacity: this.validateNumber(animationData.initialPosition?.opacity, 1, 'initialPosition.opacity'),
       rotation: this.validateNumber(animationData.initialPosition?.rotation, 0, 'initialPosition.rotation')
     };
+
+    // 根据宽高计算缩放比例
+    let scaleX = 1;
+    let scaleY = 1;
+
     const animations: AnimationEffect[] = (animationData.animationSequences || []).map((anim, index) => {
       if (!anim || typeof anim !== 'object') {
         console.warn(`Invalid animation at index ${index}, skipping`);
@@ -103,7 +152,8 @@ export class CanvasCore {
             properties: {
               x: kf.x,
               y: kf.y,
-              scale: kf.scale,
+              scaleX: kf.scaleX !== undefined ? kf.scaleX * scaleX : scaleX,
+              scaleY: kf.scaleY !== undefined ? kf.scaleY * scaleY : scaleY,
               opacity: kf.opacity,
               rotation: kf.rotation
             }
@@ -111,8 +161,11 @@ export class CanvasCore {
         }).filter(kf => kf !== null) as AnimationKeyframe[]
       };
     }).filter(anim => anim !== null) as AnimationEffect[];
+
     return {
-      target: target || 'default',
+      target: 'default',
+      scaleX,
+      scaleY,
       initial,
       animations
     };
@@ -140,18 +193,23 @@ export class CanvasCore {
    * @param animationData 解析后的动画数据
    * @param target 目标对象标识
    */
-  public async loadAnimation(animationData: AnimationData, target: string = 'default'): Promise<void> {
+  public async loadAnimation(animationData: AnimationData): Promise<void> {
     try {
       if (!animationData) {
         throw new Error('Animation data is required');
       }
       // 清空当前画布
       this.clear();
+      if (animationData.width && animationData.height) {
+        // 七牛云
+        animationData.media = animationData.media ? (animationData.media + `?imageView2/2/w/${animationData.width}/h/${animationData.height}`) : 'default';
+      }
       // 转换数据格式
-      const parsedData = this.convertAnimationData(animationData, target);
+      const parsedData = this.convertAnimationData(animationData);
       if (!parsedData.animations || parsedData.animations.length === 0) {
         console.warn('No valid animations found in data');
       }
+
       // 创建目标对象
       const targetObject = await this.createTargetObject(parsedData.target, parsedData.initial, animationData.media, animationData.width, animationData.height);
       if (targetObject) {
@@ -167,7 +225,7 @@ export class CanvasCore {
       }
       // 渲染画布
       this.canvas.renderAll();
-      console.log('动画数据加载完成:', parsedData);
+
     } catch (error) {
       console.error('加载动画数据失败:', error);
       throw error;
@@ -176,9 +234,8 @@ export class CanvasCore {
   /**
    * 播放动画
    * @param animationData 动画数据
-   * @param target 目标对象标识
    */
-  public play(animationData: AnimationData, target: string = 'default'): void {
+  public play(animationData: AnimationData): void {
     try {
       if (!animationData) {
         throw new Error('Animation data is required for playback');
@@ -187,7 +244,7 @@ export class CanvasCore {
         this.stop();
       }
       // 转换数据格式
-      const parsedData = this.convertAnimationData(animationData, target);
+      const parsedData = this.convertAnimationData(animationData);
       if (!this.animationObjects.has(parsedData.target)) {
         console.warn(`Target object '${parsedData.target}' not found, animation may not display correctly`);
       }
@@ -259,25 +316,7 @@ export class CanvasCore {
           obj = await FabricImage.fromURL(media, {
             crossOrigin: 'anonymous'
           });
-          // 设置图片尺寸，优先使用指定的width和height，否则使用默认值
-          if (width && height) {
-            // 计算缩放比例以适应指定的宽度和高度
-            const scaleX = width / (obj.width || 1);
-            const scaleY = height / (obj.height || 1);
-            obj.set({
-              scaleX: scaleX,
-              scaleY: scaleY
-            });
-            // 保存初始媒体缩放值，用于后续动画计算
-          } else if (width) {
-            obj.scaleToWidth(width);
-          } else if (height) {
-            obj.scaleToHeight(height);
-          } else {
-            // 使用默认尺寸
-            obj.scaleToWidth(100);
-            obj.scaleToHeight(100);
-          }
+
         } catch (error) {
           console.warn('加载图片失败，使用默认方块:', error);
           // 图片加载失败时使用默认的黄色方块
@@ -286,9 +325,7 @@ export class CanvasCore {
             height: height || 100,
             fill: '#FF9800'
           });
-          // 为图片加载失败的默认方块保存初始缩放值
-          (obj as any).initialMediaScaleX = 1;
-          (obj as any).initialMediaScaleY = 1;
+
         }
       } else if (target.includes('image') || target.includes('img')) {
         // 创建图像对象占位符
@@ -335,8 +372,8 @@ export class CanvasCore {
         left: initial.x,
         top: initial.y,
         opacity: initial.opacity,
-        scaleX: initial.scale,
-        scaleY: initial.scale,
+        scaleX: initial.scaleX,
+        scaleY: initial.scaleY,
         angle: initial.rotation,
         selectable: false, // 禁用选择
         evented: false     // 禁用事件
@@ -377,7 +414,7 @@ export class CanvasCore {
     // 检查是否完成
     if (progress >= 1) {
       this.isPlaying = false;
-      console.log('动画播放完成');
+
       return;
     }
     // 继续下一帧
@@ -395,7 +432,7 @@ export class CanvasCore {
     for (const animation of animationData.animations) {
       if (animation.keyframes && animation.keyframes.length > 0) {
         // 处理关键帧动画
-        this.updateKeyframeAnimation(targetObject, animation.keyframes, progress);
+        this.updateKeyframeAnimation(targetObject, animation.keyframes, progress, animationData.scaleX, animationData.scaleY);
       } else {
         // 处理普通动画效果
         this.updateAnimationEffect(targetObject, animation, progress);
@@ -407,8 +444,10 @@ export class CanvasCore {
    * @param obj 目标对象
    * @param keyframes 关键帧列表
    * @param progress 播放进度
+   * @param baseScaleX 基础X轴缩放
+   * @param baseScaleY 基础Y轴缩放
    */
-  private updateKeyframeAnimation(obj: FabricObject, keyframes: AnimationKeyframe[], progress: number): void {
+  private updateKeyframeAnimation(obj: FabricObject, keyframes: AnimationKeyframe[], progress: number, baseScaleX: number = 1, baseScaleY: number = 1): void {
     if (keyframes.length === 0) return;
     // 找到当前进度对应的关键帧
     let currentFrame: AnimationKeyframe | null = null;
@@ -427,10 +466,10 @@ export class CanvasCore {
     if (nextFrame && progress < nextFrame.time) {
       const frameProgress = (progress - currentFrame.time) / (nextFrame.time - currentFrame.time);
       const interpolatedProps = this.interpolateProperties(currentFrame.properties, nextFrame.properties, frameProgress);
-      this.applyProperties(obj, interpolatedProps);
+      this.applyProperties(obj, interpolatedProps, baseScaleX, baseScaleY);
     } else {
       // 直接应用当前帧属性
-      this.applyProperties(obj, currentFrame.properties);
+      this.applyProperties(obj, currentFrame.properties, baseScaleX, baseScaleY);
     }
   }
   /**
@@ -466,13 +505,20 @@ export class CanvasCore {
   /**
    * 应用属性到对象
    */
-  private applyProperties(obj: FabricObject, properties: any): void {
+  private applyProperties(obj: FabricObject, properties: any, baseScaleX: number = 1, baseScaleY: number = 1): void {
     const updates: any = {};
     if (properties.x !== undefined) updates.left = properties.x;
     if (properties.y !== undefined) updates.top = properties.y;
     if (properties.rotation !== undefined) updates.angle = properties.rotation;
-    if (properties.scaleX !== undefined) updates.scaleX = properties.scaleX;
-    if (properties.scaleY !== undefined) updates.scaleY = properties.scaleY;
+
+    // 处理缩放属性，乘以基础缩放比例
+    if (properties.scale !== undefined) {
+      updates.scaleX = properties.scale * baseScaleX;
+      updates.scaleY = properties.scale * baseScaleY;
+    }
+    if (properties.scaleX !== undefined) updates.scaleX = properties.scaleX * baseScaleX;
+    if (properties.scaleY !== undefined) updates.scaleY = properties.scaleY * baseScaleY;
+
     if (properties.opacity !== undefined) updates.opacity = properties.opacity;
     if (properties.skewX !== undefined) updates.skewX = properties.skewX;
     if (properties.skewY !== undefined) updates.skewY = properties.skewY;

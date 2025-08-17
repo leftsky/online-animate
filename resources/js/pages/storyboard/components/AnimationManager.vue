@@ -61,8 +61,16 @@
                     class="h-8 text-xs" />
                 </div>
                 <div class="space-y-1">
-                  <Label class="text-xs">缩放</Label>
-                  <Input v-model="initialPosition.scale" type="number" min="0" step="0.1" placeholder="1"
+                  <Label class="text-xs">X轴缩放</Label>
+                  <Input v-model="initialPosition.scaleX" type="number" min="0" step="0.1" placeholder="1"
+                    class="h-8 text-xs" />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 gap-3">
+                <div class="space-y-1">
+                  <Label class="text-xs">Y轴缩放</Label>
+                  <Input v-model="initialPosition.scaleY" type="number" min="0" step="0.1" placeholder="1"
                     class="h-8 text-xs" />
                 </div>
               </div>
@@ -184,7 +192,8 @@ const DEFAULT_INITIAL_POSITION: InitialPosition = {
   x: 0,
   y: 0,
   opacity: 1,
-  scale: 1,
+  scaleX: 1,
+  scaleY: 1,
   rotation: 0
 };
 
@@ -326,9 +335,9 @@ const parseExistingAnimations = (animationScript: string) => {
               animationName = '淡出';
             }
             // 分析缩放变化
-            else if (firstFrame.scale === 0 && lastFrame.scale === 1) {
+            else if ((firstFrame.scaleX === 0 || firstFrame.scaleY === 0) && (lastFrame.scaleX === 1 && lastFrame.scaleY === 1)) {
               animationName = '缩放进入';
-            } else if (firstFrame.scale === 1 && lastFrame.scale === 0) {
+            } else if ((firstFrame.scaleX === 1 && firstFrame.scaleY === 1) && (lastFrame.scaleX === 0 || lastFrame.scaleY === 0)) {
               animationName = '缩放退出';
             }
             // 分析位置变化

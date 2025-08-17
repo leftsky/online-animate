@@ -6,8 +6,10 @@ export interface InitialPosition {
   x?: number;
   /** Y轴坐标位置 */
   y?: number;
-  /** 缩放比例，1为原始大小 */
-  scale?: number;
+  /** X轴缩放比例，1为原始大小 */
+  scaleX?: number;
+  /** Y轴缩放比例，1为原始大小 */
+  scaleY?: number;
   /** 透明度，0-1之间，1为完全不透明 */
   opacity?: number;
   /** 旋转角度，单位为度 */
@@ -24,8 +26,10 @@ export interface Keyframe {
   x?: number;
   /** 关键帧Y轴坐标位置 */
   y?: number;
-  /** 关键帧缩放比例 */
-  scale?: number;
+  /** 关键帧X轴缩放比例 */
+  scaleX?: number;
+  /** 关键帧Y轴缩放比例 */
+  scaleY?: number;
   /** 关键帧透明度 */
   opacity?: number;
   /** 关键帧旋转角度 */

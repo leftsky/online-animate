@@ -162,7 +162,7 @@ const startProgressMonitoring = () => {
 const parseAnimationScript = async (script: string): Promise<AnimationData> => {
   const getDefaultAnimation = (): AnimationData => ({
     name: '默认动画',
-    initialPosition: { x: 0, y: 0, opacity: 1, scale: 1, rotation: 0 },
+    initialPosition: { x: 0, y: 0, opacity: 1, scaleX: 1, scaleY: 1, rotation: 0 },
     animationSequences: [{
       id: 'default',
       name: '淡入',
