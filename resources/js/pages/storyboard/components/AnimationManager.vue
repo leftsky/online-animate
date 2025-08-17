@@ -11,6 +11,31 @@
       <div class="flex gap-6 h-[75vh] overflow-hidden">
         <!-- 左侧：设置面板 -->
         <div class="w-1/3 space-y-4 overflow-y-auto">
+          <!-- 媒体设置 -->
+          <div class="space-y-3">
+            <h3 class="text-sm font-medium flex items-center gap-2">
+              <Settings class="w-4 h-4" />
+              媒体设置
+            </h3>
+            <div class="p-4 border rounded-lg space-y-4">
+              <div class="space-y-1">
+                <Label class="text-xs">图片路径</Label>
+                <Input v-model="animationMedia" type="text" placeholder="输入图片URL或路径" class="h-8 text-xs" />
+              </div>
+              
+              <div class="grid grid-cols-2 gap-3">
+                <div class="space-y-1">
+                  <Label class="text-xs">宽度</Label>
+                  <Input v-model="animationWidth" type="number" placeholder="自动" class="h-8 text-xs" />
+                </div>
+                <div class="space-y-1">
+                  <Label class="text-xs">高度</Label>
+                  <Input v-model="animationHeight" type="number" placeholder="自动" class="h-8 text-xs" />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- 初始位置设置 -->
           <div class="space-y-3">
             <h3 class="text-sm font-medium flex items-center gap-2">
@@ -166,12 +191,24 @@ const DEFAULT_INITIAL_POSITION: InitialPosition = {
 // 初始位置设置
 const initialPosition = ref<InitialPosition>({ ...DEFAULT_INITIAL_POSITION });
 
+// 保存原始动画数据的其他字段
+const animationMedia = ref<string | undefined>(undefined);
+const animationName = ref<string | undefined>(undefined);
+const animationDescription = ref<string | undefined>(undefined);
+const animationWidth = ref<number | undefined>(undefined);
+const animationHeight = ref<number | undefined>(undefined);
+
 const { toast } = useToast();
 
 // 生成动画数据结构
 const animationData = computed((): AnimationData => {
   return {
-    ...initialPosition.value,
+    media: animationMedia.value,
+    name: animationName.value,
+    description: animationDescription.value,
+    width: animationWidth.value,
+    height: animationHeight.value,
+    initialPosition: initialPosition.value,
     animationSequences: currentAnimations.value
   };
 });
@@ -256,6 +293,13 @@ const parseExistingAnimations = (animationScript: string) => {
     console.log('AnimationManager - 解析后的数据:', parsedData);
 
     if (parsedData) {
+      // 保存原始数据的其他字段
+      animationMedia.value = parsedData.media;
+      animationName.value = parsedData.name;
+      animationDescription.value = parsedData.description;
+      animationWidth.value = parsedData.width;
+      animationHeight.value = parsedData.height;
+      
       // 设置初始位置
       if (parsedData.initialPosition) {
         initialPosition.value = { ...parsedData.initialPosition };
@@ -327,6 +371,13 @@ const open = (storyboardItem: StoryboardItem) => {
 
   // 重置初始位置为默认值
   initialPosition.value = { ...DEFAULT_INITIAL_POSITION };
+  
+  // 重置其他字段
+  animationMedia.value = undefined;
+  animationName.value = undefined;
+  animationDescription.value = undefined;
+  animationWidth.value = undefined;
+  animationHeight.value = undefined;
 
   // 解析现有的动画脚本
   if (storyboardItem.animationScript) {
@@ -344,6 +395,13 @@ const close = () => {
 
   // 重置初始位置
   initialPosition.value = { ...DEFAULT_INITIAL_POSITION };
+  
+  // 重置其他字段
+  animationMedia.value = undefined;
+  animationName.value = undefined;
+  animationDescription.value = undefined;
+  animationWidth.value = undefined;
+  animationHeight.value = undefined;
 };
 
 defineExpose({ open, close });

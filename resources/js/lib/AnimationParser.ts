@@ -56,6 +56,10 @@ export interface AnimationData {
   name?: string;
   // 分镜描述
   description?: string;
+  // 图片宽度
+  width?: number;
+  // 图片高度
+  height?: number;
   // 分镜初始位置
   initialPosition?: InitialPosition;
   // 分镜动画序列
@@ -127,6 +131,11 @@ export class AnimationParser {
       if (!parsed || typeof parsed !== 'object') {
         console.log('AnimationParser.parseYamlToJson - 解析结果无效，返回null');
         return {};
+      }
+
+      // 清理media字段中的反引号和多余空格
+      if (parsed.media && typeof parsed.media === 'string') {
+        parsed.media = parsed.media.trim().replace(/^`|`$/g, '');
       }
 
       // 确保使用固定的animations结构

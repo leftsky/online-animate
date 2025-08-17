@@ -1,4 +1,4 @@
-import { Canvas, Object as FabricObject, Rect, Text, Circle, CanvasOptions } from 'fabric';
+import { Canvas, FabricObject, Rect, FabricText, Circle, FabricImage, CanvasOptions } from 'fabric';
 import { AnimationData } from './AnimationParser';
 // 本地类型定义，用于内部动画处理
 interface InitialPosition {
@@ -153,7 +153,7 @@ export class CanvasCore {
         console.warn('No valid animations found in data');
       }
       // 创建目标对象
-      const targetObject = await this.createTargetObject(parsedData.target, parsedData.initial);
+      const targetObject = await this.createTargetObject(parsedData.target, parsedData.initial, animationData.media, animationData.width, animationData.height);
       if (targetObject) {
         this.animationObjects.set(parsedData.target, targetObject);
         this.canvas.add(targetObject);
@@ -244,23 +244,64 @@ export class CanvasCore {
    * 创建目标对象
    * @param target 目标标识
    * @param initial 初始位置和属性
+   * @param media 媒体资源URL
+   * @param width 媒体宽度
+   * @param height 媒体高度
    */
-  private async createTargetObject(target: string, initial: InitialPosition): Promise<FabricObject | null> {
+  private async createTargetObject(target: string, initial: InitialPosition, media?: string, width?: number, height?: number): Promise<FabricObject | null> {
     try {
       // 根据目标类型创建不同的Fabric对象
       let obj: FabricObject;
-      if (target.includes('image') || target.includes('img')) {
-        // 创建图像对象（这里使用占位符，实际应该加载真实图片）
+
+      // 如果有media字段，优先使用图片
+      if (media) {
+        try {
+          obj = await FabricImage.fromURL(media, {
+            crossOrigin: 'anonymous'
+          });
+          // 设置图片尺寸，优先使用指定的width和height，否则使用默认值
+          if (width && height) {
+            // 计算缩放比例以适应指定的宽度和高度
+            const scaleX = width / (obj.width || 1);
+            const scaleY = height / (obj.height || 1);
+            obj.set({
+              scaleX: scaleX,
+              scaleY: scaleY
+            });
+            // 保存初始媒体缩放值，用于后续动画计算
+          } else if (width) {
+            obj.scaleToWidth(width);
+          } else if (height) {
+            obj.scaleToHeight(height);
+          } else {
+            // 使用默认尺寸
+            obj.scaleToWidth(100);
+            obj.scaleToHeight(100);
+          }
+        } catch (error) {
+          console.warn('加载图片失败，使用默认方块:', error);
+          // 图片加载失败时使用默认的黄色方块
+          obj = new Rect({
+            width: width || 100,
+            height: height || 100,
+            fill: '#FF9800'
+          });
+          // 为图片加载失败的默认方块保存初始缩放值
+          (obj as any).initialMediaScaleX = 1;
+          (obj as any).initialMediaScaleY = 1;
+        }
+      } else if (target.includes('image') || target.includes('img')) {
+        // 创建图像对象占位符
         obj = new Rect({
-          width: 100,
-          height: 100,
+          width: width || 100,
+          height: height || 100,
           fill: '#cccccc',
           stroke: '#999999',
           strokeWidth: 2
         });
       } else if (target.includes('text')) {
         // 创建文本对象
-        obj = new Text('示例文本', {
+        obj = new FabricText('示例文本', {
           fontSize: 24,
           fill: '#333333',
           fontFamily: 'Arial'
@@ -268,23 +309,24 @@ export class CanvasCore {
       } else if (target.includes('rect') || target.includes('rectangle')) {
         // 创建矩形对象
         obj = new Rect({
-          width: 100,
-          height: 60,
+          width: width || 100,
+          height: height || 60,
           fill: '#4CAF50',
           rx: 5,
           ry: 5
         });
       } else if (target.includes('circle')) {
         // 创建圆形对象
+        const radius = width ? width / 2 : (height ? height / 2 : 50);
         obj = new Circle({
-          radius: 50,
+          radius: radius,
           fill: '#2196F3'
         });
       } else {
         // 默认创建矩形对象
         obj = new Rect({
-          width: 80,
-          height: 80,
+          width: width || 80,
+          height: height || 80,
           fill: '#FF9800'
         });
       }

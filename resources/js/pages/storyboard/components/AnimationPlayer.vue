@@ -1,23 +1,5 @@
 <template>
   <div class="animation-player">
-    <!-- 动画播放状态指示器 -->
-    <Transition name="fade" appear>
-      <div v-if="isPlaying" class="animation-status">
-        <div class="status-indicator">
-          <div class="status-icon">
-            <Play class="w-4 h-4 animate-pulse" />
-          </div>
-          <span class="text-sm font-medium">正在播放动画...</span>
-          <div class="ml-auto text-xs text-blue-600">
-            {{ Math.round(progress) }}%
-          </div>
-        </div>
-        <div class="progress-bar">
-          <div class="progress-fill" :style="{ width: `${progress}%` }"></div>
-        </div>
-      </div>
-    </Transition>
-
     <!-- 动画控制按钮 -->
     <Transition name="slide-up" appear>
       <div v-if="currentAnimation" class="animation-controls">
@@ -44,16 +26,29 @@
       </div>
     </Transition>
 
-    <!-- 动画信息显示 -->
+    <!-- 动画信息显示/播放进度条 -->
     <Transition name="fade" appear>
-      <div v-if="currentAnimation && !isPlaying" class="animation-info">
-        <div class="info-item">
-          <span class="info-label">动画名称:</span>
-          <span class="info-value">{{ currentAnimation.elementName }}</span>
+      <div v-if="currentAnimation" class="animation-info">
+        <!-- 播放时显示进度条 -->
+        <div v-if="isPlaying" class="progress-container">
+          <div class="progress-bar">
+            <div class="progress-fill" :style="{ width: `${progress}%` }"></div>
+          </div>
+          <div class="progress-text">
+            <span class="text-xs text-muted-foreground">播放进度</span>
+            <span class="text-xs font-medium">{{ Math.round(progress) }}%</span>
+          </div>
         </div>
-        <div class="info-item">
-          <span class="info-label">持续时间:</span>
-          <span class="info-value">{{ currentAnimation.duration }}</span>
+        <!-- 非播放时显示动画信息 -->
+        <div v-else class="info-content">
+          <div class="info-item">
+            <span class="info-label">动画名称:</span>
+            <span class="info-value">{{ currentAnimation.elementName }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">持续时间:</span>
+            <span class="info-value">{{ currentAnimation.duration }}</span>
+          </div>
         </div>
       </div>
     </Transition>
@@ -103,11 +98,11 @@ const playAnimation = async () => {
 
     // 解析动画脚本
     const animationData = await parseAnimationScript(currentAnimation.value.animationScript || '')
-    
+
     // 加载并播放动画
     await canvasCore.value.loadAnimation(animationData)
     canvasCore.value.play(animationData)
-    
+
     // 开始进度监控
     startProgressMonitoring()
 
@@ -154,7 +149,7 @@ const startProgressMonitoring = () => {
       const state = canvasCore.value.getPlaybackState()
       progress.value = state.progress * 100
       emit('animationProgress', progress.value)
-      
+
       // 检查动画是否完成
       if (!state.isPlaying && progress.value >= 100) {
         stopAnimation()
@@ -188,8 +183,6 @@ const parseAnimationScript = async (script: string): Promise<AnimationData> => {
     return getDefaultAnimation()
   }
 }
-
-
 
 // 清除进度更新
 const clearProgressInterval = () => {
@@ -312,35 +305,13 @@ onUnmounted(() => {
   @apply opacity-0 transform translate-y-2;
 }
 
-/* 动画状态指示器 */
-.animation-status {
-  @apply bg-muted/50 border border-border rounded-lg p-4 shadow-sm;
-}
 
-.animation-status .status-indicator {
-  @apply flex items-center gap-3 text-primary mb-3;
-}
-
-.animation-status .status-icon {
-  @apply flex items-center justify-center w-8 h-8 bg-primary/10 rounded-full;
-}
-
-.animation-status .progress-bar {
-  @apply w-full bg-muted rounded-full h-3 overflow-hidden shadow-inner;
-}
-
-.animation-status .progress-bar .progress-fill {
-  @apply h-full bg-primary transition-all duration-100 ease-linear relative;
-}
-
-.animation-status .progress-bar .progress-fill::after {
-  content: '';
-  @apply absolute top-0 right-0 w-2 h-full bg-white opacity-30 animate-pulse;
-}
 
 /* 控制按钮 */
 .animation-controls {
   @apply space-y-2;
+  min-height: 88px;
+  /* 固定控制按钮区域高度 */
 }
 
 .animation-controls .control-group {
@@ -377,7 +348,37 @@ onUnmounted(() => {
 
 /* 动画信息 */
 .animation-info {
-  @apply bg-muted/30 border border-border rounded-lg p-3 space-y-2;
+  @apply bg-muted/30 border border-border rounded-lg p-3;
+  min-height: 80px;
+  /* 固定最小高度，避免布局变化 */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.animation-info .progress-container {
+  @apply space-y-2;
+}
+
+.animation-info .progress-bar {
+  @apply w-full bg-muted rounded-full h-3 overflow-hidden shadow-inner;
+}
+
+.animation-info .progress-bar .progress-fill {
+  @apply h-full bg-primary transition-all duration-100 ease-linear relative;
+}
+
+.animation-info .progress-bar .progress-fill::after {
+  content: '';
+  @apply absolute top-0 right-0 w-2 h-full bg-white opacity-30 animate-pulse;
+}
+
+.animation-info .progress-text {
+  @apply flex items-center justify-between;
+}
+
+.animation-info .info-content {
+  @apply space-y-2;
 }
 
 .animation-info .info-item {
