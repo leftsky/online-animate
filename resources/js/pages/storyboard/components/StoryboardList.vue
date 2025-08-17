@@ -5,6 +5,7 @@ import { VueDraggable } from 'vue-draggable-plus';
 import { sceneContentApi, uploadApi } from '../../../utils/api';
 import { useToast } from '../../../composables/useToast';
 import { useConfirm } from '../../../composables/useConfirm';
+import { AnimationParser, type AnimationData } from '../../../lib/AnimationParser';
 import CreateContentDialog from './CreateContentDialog.vue';
 import ConfirmDialog from './ConfirmDialog.vue';
 import StoryboardItem from './StoryboardItem.vue';
@@ -38,12 +39,10 @@ const animationManager = ref<InstanceType<typeof AnimationManager>>();
 
 // 从API数据转换为StoryboardItem
 const convertApiDataToStoryboardItem = (apiData: ApiSceneContent): StoryboardItemType => {
-    const duration = parseDurationToString(apiData.animation_script);
-    
     return {
         id: apiData.id.toString(),
         elementName: apiData.element_name,
-        duration,
+        duration: parseDurationToString(apiData.animation_script),
         visible: apiData.status === 1,
         selected: false,
         layerOrder: apiData.layer_order,
@@ -59,16 +58,12 @@ const convertApiDataToStoryboardItem = (apiData: ApiSceneContent): StoryboardIte
 const loadStoryboardData = async () => {
     loading.value = true;
     try {
-        console.log('开始加载分镜内容数据...');
         const response = await sceneContentApi.getList({ scene_id: 1 });
-        
+
         if (response.success && response.data) {
-            // 后端现在直接返回数组，不再包含分页信息
             const apiData = Array.isArray(response.data) ? response.data : [];
             storyboardItems.value = apiData.map(convertApiDataToStoryboardItem);
-            console.log('分镜内容数据加载成功:', storyboardItems.value.length, '项');
         } else {
-            console.error('加载分镜内容失败:', response.message);
             storyboardItems.value = [];
         }
     } catch (error) {
@@ -79,29 +74,31 @@ const loadStoryboardData = async () => {
     }
 };
 
-// 初始化默认数据（现在从API加载）
-const initializeStoryboard = () => {
-    loadStoryboardData();
-};
-
 // 从动画脚本解析持续时间并格式化为字符串
 const parseDurationToString = (animationScript: string): string => {
     if (!animationScript) return '3.0s';
-    
-    // 简单解析YAML中的duration字段
-    const durationMatch = animationScript.match(/duration:\s*([^\n\r]+)/i);
-    if (durationMatch) {
-        const duration = durationMatch[1].trim();
-        return duration.endsWith('s') ? duration : duration + 's';
+
+    try {
+        // 使用 AnimationParser 解析 YAML
+        const animationData = AnimationParser.parseYamlToJson(animationScript);
+
+        // 从动画序列中获取总持续时间
+        if (animationData.animationSequences && animationData.animationSequences.length > 0) {
+            const totalDuration = animationData.animationSequences.reduce((total, seq) => {
+                return total + (seq.duration || 0);
+            }, 0);
+
+            // 转换毫秒为秒
+            const seconds = totalDuration / 1000;
+            return `${seconds}s`;
+        }
+    } catch (error) {
+        console.warn('解析动画脚本持续时间失败:', error);
     }
-    
+
     return '3.0s';
 };
 
-// 格式化时间显示
-const formatTime = (durationStr: string): string => {
-    return durationStr; // 直接返回字符串格式
-};
 
 // 选中项目
 const selectItem = (item: StoryboardItemType) => {
@@ -115,7 +112,7 @@ const handleUpdateName = async (id: string, name: string) => {
     try {
         loading.value = true;
         const response = await sceneContentApi.update(parseInt(id), { element_name: name });
-        
+
         if (response.success) {
             const item = storyboardItems.value.find(i => i.id === id);
             if (item) {
@@ -137,10 +134,10 @@ const handleToggleVisibility = async (id: string) => {
     try {
         const item = storyboardItems.value.find(i => i.id === id);
         if (!item) return;
-        
+
         const newStatus = item.visible ? 0 : 1;
         const response = await sceneContentApi.update(parseInt(id), { status: newStatus });
-        
+
         if (response.success) {
             item.visible = !item.visible;
             toast.success(item.visible ? '已显示' : '已隐藏');
@@ -162,9 +159,7 @@ const handleManageAnimations = (item: StoryboardItemType) => {
 };
 
 const handlePreviewAnimation = (item: StoryboardItemType) => {
-    // 发出预览动画事件，让父组件处理
     emit('previewAnimation', item);
-    toast.info(`正在预览 "${item.elementName}" 的动画...`);
 };
 
 // 处理动画保存成功后的更新
@@ -181,7 +176,7 @@ const handleDuplicate = async (item: StoryboardItemType) => {
     try {
         loading.value = true;
         toast.info('正在复制...');
-        
+
         const createData = {
             scene_id: 1,
             element_name: `${item.elementName} (副本)`,
@@ -191,7 +186,7 @@ const handleDuplicate = async (item: StoryboardItemType) => {
             layer_order: storyboardItems.value.length + 1,
             status: item.status
         };
-        
+
         const response = await sceneContentApi.create(createData);
         if (response.success && response.data) {
             const newItem = convertApiDataToStoryboardItem(response.data);
@@ -211,7 +206,7 @@ const handleDuplicate = async (item: StoryboardItemType) => {
 // 删除项目
 const deleteItem = async (itemId: string) => {
     if (loading.value) return;
-    
+
     const confirmed = await confirm({
         title: '删除确认',
         message: '确定要删除这个分镜内容吗？此操作不可撤销。',
@@ -219,23 +214,23 @@ const deleteItem = async (itemId: string) => {
         cancelText: '取消',
         variant: 'destructive'
     });
-    
+
     if (!confirmed) return;
-    
+
     try {
         loading.value = true;
         toast.info('正在删除...');
-        
+
         // 调用API删除
         const response = await sceneContentApi.delete(parseInt(itemId));
-        
+
         if (response.success) {
             // 从本地列表移除
             const index = storyboardItems.value.findIndex(item => item.id === itemId);
             if (index > -1) {
                 storyboardItems.value.splice(index, 1);
             }
-            
+
             toast.success('分镜内容删除成功！');
             emit('deleteItem', itemId);
         } else {
@@ -250,17 +245,10 @@ const deleteItem = async (itemId: string) => {
 };
 
 // 拖拽排序处理
-const onDragEnd = (evt: any) => {
-    // 更新layerOrder
+const onDragEnd = () => {
     storyboardItems.value.forEach((item, index) => {
         item.layerOrder = index + 1;
     });
-    
-    console.log('拖拽排序完成，新的顺序:', storyboardItems.value.map(item => ({ 
-        id: item.id, 
-        name: item.elementName, 
-        layerOrder: item.layerOrder 
-    })));
 };
 
 // 添加新项目
@@ -288,14 +276,37 @@ const handleCreateContent = async (data: { file: File; elementName: string }) =>
 
         toast.info('正在创建分镜内容...');
 
-        // 2. 准备API数据
+        // 2. 准备动画数据，使用 AnimationParser 的 JSON 结构体
         const elementName = data.elementName;
-        const animationScript = `${elementName.toLowerCase().replace(/\s+/g, '_')}:
-  duration: 3s
-  easing: ease-in-out
-  keyframes:
-    - time: 0s, x: 0, y: 0, opacity: 1, scale: 1
-    - time: 3s, x: 0, y: 0, opacity: 1, scale: 1`;
+        const animationData: AnimationData = {
+            name: elementName,
+            media: uploadResult.data.url,
+            initialPosition: {
+                x: 0,
+                y: 0,
+                scale: 1,
+                opacity: 1,
+                rotation: 0
+            },
+            animationSequences: [{
+                name: elementName.toLowerCase().replace(/\s+/g, '_'),
+                duration: 3000,
+                easing: 'ease-in-out',
+                keyframes: [
+                    {
+                        startTime: 0,
+                        duration: 3000,
+                        x: 0,
+                        y: 0,
+                        opacity: 1,
+                        scale: 1
+                    }
+                ]
+            }]
+        };
+
+        // 转换为 YAML 格式
+        const animationScript = AnimationParser.parseJsonToYaml(animationData);
 
         const createData = {
             scene_id: 1,
@@ -309,15 +320,15 @@ const handleCreateContent = async (data: { file: File; elementName: string }) =>
 
         // 3. 调用API创建分镜内容
         const createResult = await sceneContentApi.create(createData);
-        
+
         if (createResult.success && createResult.data) {
             const newItem = convertApiDataToStoryboardItem(createResult.data);
             storyboardItems.value.push(newItem);
-            
+
             // 选中新创建的项目
             storyboardItems.value.forEach(item => item.selected = false);
             newItem.selected = true;
-            
+
             toast.success('分镜内容创建成功！');
             createContentDialog.value?.close();
             emit('selectItem', newItem);
@@ -335,8 +346,27 @@ const handleCreateContent = async (data: { file: File; elementName: string }) =>
 // 计算属性
 const totalDuration = computed(() => {
     return storyboardItems.value.reduce((total, item) => {
-        const seconds = parseFloat(item.duration.replace('s', '')) || 0;
-        return total + seconds;
+        if (!item.animationScript) return total;
+
+        try {
+            // 使用 AnimationParser 解析 YAML 获取准确的持续时间
+            const animationData = AnimationParser.parseYamlToJson(item.animationScript);
+
+            if (animationData.animationSequences && animationData.animationSequences.length > 0) {
+                const itemDuration = animationData.animationSequences.reduce((sum, seq) => {
+                    return sum + (seq.duration || 0);
+                }, 0);
+
+                // 转换毫秒为秒
+                return total + (itemDuration / 1000);
+            }
+        } catch (error) {
+            // 解析失败时使用 item.duration 作为后备
+            const seconds = parseFloat(item.duration.replace('s', '')) || 0;
+            return total + seconds;
+        }
+
+        return total;
     }, 0);
 });
 
@@ -346,7 +376,7 @@ const selectedCount = computed(() => {
 
 // 生命周期
 onMounted(() => {
-    initializeStoryboard();
+    loadStoryboardData();
 });
 </script>
 
@@ -360,12 +390,9 @@ onMounted(() => {
                     {{ storyboardItems.length }} 项
                 </span>
             </div>
-            <button
-                @click="addNewItem"
-                :disabled="loading"
+            <button @click="addNewItem" :disabled="loading"
                 class="flex items-center rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-                title="添加新动画"
-            >
+                title="添加新动画">
                 <Plus class="mr-1 h-4 w-4" />
                 <span v-if="loading">处理中...</span>
                 <span v-else>新建</span>
@@ -375,64 +402,43 @@ onMounted(() => {
         <!-- 统计信息 -->
         <div class="border-b bg-muted/30 px-4 py-2">
             <div class="flex items-center justify-between text-sm text-muted-foreground">
-                <span>总时长: {{ formatTime(totalDuration + 's') }}</span>
+                <span>总时长: {{ totalDuration }}s</span>
                 <span v-if="selectedCount > 0">已选择: {{ selectedCount }} 项</span>
             </div>
         </div>
 
         <!-- 分镜项目列表 -->
         <div class="flex-1 overflow-y-auto">
-            <VueDraggable
-                v-model="storyboardItems"
-                :animation="200"
-                handle=".drag-handle"
-                class="space-y-2 p-3"
-                @end="onDragEnd"
-            >
-                <StoryboardItem
-                    v-for="item in storyboardItems"
-                    :key="item.id"
-                    :item="item"
-                    @update-name="handleUpdateName"
-                    @toggle-visibility="handleToggleVisibility"
-                    @view-source="handleViewSource"
-                    @manage-animations="handleManageAnimations"
-                    @preview-animation="handlePreviewAnimation"
-                    @duplicate="handleDuplicate"
-                    @delete="deleteItem"
-                    @select="selectItem"
-                />
+            <VueDraggable v-model="storyboardItems" :animation="200" handle=".drag-handle" class="space-y-2 p-3"
+                @end="onDragEnd">
+                <StoryboardItem v-for="item in storyboardItems" :key="item.id" :item="item"
+                    @update-name="handleUpdateName" @toggle-visibility="handleToggleVisibility"
+                    @view-source="handleViewSource" @manage-animations="handleManageAnimations"
+                    @preview-animation="handlePreviewAnimation" @duplicate="handleDuplicate" @delete="deleteItem"
+                    @select="selectItem" />
             </VueDraggable>
-            
+
             <!-- 空状态 -->
-            <div v-if="storyboardItems.length === 0" class="flex flex-col items-center justify-center py-12 text-center">
+            <div v-if="storyboardItems.length === 0"
+                class="flex flex-col items-center justify-center py-12 text-center">
                 <div class="rounded-full bg-muted p-4">
                     <Image class="h-8 w-8 text-muted-foreground" />
                 </div>
                 <h3 class="mt-4 text-lg font-medium">还没有分镜内容</h3>
                 <p class="mt-2 text-sm text-muted-foreground">点击上方的"新建"按钮添加第一个分镜内容</p>
-                <button
-                    @click="addNewItem"
-                    :disabled="loading"
-                    class="mt-4 flex items-center rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                <button @click="addNewItem" :disabled="loading"
+                    class="mt-4 flex items-center rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed">
                     <Plus class="mr-2 h-4 w-4" />
                     立即开始
                 </button>
             </div>
         </div>
-        
+
         <!-- 对话框组件 -->
-        <CreateContentDialog 
-            ref="createContentDialog" 
-            @confirm="handleCreateContent" 
-        />
+        <CreateContentDialog ref="createContentDialog" @confirm="handleCreateContent" />
         <ConfirmDialog />
         <SourceCodeViewer ref="sourceCodeViewer" />
-        <AnimationManager 
-            ref="animationManager" 
-            @animation-saved="handleAnimationSaved"
-        />
+        <AnimationManager ref="animationManager" @animation-saved="handleAnimationSaved" />
     </div>
 </template>
 

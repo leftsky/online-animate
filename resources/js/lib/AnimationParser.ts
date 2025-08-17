@@ -50,6 +50,8 @@ export interface AnimationSequence {
 
 // 分镜结构体
 export interface AnimationData {
+  // 动画媒体【图片、gif】
+  media?: string;
   // 分镜名称
   name?: string;
   // 分镜描述
