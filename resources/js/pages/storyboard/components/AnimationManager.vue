@@ -8,9 +8,9 @@
         </DialogDescription>
       </DialogHeader>
 
-      <div class="flex gap-6 h-[75vh] overflow-hidden">
-        <!-- 左侧：设置面板 -->
-        <div class="w-1/3 space-y-4 overflow-y-auto">
+      <div class="grid grid-cols-3 gap-4 h-[75vh] overflow-hidden">
+        <!-- 左侧：基础设置 -->
+        <div class="space-y-4 overflow-y-auto custom-scrollbar">
           <!-- 媒体设置 -->
           <div class="space-y-3">
             <h3 class="text-sm font-medium flex items-center gap-2">
@@ -36,11 +36,11 @@
             </div>
           </div>
 
-          <!-- 初始位置设置 -->
+          <!-- 基础位置设置 -->
           <div class="space-y-3">
             <h3 class="text-sm font-medium flex items-center gap-2">
               <Settings class="w-4 h-4" />
-              初始位置设置
+              基础位置设置
             </h3>
             <div class="p-4 border rounded-lg space-y-4">
               <div class="grid grid-cols-2 gap-3">
@@ -67,17 +67,16 @@
                 </div>
               </div>
 
-              <div class="grid grid-cols-1 gap-3">
+              <div class="grid grid-cols-2 gap-3">
                 <div class="space-y-1">
                   <Label class="text-xs">Y轴缩放</Label>
                   <Input v-model="initialPosition.scaleY" type="number" min="0" step="0.1" placeholder="1"
                     class="h-8 text-xs" />
                 </div>
-              </div>
-
-              <div class="space-y-1">
-                <Label class="text-xs">旋转角度</Label>
-                <Input v-model="initialPosition.rotation" type="number" placeholder="0" class="h-8 text-xs" />
+                <div class="space-y-1">
+                  <Label class="text-xs">旋转角度</Label>
+                  <Input v-model="initialPosition.rotation" type="number" placeholder="0" class="h-8 text-xs" />
+                </div>
               </div>
 
               <Button variant="outline" size="sm" @click="resetInitialPosition" class="w-full h-7 text-xs">
@@ -86,14 +85,17 @@
               </Button>
             </div>
           </div>
+        </div>
 
+        <!-- 中间：动画库和当前动画列表 -->
+        <div class="space-y-4 overflow-hidden flex flex-col">
           <!-- 动画效果库 -->
           <div class="space-y-2">
             <h3 class="text-sm font-medium flex items-center gap-2">
               <Sparkles class="w-4 h-4" />
               动画效果库
             </h3>
-            <div class="space-y-1 max-h-64 overflow-y-auto">
+            <div class="space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
               <div v-for="(preset, key) in animationPresets" :key="key"
                 class="p-3 border rounded-lg cursor-pointer hover:bg-accent transition-colors"
                 @click="addAnimation(preset)">
@@ -107,49 +109,89 @@
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- 右侧：当前动画列表 -->
-        <div class="flex-1 space-y-4 overflow-hidden flex flex-col">
-          <div class="flex items-center justify-between">
-            <h3 class="text-sm font-medium">当前动画效果</h3>
-          </div>
-
-          <!-- 动画列表 -->
-          <div class="flex-1 space-y-2 overflow-y-auto">
-            <div v-for="(animation, index) in currentAnimations" :key="animation.id"
-              class="flex items-center gap-3 p-3 border rounded-lg">
-              <div class="flex-1">
-                <div class="flex items-center gap-2">
-                  <p class="text-sm font-medium">{{ animation.name }}</p>
-                  <span class="text-xs bg-muted px-2 py-1 rounded">{{ animation.duration }}</span>
-                </div>
-                <p class="text-xs text-muted-foreground">{{ animation.easing || 'ease' }}</p>
-              </div>
-
-              <div class="flex items-center gap-1">
-                <Button variant="ghost" size="sm" @click="editAnimation(index)" class="h-8 w-8 p-0">
-                  <Edit class="w-3 h-3" />
-                </Button>
-                <Button variant="ghost" size="sm" @click="removeAnimation(index)"
-                  class="h-8 w-8 p-0 text-destructive hover:text-destructive">
-                  <Trash2 class="w-3 h-3" />
-                </Button>
-              </div>
+          <!-- 当前动画列表 -->
+          <div class="flex-1 space-y-2 overflow-hidden flex flex-col">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-medium">当前动画效果</h3>
             </div>
 
-            <!-- 空状态 -->
-            <div v-if="currentAnimations.length === 0" class="text-center py-8 text-muted-foreground">
-              <Zap class="w-8 h-8 mx-auto mb-2" />
-              <p class="text-sm">还没有添加动画效果</p>
-              <p class="text-xs">从左侧选择动画效果添加</p>
+            <!-- 动画列表 -->
+            <div class="flex-1 space-y-2 overflow-y-auto custom-scrollbar">
+              <div v-for="(animation, index) in currentAnimations" :key="animation.id"
+                class="flex items-center gap-3 p-3 border rounded-lg">
+                <div class="flex-1">
+                  <div class="flex items-center gap-2">
+                    <p class="text-sm font-medium">{{ animation.name }}</p>
+                    <span class="text-xs bg-muted px-2 py-1 rounded">{{ animation.duration }}ms</span>
+                  </div>
+                  <p class="text-xs text-muted-foreground">{{ animation.easing || 'ease' }}</p>
+                </div>
+
+                <div class="flex items-center gap-1">
+                  <Button variant="ghost" size="sm" @click="editAnimation(index)" class="h-8 w-8 p-0">
+                    <Edit class="w-3 h-3" />
+                  </Button>
+                  <Button variant="ghost" size="sm" @click="removeAnimation(index)"
+                    class="h-8 w-8 p-0 text-destructive hover:text-destructive">
+                    <Trash2 class="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+
+              <!-- 空状态 -->
+              <div v-if="currentAnimations.length === 0" class="text-center py-8 text-muted-foreground">
+                <Zap class="w-8 h-8 mx-auto mb-2" />
+                <p class="text-sm">还没有添加动画效果</p>
+                <p class="text-xs">从上方选择动画效果添加</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右侧：实时YAML文件搜索 -->
+        <div class="space-y-4 overflow-hidden flex flex-col">
+          <!-- YAML搜索 -->
+          <div class="space-y-2">
+            <h3 class="text-sm font-medium flex items-center gap-2">
+              <Search class="w-4 h-4" />
+              YAML搜索
+            </h3>
+            <div class="space-y-2">
+              <Input 
+                v-model="yamlSearchQuery" 
+                type="text" 
+                placeholder="搜索YAML内容..." 
+                class="h-8 text-xs"
+                @input="handleYamlSearch"
+              />
+              <div class="flex gap-2">
+                <Button variant="outline" size="sm" @click="clearYamlSearch" class="h-7 text-xs flex-1">
+                  清除
+                </Button>
+                <Button variant="outline" size="sm" @click="copyYamlToClipboard" class="h-7 text-xs flex-1">
+                  复制
+                </Button>
+              </div>
             </div>
           </div>
 
           <!-- YAML脚本预览 -->
-          <div class="space-y-2 flex-shrink-0">
-            <label class="text-sm font-medium">生成的YAML脚本</label>
-            <pre class="bg-muted p-3 rounded text-xs overflow-auto h-32"><code>{{ generatedYaml }}</code></pre>
+          <div class="flex-1 space-y-2 overflow-hidden flex flex-col">
+            <div class="flex items-center justify-between">
+              <label class="text-sm font-medium">实时YAML脚本</label>
+              <span class="text-xs text-muted-foreground">{{ yamlLineCount }} 行</span>
+            </div>
+            <div class="flex-1 relative overflow-hidden">
+              <pre 
+                ref="yamlPreview"
+                class="bg-muted p-3 rounded text-xs overflow-auto h-full custom-scrollbar yaml-preview"
+                v-html="highlightedYaml"
+              ></pre>
+              <div v-if="yamlSearchResults.length > 0" class="absolute top-2 right-2 bg-primary text-primary-foreground px-2 py-1 rounded text-xs">
+                {{ yamlSearchResults.length }} 个匹配
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -167,7 +209,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { Plus, Edit, Trash2, Zap, Loader2, Settings, Sparkles, RotateCcw } from 'lucide-vue-next';
+import { Plus, Edit, Trash2, Zap, Loader2, Settings, Sparkles, RotateCcw, Search } from 'lucide-vue-next';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -207,6 +249,11 @@ const animationDescription = ref<string | undefined>(undefined);
 const animationWidth = ref<number | undefined>(undefined);
 const animationHeight = ref<number | undefined>(undefined);
 
+// YAML搜索相关
+const yamlSearchQuery = ref('');
+const yamlSearchResults = ref<Array<{ line: number; text: string }>>([]);
+const yamlPreview = ref<HTMLPreElement>();
+
 const { toast } = useToast();
 
 // 生成动画数据结构
@@ -230,6 +277,24 @@ const generatedYaml = computed(() => {
     console.error('生成YAML失败:', error);
     return '# YAML生成失败，请检查动画数据';
   }
+});
+
+// 计算属性：YAML行数
+const yamlLineCount = computed(() => {
+  return generatedYaml.value.split('\n').length;
+});
+
+// 计算属性：高亮显示的YAML
+const highlightedYaml = computed(() => {
+  let yaml = generatedYaml.value;
+  
+  if (yamlSearchQuery.value.trim()) {
+    const query = yamlSearchQuery.value.trim();
+    const regex = new RegExp(`(${query})`, 'gi');
+    yaml = yaml.replace(regex, '<mark class="bg-yellow-200 dark:bg-yellow-800">$1</mark>');
+  }
+  
+  return yaml;
 });
 
 // 添加动画
@@ -257,6 +322,41 @@ const editAnimation = (index: number) => {
 const resetInitialPosition = () => {
   initialPosition.value = { ...DEFAULT_INITIAL_POSITION };
   toast.success('已重置为默认值');
+};
+
+// YAML搜索处理
+const handleYamlSearch = () => {
+  const query = yamlSearchQuery.value.trim();
+  yamlSearchResults.value = [];
+  
+  if (!query) return;
+  
+  const lines = generatedYaml.value.split('\n');
+  lines.forEach((line, index) => {
+    if (line.toLowerCase().includes(query.toLowerCase())) {
+      yamlSearchResults.value.push({
+        line: index + 1,
+        text: line.trim()
+      });
+    }
+  });
+};
+
+// 清除YAML搜索
+const clearYamlSearch = () => {
+  yamlSearchQuery.value = '';
+  yamlSearchResults.value = [];
+};
+
+// 复制YAML到剪贴板
+const copyYamlToClipboard = async () => {
+  try {
+    await navigator.clipboard.writeText(generatedYaml.value);
+    toast.success('YAML已复制到剪贴板');
+  } catch (error) {
+    console.error('复制失败:', error);
+    toast.error('复制失败，请手动复制');
+  }
 };
 
 // 保存动画
@@ -415,3 +515,62 @@ const close = () => {
 
 defineExpose({ open, close });
 </script>
+
+<style scoped>
+/* 自定义滚动条样式 */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground)) hsl(var(--muted));
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 3px;
+  transition: background-color 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+.custom-scrollbar::-webkit-scrollbar-corner {
+  background: hsl(var(--muted));
+}
+
+/* YAML预览样式 */
+.yaml-preview {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.yaml-preview mark {
+  padding: 1px 2px;
+  border-radius: 2px;
+  font-weight: 500;
+}
+
+/* 响应式调整 */
+@media (max-width: 1024px) {
+  .grid-cols-3 {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .h-\[75vh\] {
+    height: auto;
+    max-height: 70vh;
+  }
+}
+</style>
