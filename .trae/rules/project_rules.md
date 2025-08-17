@@ -26,9 +26,8 @@
 - **构建工具**: Vite
 - **UI库**: Shadcn/ui + Tailwind CSS
 - **路由**: Inertia.js
-- **动画库**: GSAP + Anime.js
-- **3D渲染**: Three.js
-- **画布操作**: Fabric.js
+- **画布操作**: Fabric.js + Canvas原生API
+- **动画库**: Anime.js (轻量级动画)
 - **YAML解析**: js-yaml
 
 ## 项目结构规范
