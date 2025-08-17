@@ -127,8 +127,8 @@ export class CanvasCore {
     };
 
     // 根据宽高计算缩放比例
-    let scaleX = 1;
-    let scaleY = 1;
+    const scaleX = 1;
+    const scaleY = 1;
 
     const animations: AnimationEffect[] = (animationData.animationSequences || []).map((anim, index) => {
       if (!anim || typeof anim !== 'object') {
@@ -248,6 +248,10 @@ export class CanvasCore {
       if (!this.animationObjects.has(parsedData.target)) {
         console.warn(`Target object '${parsedData.target}' not found, animation may not display correctly`);
       }
+      
+      // 打印动画播放计划
+      this.printAnimationSchedule(parsedData.animations);
+      
       this.isPlaying = true;
       this.startTime = performance.now();
       this.currentTime = 0;
@@ -389,14 +393,14 @@ export class CanvasCore {
    * @param animations 动画效果列表
    */
   private calculateTotalDuration(animations: AnimationEffect[]): void {
-    let maxDuration = 0;
+    let totalDuration = 0;
     for (const animation of animations) {
       const duration = typeof animation.duration === 'string'
         ? this.parseDuration(animation.duration)
         : animation.duration;
-      maxDuration = Math.max(maxDuration, duration);
+      totalDuration += duration;
     }
-    this.totalDuration = maxDuration;
+    this.totalDuration = totalDuration;
   }
   /**
    * 动画帧循环
@@ -404,22 +408,62 @@ export class CanvasCore {
    */
   private animateFrame(animationData: ParsedAnimationData): void {
     if (!this.isPlaying) return;
+    
     const now = performance.now();
     this.currentTime = now - this.startTime;
     const progress = Math.min(this.currentTime / this.totalDuration, 1);
+    
     // 更新所有动画对象
     this.updateAnimations(animationData, progress);
+    
     // 渲染画布
     this.canvas.renderAll();
+    
     // 检查是否完成
     if (progress >= 1) {
       this.isPlaying = false;
-
+      console.log('🎬 所有动画播放完成');
       return;
     }
+    
     // 继续下一帧
     this.animationId = requestAnimationFrame(() => this.animateFrame(animationData));
   }
+  /**
+   * 获取动画的显示名称
+   * @param animation 动画对象
+   * @param index 动画索引
+   */
+  private getAnimationDisplayName(animation: AnimationEffect, index: number): string {
+    if (animation.id && animation.id !== '') {
+      return animation.id;
+    }
+    if (animation.type && animation.type !== '') {
+      return animation.type;
+    }
+    return `动画${index + 1}`;
+  }
+
+  /**
+   * 打印动画播放计划
+   */
+  private printAnimationSchedule(animations: AnimationEffect[]): void {
+    console.log('🎬 动画播放计划:');
+    let accumulatedTime = 0;
+    for (let i = 0; i < animations.length; i++) {
+      const animation = animations[i];
+      const duration = typeof animation.duration === 'string'
+        ? this.parseDuration(animation.duration)
+        : animation.duration;
+      const startTime = accumulatedTime;
+      const endTime = startTime + duration;
+      const displayName = this.getAnimationDisplayName(animation, i);
+      console.log(`${displayName} - 开始: ${startTime}ms, 结束: ${endTime}ms, 持续: ${duration}ms`);
+      accumulatedTime += duration;
+    }
+    console.log(`总动画时长: ${accumulatedTime}ms`);
+  }
+
   /**
    * 更新动画
    * @param animationData 动画数据
@@ -428,15 +472,50 @@ export class CanvasCore {
   private updateAnimations(animationData: ParsedAnimationData, progress: number): void {
     const targetObject = this.animationObjects.get(animationData.target);
     if (!targetObject) return;
-    // 处理动画效果列表
-    for (const animation of animationData.animations) {
-      if (animation.keyframes && animation.keyframes.length > 0) {
+    
+    // 计算当前时间点
+    const currentTime = progress * this.totalDuration;
+    let accumulatedTime = 0;
+    
+    // 顺序处理每个动画
+    for (let i = 0; i < animationData.animations.length; i++) {
+      const animation = animationData.animations[i];
+      const duration = typeof animation.duration === 'string'
+        ? this.parseDuration(animation.duration)
+        : animation.duration;
+      
+      const animationStartTime = accumulatedTime;
+      const animationEndTime = accumulatedTime + duration;
+      
+      // 检查当前时间是否在这个动画的时间范围内
+      if (currentTime >= animationStartTime && currentTime <= animationEndTime) {
+        // 计算这个动画的相对进度 (0-1)
+        const animationProgress = (currentTime - animationStartTime) / duration;
+        
+        // 检查动画是否刚开始
+        if (Math.abs(currentTime - animationStartTime) < 16) { // 16ms = 1帧@60fps
+          const displayName = this.getAnimationDisplayName(animation, i);
+          console.log(`🎬 开始播放动画 ${i + 1}: ${displayName} - 持续时间: ${duration}ms`);
+        }
+        
+        // 检查动画是否刚结束
+        if (Math.abs(currentTime - animationEndTime) < 16) {
+          const displayName = this.getAnimationDisplayName(animation, i);
+          console.log(`✅ 动画 ${i + 1} 播放完成: ${displayName}`);
+        }
+        
         // 处理关键帧动画
-        this.updateKeyframeAnimation(targetObject, animation.keyframes, progress, animationData.scaleX, animationData.scaleY);
-      } else {
-        // 处理普通动画效果
-        this.updateAnimationEffect(targetObject, animation, progress);
+        if (animation.keyframes && animation.keyframes.length > 0) {
+          this.updateKeyframeAnimation(targetObject, animation.keyframes, animationProgress, animationData.scaleX, animationData.scaleY);
+        } else {
+          // 处理普通动画效果
+          this.updateAnimationEffect(targetObject, animation, animationProgress);
+        }
+        
+        break; // 只处理当前时间点的动画
       }
+      
+      accumulatedTime += duration;
     }
   }
   /**
