@@ -40,7 +40,15 @@ class MediaScenarioController extends WebApiController
         $total = $query->count();
         $scenarios = $query->offset($offset)->limit($limit)->get();
 
-        return $this->success($scenarios, '获取场景列表成功');
+        return $this->success([
+            'data' => $scenarios,
+            'pagination' => [
+                'total' => $total,
+                'limit' => $limit,
+                'offset' => $offset,
+                'has_more' => ($offset + $limit) < $total
+            ]
+        ], '获取场景列表成功');
     }
 
     /**

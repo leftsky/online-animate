@@ -8,8 +8,16 @@ export interface ApiResponse<T = any> {
   data: T;
 }
 
-// 分页响应类型 - 直接返回数组，不包含分页元信息
-export type PaginatedResponse<T> = T[];
+// 分页响应类型
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+    has_more: boolean;
+  };
+}
 
 // 搜索参数
 export interface SearchParams {
@@ -93,7 +101,7 @@ class MediaApiService {
   // 场景相关API
   async getScenarios(params: SearchParams = {}): Promise<PaginatedResponse<MediaScenario>> {
     const response = await axios.get(`${this.baseUrl}/media-scenarios`, { params });
-    return response.data.data; // 直接返回data数组
+    return response.data.data; // 返回包含分页信息的对象
   }
 
   async createScenario(data: Partial<MediaScenario>): Promise<ApiResponse<MediaScenario>> {
@@ -119,7 +127,7 @@ class MediaApiService {
   // 人物相关API
   async getCharacters(params: SearchParams = {}): Promise<PaginatedResponse<MediaCharacter>> {
     const response = await axios.get(`${this.baseUrl}/media-characters`, { params });
-    return response.data.data; // 直接返回data数组
+    return response.data.data; // 返回包含分页信息的对象
   }
 
   async createCharacter(data: Partial<MediaCharacter>): Promise<ApiResponse<MediaCharacter>> {
@@ -145,7 +153,7 @@ class MediaApiService {
   // 物品相关API
   async getItems(params: SearchParams = {}): Promise<PaginatedResponse<MediaItem>> {
     const response = await axios.get(`${this.baseUrl}/media-items`, { params });
-    return response.data.data; // 直接返回data数组
+    return response.data.data; // 返回包含分页信息的对象
   }
 
   async createItem(data: Partial<MediaItem>): Promise<ApiResponse<MediaItem>> {

@@ -45,7 +45,15 @@ class MediaCharacterController extends WebApiController
         $total = $query->count();
         $characters = $query->offset($offset)->limit($limit)->get();
 
-        return $this->success($characters, '获取人物列表成功');
+        return $this->success([
+            'data' => $characters,
+            'pagination' => [
+                'total' => $total,
+                'limit' => $limit,
+                'offset' => $offset,
+                'has_more' => ($offset + $limit) < $total
+            ]
+        ], '获取人物列表成功');
     }
 
     /**

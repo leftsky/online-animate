@@ -44,7 +44,15 @@ class MediaItemController extends WebApiController
         $total = $query->count();
         $items = $query->offset($offset)->limit($limit)->get();
 
-        return $this->success($items, '获取物品列表成功');
+        return $this->success([
+            'data' => $items,
+            'pagination' => [
+                'total' => $total,
+                'limit' => $limit,
+                'offset' => $offset,
+                'has_more' => ($offset + $limit) < $total
+            ]
+        ], '获取物品列表成功');
     }
 
     /**
