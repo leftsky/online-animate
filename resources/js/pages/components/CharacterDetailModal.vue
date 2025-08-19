@@ -229,6 +229,8 @@ const generateDefaultAnimationData = (imagePath?: string): AnimationData => {
   const media = imagePath || props.character?.image_path || '';
   
   return {
+    name: "default",
+    description: "默认动画",
     media: media,
     width: 300,
     height: 400,
@@ -239,12 +241,13 @@ const generateDefaultAnimationData = (imagePath?: string): AnimationData => {
       scaleX: 1.0,
       scaleY: 1.0,
       opacity: 1.0,
-      rotation: 0
     },
     animationSequences: [
       // 轻微浮动动画
       {
         id: 'gentle_float',
+        name: "轻微浮动",
+        description: "轻微浮动动画",
         duration: 3000,
         easing: 'ease-in-out',
         keyframes: [
@@ -306,6 +309,8 @@ const initCanvas = async () => {
       await initYamlPlayer();
     } catch (error) {
       console.warn('YAML 播放器初始化失败，使用静态图片:', error);
+      // 清理可能的部分初始化状态
+      yamlPlayer = null;
       // 回退到原有的静态图片显示
       await loadMainImage();
     }
@@ -332,12 +337,16 @@ const initYamlPlayer = async () => {
     console.log('✅ 动画数据设置成功');
     
     // 检查播放器状态
-    console.log('🎯 播放器就绪状态:', yamlPlayer.isReady());
-    console.log('⏱️ 总时长:', yamlPlayer.getDuration());
-    
-    // 开始播放
-    yamlPlayer.play();
-    console.log('▶️ 开始播放动画');
+    if (yamlPlayer) {
+      console.log('🎯 播放器就绪状态:', yamlPlayer.isReady());
+      console.log('⏱️ 总时长:', yamlPlayer.getDuration());
+      
+      // 开始播放
+      yamlPlayer.play();
+      console.log('▶️ 开始播放动画');
+    } else {
+      console.warn('⚠️ yamlPlayer 为空，无法播放动画');
+    }
     
   } catch (error) {
     console.error('❌ YAML 播放器初始化失败:', error);

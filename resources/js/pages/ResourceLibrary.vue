@@ -234,7 +234,7 @@ import { useToast } from '@/composables/useToast';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Pagination from '@/components/ui/pagination/Pagination.vue';
 import BatchUploadDialog from '@/components/BatchUploadDialog.vue';
-import CharacterDetailModal from './CharacterDetailModal.vue';
+import CharacterDetailModal from './components/CharacterDetailModal.vue';
 import { mediaApi } from '@/utils/api';
 import { type MediaScenario, type MediaCharacter, type MediaItem } from '@/services/mediaApi';
 

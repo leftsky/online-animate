@@ -58,6 +58,9 @@ export class CanvasManager {
         selection: false, // 禁用选择，专注于播放
         ...options
       });
+
+      // 初始化成功
+      console.log('🎨 Canvas初始化成功:', { width, height });
     }
   }
 
