@@ -106,13 +106,13 @@ export class YamlAnimationPlayer extends BasePlayer {
       this.clear();
 
       // 转换数据格式
-      this.parsedAnimationData = this.convertAnimationData(animationData);
+      this.parsedAnimationData = await this.convertAnimationData(animationData);
       console.log('🔍 转换后的动画数据:', this.parsedAnimationData);
 
       // 创建目标对象
       const targetObject = await this.createTargetObject();
 
-      if (targetObject) {
+      if (targetObject && this.parsedAnimationData) {
         this.animationObjects.set(this.parsedAnimationData.target, targetObject);
         const canvas = this.getCanvas();
         canvas.add(targetObject);
@@ -337,19 +337,36 @@ export class YamlAnimationPlayer extends BasePlayer {
   /**
    * 转换AnimationData为内部使用的ParsedAnimationData
    */
-  private convertAnimationData(animationData: AnimationData): ParsedAnimationData {
+  private async convertAnimationData(animationData: AnimationData): Promise<ParsedAnimationData> {
     console.log('🔄 开始转换动画数据:', animationData);
+    // 获取画布尺寸用于百分比计算
+    const canvasDimensions = this.getCanvasManager().getDimensions();
+
+    const width = parseInt(this.parseNumericValue(animationData.width, 100, canvasDimensions.width).toString());
+    const height = parseInt(this.parseNumericValue(animationData.height, 100, canvasDimensions.height).toString());
+    const media = animationData.media ? `${animationData.media}?imageView2/2/w/${width}/h/${height}` : '';
 
     if (!animationData || typeof animationData !== 'object') {
       throw new Error('Invalid animation data: data must be a valid object');
     }
 
-    // 获取画布尺寸用于百分比计算
-    const canvasDimensions = this.getCanvasManager().getDimensions();
+    // 获取媒体文件的真实尺寸
+    let mediaWidth = width;
+    let mediaHeight = height;
+
+    if (media) {
+      try {
+        const img = await FabricImage.fromURL(media, { crossOrigin: 'anonymous' });
+        mediaWidth = img.width || width;
+        mediaHeight = img.height || height;
+      } catch (error) {
+        console.warn('获取媒体文件尺寸失败，使用默认尺寸:', error);
+      }
+    }
 
     const initial: InitialPosition = {
-      x: this.parseNumericValue(animationData.initialPosition?.x, 0, canvasDimensions.width),
-      y: this.parseNumericValue(animationData.initialPosition?.y, 0, canvasDimensions.height),
+      x: this.parseNumericValue(animationData.initialPosition?.x, 0, canvasDimensions.width) - mediaWidth / 2,
+      y: this.parseNumericValue(animationData.initialPosition?.y, 0, canvasDimensions.height) - mediaHeight / 2,
       scaleX: animationData.initialPosition?.scaleX || 1,
       scaleY: animationData.initialPosition?.scaleY || 1,
       opacity: animationData.initialPosition?.opacity || 1,
@@ -365,18 +382,12 @@ export class YamlAnimationPlayer extends BasePlayer {
         id: anim.id || this.generateId(),
         duration: anim.duration || 1000,
         easing: anim.easing || 'ease',
-        keyframes: anim.keyframes?.map((kf, kfIndex) => {
-          const x = this.parseNumericValue(kf.x, 0, canvasDimensions.width);
-          const y = this.parseNumericValue(kf.y, 0, canvasDimensions.height);
-          if (!kf || typeof kf !== 'object' || typeof kf.startTime !== 'number') {
-            console.warn(`Invalid keyframe at animations[${index}].keyframes[${kfIndex}], skipping`);
-            return null;
-          }
+        keyframes: anim.keyframes?.map((kf) => {
           return {
-            time: kf.startTime,
+            time: kf?.startTime || 0,
             properties: {
-              x: x + initial.x,
-              y: y + initial.y,
+              x: this.parseNumericValue(kf.x, 0, canvasDimensions.width) + initial.x,
+              y: this.parseNumericValue(kf.y, 0, canvasDimensions.height) + initial.y,
               scaleX: kf.scaleX,
               scaleY: kf.scaleY,
               opacity: kf.opacity,
@@ -387,9 +398,6 @@ export class YamlAnimationPlayer extends BasePlayer {
       };
     }).filter(anim => anim !== null) as AnimationEffect[];
 
-    const width = parseInt(this.parseNumericValue(animationData.width, 100, canvasDimensions.width).toString());
-    const height = parseInt(this.parseNumericValue(animationData.height, 100, canvasDimensions.height).toString());
-    const media = animationData.media ? `${animationData.media}?imageView2/2/w/${width}/h/${height}` : '';
 
     return {
       target: 'default',
