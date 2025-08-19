@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { Plus, Image } from 'lucide-vue-next';
+import { ref, computed, onMounted, nextTick, watch } from 'vue';
+import { Plus, Image, Zap, Code, Play } from 'lucide-vue-next';
 import { VueDraggable } from 'vue-draggable-plus';
 import { sceneContentApi, uploadApi } from '../../../utils/api';
 import { useToast } from '../../../composables/useToast';
@@ -12,6 +12,7 @@ import StoryboardItem from './StoryboardItem.vue';
 import SourceCodeViewer from './SourceCodeViewer.vue';
 import AnimationManager from './AnimationManager.vue';
 import type { StoryboardItem as StoryboardItemType, ApiSceneContent } from './types';
+import { Button } from '@/components/ui/button';
 
 const emit = defineEmits<{
     selectItem: [item: StoryboardItemType];
@@ -22,11 +23,80 @@ const emit = defineEmits<{
     toggleVisibility: [itemId: string];
     addNewItem: [];
     previewAnimation: [item: StoryboardItemType];
+    updateItem: [item: StoryboardItemType];
 }>();
 
 // 分镜列表数据
 const storyboardItems = ref<StoryboardItemType[]>([]);
 const loading = ref(false);
+const selectedItemId = ref<string | null>(null);
+
+// 标题编辑状态
+const isEditingTitle = ref(false);
+const editingTitle = ref('');
+const titleInput = ref<HTMLInputElement>();
+
+// 计算属性：选中的项目
+const selectedItem = computed(() => {
+  return storyboardItems.value.find(item => item.id === selectedItemId.value) || null;
+});
+
+// 计算属性：选中项目的动画数据
+const selectedItemAnimations = computed(() => {
+  if (!selectedItem.value?.animationScript) {
+    return [];
+  }
+
+  try {
+    const parsedData = AnimationParser.parseYamlToJson(selectedItem.value.animationScript);
+    return parsedData.animationSequences || [];
+  } catch {
+    return [];
+  }
+});
+
+// 获取初始位置信息
+const getInitialPosition = () => {
+  if (!selectedItem.value?.animationScript) {
+    return { x: 0, y: 0, scaleX: 1, scaleY: 1, opacity: 1 };
+  }
+
+  try {
+    const parsedData = AnimationParser.parseYamlToJson(selectedItem.value.animationScript);
+    return {
+      x: parsedData.initialPosition?.x || 0,
+      y: parsedData.initialPosition?.y || 0,
+      scaleX: parsedData.initialPosition?.scaleX || 1,
+      scaleY: parsedData.initialPosition?.scaleY || 1,
+      opacity: parsedData.initialPosition?.opacity || 1
+    };
+  } catch {
+    return { x: 0, y: 0, scaleX: 1, scaleY: 1, opacity: 1 };
+  }
+};
+
+// 标题编辑相关函数
+const startTitleEdit = () => {
+  if (!selectedItem.value) return;
+  isEditingTitle.value = true;
+  editingTitle.value = selectedItem.value.elementName;
+  nextTick(() => {
+    titleInput.value?.focus();
+    titleInput.value?.select();
+  });
+};
+
+const confirmTitleEdit = () => {
+  if (selectedItem.value && editingTitle.value.trim() && editingTitle.value !== selectedItem.value.elementName) {
+    handleUpdateName(selectedItem.value.id, editingTitle.value.trim());
+  }
+  isEditingTitle.value = false;
+};
+
+const cancelTitleEdit = () => {
+  isEditingTitle.value = false;
+  editingTitle.value = selectedItem.value?.elementName || '';
+};
 
 // 组合式函数
 const { toast } = useToast();
@@ -101,10 +171,42 @@ const parseDurationToString = (animationScript: string): string => {
 
 
 // 选中项目
-const selectItem = (item: StoryboardItemType) => {
+const selectItem = (itemId: string) => {
+  // 如果点击的是当前选中的项目，则取消选中
+  if (selectedItemId.value === itemId) {
+    selectedItemId.value = null;
     storyboardItems.value.forEach(i => i.selected = false);
-    item.selected = true;
-    emit('selectItem', item);
+  } else {
+    // 选中新项目
+    selectedItemId.value = itemId;
+    storyboardItems.value.forEach(i => i.selected = false);
+    const item = storyboardItems.value.find(i => i.id === itemId);
+    if (item) {
+      item.selected = true;
+      emit('selectItem', item);
+    }
+  }
+};
+
+// 处理选中项目的动画管理
+const handleSelectedItemManageAnimations = () => {
+  if (selectedItem.value) {
+    animationManager.value?.open(selectedItem.value);
+  }
+};
+
+// 处理选中项目的查看源码
+const handleSelectedItemViewSource = () => {
+  if (selectedItem.value) {
+    sourceCodeViewer.value?.open(selectedItem.value);
+  }
+};
+
+// 处理选中项目的预览动画
+const handleSelectedItemPreviewAnimation = () => {
+  if (selectedItem.value) {
+    emit('previewAnimation', selectedItem.value);
+  }
 };
 
 // StoryboardItem组件事件处理
@@ -284,7 +386,7 @@ const handleCreateContent = async (data: { file: File; elementName: string }) =>
             initialPosition: {
                 x: 0,
                 y: 0,
-                scale: 1,
+                scaleX: 1,
                 opacity: 1,
                 rotation: 0
             },
@@ -299,7 +401,7 @@ const handleCreateContent = async (data: { file: File; elementName: string }) =>
                         x: 0,
                         y: 0,
                         opacity: 1,
-                        scale: 1
+                        scaleX: 1
                     }
                 ]
             }]
@@ -328,6 +430,7 @@ const handleCreateContent = async (data: { file: File; elementName: string }) =>
             // 选中新创建的项目
             storyboardItems.value.forEach(item => item.selected = false);
             newItem.selected = true;
+            selectedItemId.value = newItem.id;
 
             toast.success('分镜内容创建成功！');
             createContentDialog.value?.close();
@@ -360,7 +463,7 @@ const totalDuration = computed(() => {
                 // 转换毫秒为秒
                 return total + (itemDuration / 1000);
             }
-        } catch (error) {
+        } catch {
             // 解析失败时使用 item.duration 作为后备
             const seconds = parseFloat(item.duration.replace('s', '')) || 0;
             return total + seconds;
@@ -378,33 +481,100 @@ const selectedCount = computed(() => {
 onMounted(() => {
     loadStoryboardData();
 });
+
+// 编辑位置信息
+const editingPosition = ref({
+    x: 0,
+    y: 0,
+    scaleX: 1,
+    scaleY: 1,
+    opacity: 1
+});
+
+// 监听选中项目变化，同步编辑状态
+watch(selectedItem, (newItem) => {
+    if (newItem) {
+        const position = getInitialPosition();
+        editingPosition.value = { ...position };
+    }
+}, { immediate: true });
+
+const updateInitialPosition = () => {
+    if (!selectedItem.value) return;
+    
+    try {
+        const animationData = AnimationParser.parseYamlToJson(selectedItem.value.animationScript);
+        if (animationData.initialPosition) {
+            animationData.initialPosition.x = Number(editingPosition.value.x);
+            animationData.initialPosition.y = Number(editingPosition.value.y);
+            animationData.initialPosition.scaleX = Number(editingPosition.value.scaleX);
+            animationData.initialPosition.scaleY = Number(editingPosition.value.scaleY);
+            animationData.initialPosition.opacity = Number(editingPosition.value.opacity);
+
+            const newAnimationScript = AnimationParser.parseJsonToYaml(animationData);
+            
+            // 更新项目的动画脚本
+            const updatedItem = {
+                ...selectedItem.value,
+                animationScript: newAnimationScript
+            };
+            
+            // 触发更新事件
+            emit('updateItem', updatedItem);
+        }
+    } catch (error) {
+        console.error('更新初始位置失败:', error);
+    }
+};
+
+// 播放所有分镜
+const playAllStoryboards = () => {
+    if (storyboardItems.value.length === 0) {
+        toast.info('没有分镜内容可播放');
+        return;
+    }
+
+    const selectedItem = storyboardItems.value.find(item => item.selected);
+    if (selectedItem) {
+        emit('playItem', selectedItem);
+    } else {
+        // 如果没有选中项目，则播放第一个
+        emit('playItem', storyboardItems.value[0]);
+    }
+};
+
 </script>
 
 <template>
     <div class="flex h-full flex-col bg-card">
-        <!-- 标题栏 -->
-        <div class="flex items-center justify-between border-b px-4 py-3">
-            <div class="flex items-center space-x-2">
-                <h3 class="text-lg font-semibold">分镜内容</h3>
-                <span class="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
-                    {{ storyboardItems.length }} 项
-                </span>
-            </div>
-            <button @click="addNewItem" :disabled="loading"
+        <!-- 分镜列表头部 -->
+        <div class="flex items-center justify-between p-3 border-b">
+            <h3 class="text-sm font-medium">分镜内容 {{ storyboardItems.length }}项</h3>
+            <Button variant="outline" size="sm" @click="addNewItem" :disabled="loading"
                 class="flex items-center rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
                 title="添加新动画">
                 <Plus class="mr-1 h-4 w-4" />
                 <span v-if="loading">处理中...</span>
                 <span v-else>新建</span>
-            </button>
+            </Button>
         </div>
 
-        <!-- 统计信息 -->
-        <div class="border-b bg-muted/30 px-4 py-2">
-            <div class="flex items-center justify-between text-sm text-muted-foreground">
-                <span>总时长: {{ totalDuration }}s</span>
-                <span v-if="selectedCount > 0">已选择: {{ selectedCount }} 项</span>
+        <!-- 统计信息和播放按钮 -->
+        <div class="flex items-center justify-between p-3 border-b bg-muted/20">
+            <div class="flex items-center gap-3 text-xs text-muted-foreground">
+                <span>总时长: {{ totalDuration }}</span>
+                <span>已选择: {{ selectedItemId ? '1项' : '0项' }}</span>
             </div>
+            <Button 
+                variant="outline" 
+                size="sm" 
+                @click="playAllStoryboards" 
+                class="h-7 px-2 text-xs bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 text-green-700 hover:from-green-100 hover:to-emerald-100 hover:border-green-300 transition-all duration-200"
+                :disabled="storyboardItems.length === 0"
+            >
+                <Play class="w-3 h-3 mr-1" />
+                播放本分镜
+            </Button>
         </div>
 
         <!-- 分镜项目列表 -->
@@ -431,6 +601,91 @@ onMounted(() => {
                     <Plus class="mr-2 h-4 w-4" />
                     立即开始
                 </button>
+            </div>
+        </div>
+
+        <!-- 固定的底部展开区域 -->
+        <div v-if="selectedItem" class="border-t bg-muted/20 p-3 space-y-2">
+            <!-- 选中项目的详细信息 -->
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <!-- 编辑模式 -->
+                    <input v-if="isEditingTitle" ref="titleInput" v-model="editingTitle" type="text"
+                        class="px-2 py-1 text-sm bg-background border border-input rounded focus:outline-none focus:ring-2 focus:ring-ring"
+                        @keydown.enter="confirmTitleEdit" @keydown.esc="cancelTitleEdit" @blur="confirmTitleEdit" />
+                    <!-- 显示模式 -->
+                    <h4 v-else class="text-sm font-medium cursor-pointer hover:text-primary transition-colors"
+                        @click="startTitleEdit">
+                        {{ selectedItem.elementName }} - 动画效果 ({{ selectedItemAnimations.length }}个动画 • {{ selectedItem.duration }})
+                    </h4>
+                </div>
+            </div>
+            
+            <!-- 属性设置 -->
+            <div class="space-y-2">
+                <div class="grid grid-cols-3 gap-2 text-xs">
+                    <div class="p-2 bg-background rounded border">
+                        <div class="font-medium text-muted-foreground mb-1">初始位置</div>
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-1">
+                                <span class="w-3">X:</span>
+                                <input v-model="editingPosition.x" type="number" 
+                                    class="w-full px-1 py-0.5 text-xs bg-transparent border border-input rounded focus:outline-none focus:ring-1 focus:ring-ring"
+                                    @change="updateInitialPosition" />
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <span class="w-3">Y:</span>
+                                <input v-model="editingPosition.y" type="number" 
+                                    class="w-full px-1 py-0.5 text-xs bg-transparent border border-input rounded focus:outline-none focus:ring-1 focus:ring-ring"
+                                    @change="updateInitialPosition" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-2 bg-background rounded border">
+                        <div class="font-medium text-muted-foreground mb-1">缩放</div>
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-1">
+                                <span class="w-3">X:</span>
+                                <input v-model="editingPosition.scaleX" type="number" step="0.1" min="0.1" max="5"
+                                    class="w-full px-1 py-0.5 text-xs bg-transparent border border-input rounded focus:outline-none focus:ring-1 focus:ring-ring"
+                                    @change="updateInitialPosition" />
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <span class="w-3">Y:</span>
+                                <input v-model="editingPosition.scaleY" type="number" step="0.1" min="0.1" max="5"
+                                    class="w-full px-1 py-0.5 text-xs bg-transparent border border-input rounded focus:outline-none focus:ring-1 focus:ring-ring"
+                                    @change="updateInitialPosition" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-2 bg-background rounded border">
+                        <div class="font-medium text-muted-foreground mb-1">透明度</div>
+                        <div class="flex items-center gap-1">
+                            <input v-model="editingPosition.opacity" type="number" step="0.1" min="0" max="1"
+                                class="w-full px-1 py-0.5 text-xs bg-transparent border border-input rounded focus:outline-none focus:ring-1 focus:ring-ring"
+                                @change="updateInitialPosition" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 快捷操作 -->
+            <div class="flex items-center gap-1 pt-2 border-t border-border">
+                <Button variant="outline" size="sm" @click="handleSelectedItemViewSource"
+                    class="h-7 px-2 text-xs">
+                    <Code class="w-3 h-3 mr-1" />
+                    查看源码
+                </Button>
+                <Button variant="outline" size="sm" @click="handleSelectedItemManageAnimations" 
+                    class="h-7 px-2 text-xs">
+                    <Zap class="w-3 h-3 mr-1" />
+                    管理动画
+                </Button>
+                <Button variant="outline" size="sm" @click="handleSelectedItemPreviewAnimation"
+                    class="h-7 px-2 text-xs bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 text-blue-700 hover:from-blue-100 hover:to-indigo-100 hover:border-blue-300 transition-all duration-200 transform hover:scale-105 active:scale-95">
+                    <Play class="w-3 h-3 mr-1 animate-pulse" />
+                    预览动画
+                </Button>
             </div>
         </div>
 

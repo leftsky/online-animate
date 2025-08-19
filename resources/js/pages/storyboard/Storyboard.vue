@@ -85,6 +85,13 @@ const handlePreviewAnimation = async (item: any) => {
         }
     }
 }
+
+// 处理项目更新
+const handleUpdateItem = (updatedItem: any) => {
+    console.log('更新项目:', updatedItem);
+    // 这里可以添加更新逻辑，比如保存到后端
+    // 暂时只是打印日志
+}
 </script>
 
 <template>
@@ -117,7 +124,10 @@ const handlePreviewAnimation = async (item: any) => {
 
           <!-- 右侧分镜列表 -->
           <div class="w-80 border-l">
-            <StoryboardList @preview-animation="handlePreviewAnimation" />
+            <StoryboardList 
+              @preview-animation="handlePreviewAnimation" 
+              @update-item="handleUpdateItem" 
+            />
           </div>
         </div>
 
