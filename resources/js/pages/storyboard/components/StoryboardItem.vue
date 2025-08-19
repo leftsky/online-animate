@@ -140,9 +140,7 @@ const previewImage = () => {
 
 // 预览动画
 const previewAnimation = () => {
-  // 先触发选中逻辑
-  selectItem();
-  // 然后触发预览动画
+  // 只触发预览动画，不触发选中逻辑
   emit('previewAnimation', props.item);
 };
 

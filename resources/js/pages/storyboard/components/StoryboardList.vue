@@ -2,17 +2,17 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { Plus, Image, Zap, Code, Play } from 'lucide-vue-next';
 import { VueDraggable } from 'vue-draggable-plus';
-import { sceneContentApi, uploadApi } from '../../../utils/api';
-import { useToast } from '../../../composables/useToast';
-import { useConfirm } from '../../../composables/useConfirm';
-import { AnimationParser, type AnimationData } from '../../../lib/AnimationParser';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/composables/useToast';
+import { useConfirm } from '@/composables/useConfirm';
+import { AnimationParser } from '@/lib/AnimationParser';
+import { sceneContentApi, uploadApi } from '@/utils/api';
 import CreateContentDialog from './CreateContentDialog.vue';
 import ConfirmDialog from './ConfirmDialog.vue';
 import StoryboardItem from './StoryboardItem.vue';
 import SourceCodeViewer from './SourceCodeViewer.vue';
 import AnimationManager from './AnimationManager.vue';
 import type { StoryboardItem as StoryboardItemType, ApiSceneContent } from './types';
-import { Button } from '@/components/ui/button';
 
 const emit = defineEmits<{
     selectItem: [item: StoryboardItemType];
@@ -24,6 +24,7 @@ const emit = defineEmits<{
     addNewItem: [];
     previewAnimation: [item: StoryboardItemType];
     updateItem: [item: StoryboardItemType];
+    playAllStoryboards: [items: StoryboardItemType[]];
 }>();
 
 // 分镜列表数据
@@ -380,7 +381,7 @@ const handleCreateContent = async (data: { file: File; elementName: string }) =>
 
         // 2. 准备动画数据，使用 AnimationParser 的 JSON 结构体
         const elementName = data.elementName;
-        const animationData: AnimationData = {
+        const animationData = {
             name: elementName,
             media: uploadResult.data.url,
             initialPosition: {
@@ -473,10 +474,6 @@ const totalDuration = computed(() => {
     }, 0);
 });
 
-const selectedCount = computed(() => {
-    return storyboardItems.value.filter(item => item.selected).length;
-});
-
 // 生命周期
 onMounted(() => {
     loadStoryboardData();
@@ -499,17 +496,49 @@ watch(selectedItem, (newItem) => {
     }
 }, { immediate: true });
 
-const updateInitialPosition = () => {
+// 保存位置变化
+const savePositionChanges = async () => {
     if (!selectedItem.value) return;
     
     try {
+        // 获取当前编辑的值
+        const newPosition = {
+            x: Number(editingPosition.value.x),
+            y: Number(editingPosition.value.y),
+            scaleX: Number(editingPosition.value.scaleX),
+            scaleY: Number(editingPosition.value.scaleY),
+            opacity: Number(editingPosition.value.opacity)
+        };
+
+        // 获取原始值
+        const originalPosition = getInitialPosition();
+        
+        // 检查是否有变化
+        const hasChanges = 
+            newPosition.x !== originalPosition.x ||
+            newPosition.y !== originalPosition.y ||
+            newPosition.scaleX !== originalPosition.scaleX ||
+            newPosition.scaleY !== originalPosition.scaleY ||
+            newPosition.opacity !== originalPosition.opacity;
+
+        if (!hasChanges) {
+            console.log('属性没有变化，跳过保存');
+            return;
+        }
+
+        console.log('检测到属性变化，开始保存:', {
+            original: originalPosition,
+            new: newPosition
+        });
+
+        // 解析YAML脚本并更新
         const animationData = AnimationParser.parseYamlToJson(selectedItem.value.animationScript);
         if (animationData.initialPosition) {
-            animationData.initialPosition.x = Number(editingPosition.value.x);
-            animationData.initialPosition.y = Number(editingPosition.value.y);
-            animationData.initialPosition.scaleX = Number(editingPosition.value.scaleX);
-            animationData.initialPosition.scaleY = Number(editingPosition.value.scaleY);
-            animationData.initialPosition.opacity = Number(editingPosition.value.opacity);
+            animationData.initialPosition.x = newPosition.x;
+            animationData.initialPosition.y = newPosition.y;
+            animationData.initialPosition.scaleX = newPosition.scaleX;
+            animationData.initialPosition.scaleY = newPosition.scaleY;
+            animationData.initialPosition.opacity = newPosition.opacity;
 
             const newAnimationScript = AnimationParser.parseJsonToYaml(animationData);
             
@@ -519,11 +548,56 @@ const updateInitialPosition = () => {
                 animationScript: newAnimationScript
             };
             
+            // 提交到接口
+            await submitToApi(updatedItem);
+            
             // 触发更新事件
             emit('updateItem', updatedItem);
+            
+            // 重新同步编辑状态，确保显示最新数据
+            await nextTick();
+            const latestPosition = getInitialPosition();
+            editingPosition.value = { ...latestPosition };
+            
+            // 显示保存成功提示
+            toast.success('属性已保存到服务器');
         }
     } catch (error) {
-        console.error('更新初始位置失败:', error);
+        console.error('保存位置变化失败:', error);
+        toast.error('保存失败，请重试');
+    }
+};
+
+// 提交到API接口
+const submitToApi = async (updatedItem: StoryboardItemType) => {
+    try {
+        const response = await sceneContentApi.update(Number(updatedItem.id), {
+            element_name: updatedItem.elementName,
+            animation_script: updatedItem.animationScript,
+            layer_order: updatedItem.layerOrder
+        });
+
+        if (response.success && response.code === 200) {
+            console.log('分镜内容更新成功:', response.message);
+            
+            // 更新本地数据状态
+            const index = storyboardItems.value.findIndex(item => item.id === updatedItem.id);
+            if (index !== -1) {
+                storyboardItems.value[index] = {
+                    ...storyboardItems.value[index],
+                    ...updatedItem
+                };
+                console.log('本地数据已同步更新');
+            }
+            
+            return response;
+        } else {
+            throw new Error(response.message || '保存失败');
+        }
+        
+    } catch (error) {
+        console.error('API保存失败:', error);
+        throw error; // 重新抛出错误，让上层处理
     }
 };
 
@@ -534,13 +608,9 @@ const playAllStoryboards = () => {
         return;
     }
 
-    const selectedItem = storyboardItems.value.find(item => item.selected);
-    if (selectedItem) {
-        emit('playItem', selectedItem);
-    } else {
-        // 如果没有选中项目，则播放第一个
-        emit('playItem', storyboardItems.value[0]);
-    }
+    console.log('播放本分镜 - 所有分镜内容:', storyboardItems.value);
+    // 触发播放整个分镜序列的事件
+    emit('playAllStoryboards', storyboardItems.value);
 };
 
 </script>
@@ -631,13 +701,13 @@ const playAllStoryboards = () => {
                                 <span class="w-3">X:</span>
                                 <input v-model="editingPosition.x" type="number" 
                                     class="w-full px-1 py-0.5 text-xs bg-transparent border border-input rounded focus:outline-none focus:ring-1 focus:ring-ring"
-                                    @change="updateInitialPosition" />
+                                    @blur="savePositionChanges" @keydown.enter="savePositionChanges" />
                             </div>
                             <div class="flex items-center gap-1">
                                 <span class="w-3">Y:</span>
                                 <input v-model="editingPosition.y" type="number" 
                                     class="w-full px-1 py-0.5 text-xs bg-transparent border border-input rounded focus:outline-none focus:ring-1 focus:ring-ring"
-                                    @change="updateInitialPosition" />
+                                    @blur="savePositionChanges" @keydown.enter="savePositionChanges" />
                             </div>
                         </div>
                     </div>
@@ -648,13 +718,13 @@ const playAllStoryboards = () => {
                                 <span class="w-3">X:</span>
                                 <input v-model="editingPosition.scaleX" type="number" step="0.1" min="0.1" max="5"
                                     class="w-full px-1 py-0.5 text-xs bg-transparent border border-input rounded focus:outline-none focus:ring-1 focus:ring-ring"
-                                    @change="updateInitialPosition" />
+                                    @blur="savePositionChanges" @keydown.enter="savePositionChanges" />
                             </div>
                             <div class="flex items-center gap-1">
                                 <span class="w-3">Y:</span>
                                 <input v-model="editingPosition.scaleY" type="number" step="0.1" min="0.1" max="5"
                                     class="w-full px-1 py-0.5 text-xs bg-transparent border border-input rounded focus:outline-none focus:ring-1 focus:ring-ring"
-                                    @change="updateInitialPosition" />
+                                    @blur="savePositionChanges" @keydown.enter="savePositionChanges" />
                             </div>
                         </div>
                     </div>
@@ -663,7 +733,7 @@ const playAllStoryboards = () => {
                         <div class="flex items-center gap-1">
                             <input v-model="editingPosition.opacity" type="number" step="0.1" min="0" max="1"
                                 class="w-full px-1 py-0.5 text-xs bg-transparent border border-input rounded focus:outline-none focus:ring-1 focus:ring-ring"
-                                @change="updateInitialPosition" />
+                                @blur="savePositionChanges" @keydown.enter="savePositionChanges" />
                         </div>
                     </div>
                 </div>
