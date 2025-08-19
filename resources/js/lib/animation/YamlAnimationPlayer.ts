@@ -58,21 +58,28 @@ interface ParsedAnimationData {
 export class YamlAnimationPlayer extends BasePlayer {
     private animationObjects: Map<string, FabricObject> = new Map();
     private parsedAnimationData: ParsedAnimationData | null = null;
-    private yamlScript: string;
+    private yamlScript: string = '';
     private playbackSpeed: number = 1.0;
 
-    constructor(canvasManager: CanvasManager, yamlScript: string) {
+    constructor(canvasManager: CanvasManager) {
         super(canvasManager);
+        // 构造函数不再需要yamlScript参数，初始化时不执行任何操作
+    }
+
+    /**
+     * 设置YAML脚本
+     */
+    public setYamlScript(yamlScript: string): void {
         this.yamlScript = yamlScript;
-        // 异步初始化动画数据
+        // 设置脚本后，异步初始化动画数据
         this.initializeAnimation().catch(error => {
-            console.error('构造函数中初始化失败:', error);
+            console.error('设置YAML脚本后初始化失败:', error);
         });
     }
 
     /**
- * 初始化动画数据
- */
+     * 初始化动画数据
+     */
     private async initializeAnimation(): Promise<void> {
         try {
             // 解析YAML脚本
@@ -546,11 +553,10 @@ export class YamlAnimationPlayer extends BasePlayer {
         this.updateCurrentTime();
         const progress = this.getCurrentProgress();
 
-        console.log('🔄 动画帧更新:', {
-            currentTime: this.currentTime,
-            totalDuration: this.getPlaybackState().totalDuration,
-            progress: progress
-        });
+        // 只在关键节点输出日志
+        if (progress % 0.1 < 0.01) { // 每10%输出一次
+            console.log('🔄 动画进度:', Math.round(progress * 100) + '%');
+        }
 
         // 更新所有动画对象
         this.updateAnimations(animationData, progress);
@@ -570,8 +576,8 @@ export class YamlAnimationPlayer extends BasePlayer {
     }
 
     /**
- * 更新动画
- */
+     * 更新动画
+     */
     private updateAnimations(animationData: ParsedAnimationData, progress: number): void {
         const targetObject = this.animationObjects.get(animationData.target);
         if (!targetObject) {
@@ -582,12 +588,6 @@ export class YamlAnimationPlayer extends BasePlayer {
         // 计算当前时间点
         const currentTime = progress * this.getPlaybackState().totalDuration;
         let accumulatedTime = 0;
-
-        console.log('🎭 更新动画:', {
-            currentTime: Math.round(currentTime),
-            totalDuration: this.getPlaybackState().totalDuration,
-            animationsCount: animationData.animations.length
-        });
 
         // 顺序处理每个动画
         for (let i = 0; i < animationData.animations.length; i++) {
@@ -604,13 +604,10 @@ export class YamlAnimationPlayer extends BasePlayer {
                 // 计算这个动画的相对进度 (0-1)
                 const animationProgress = (currentTime - animationStartTime) / duration;
 
-                console.log(`🎬 播放动画 ${i + 1}:`, {
-                    name: animation.id || `动画${i + 1}`,
-                    progress: Math.round(animationProgress * 100) + '%',
-                    startTime: animationStartTime,
-                    endTime: animationEndTime,
-                    currentTime: Math.round(currentTime)
-                });
+                // 只在动画切换时输出日志
+                if (animationProgress < 0.1) {
+                    console.log(`🎬 播放动画: ${animation.id || `动画${i + 1}`}`);
+                }
 
                 // 处理关键帧动画
                 if (animation.keyframes && animation.keyframes.length > 0) {

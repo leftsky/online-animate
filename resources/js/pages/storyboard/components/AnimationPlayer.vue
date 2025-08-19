@@ -4,11 +4,21 @@
     <Transition name="slide-up" appear>
       <div v-if="currentAnimation" class="animation-controls">
         <div class="control-group">
-          <button @click="playAnimation" :disabled="isPlaying" class="control-btn play-btn" title="播放动画">
+          <button
+            @click="playAnimation"
+            :disabled="isPlaying"
+            class="control-btn play-btn"
+            title="播放动画"
+          >
             <Play class="w-4 h-4" />
             <span class="btn-text">播放</span>
           </button>
-          <button @click="pauseAnimation" :disabled="!isPlaying" class="control-btn pause-btn" title="暂停动画">
+          <button
+            @click="pauseAnimation"
+            :disabled="!isPlaying"
+            class="control-btn pause-btn"
+            title="暂停动画"
+          >
             <Pause class="w-4 h-4" />
             <span class="btn-text">暂停</span>
           </button>
@@ -18,7 +28,11 @@
             <Square class="w-4 h-4" />
             <span class="btn-text">停止</span>
           </button>
-          <button @click="replayAnimation" class="control-btn replay-btn" title="重播动画">
+          <button
+            @click="replayAnimation"
+            class="control-btn replay-btn"
+            title="重播动画"
+          >
             <RotateCcw class="w-4 h-4" />
             <span class="btn-text">重播</span>
           </button>
@@ -56,180 +70,165 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted, watch } from 'vue'
-import { Play, Pause, Square, RotateCcw } from 'lucide-vue-next'
-import type { StoryboardItem } from './types'
-import { YamlAnimationPlayer } from '@/lib/animation'
+import { ref, onMounted, onUnmounted } from "vue";
+import { Play, Pause, Square, RotateCcw } from "lucide-vue-next";
+import type { StoryboardItem } from "./types";
+import { YamlAnimationPlayer } from "@/lib/animation";
 
 // Props
 interface Props {
-  canvas?: HTMLCanvasElement | string | any | null
+  canvas?: HTMLCanvasElement | string | any | null;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  canvas: null
-})
+  canvas: null,
+});
 
 // Emits
 const emit = defineEmits<{
-  animationStart: []
-  animationEnd: []
-  animationProgress: [progress: number]
-}>()
+  animationStart: [];
+  animationEnd: [];
+  animationProgress: [progress: number];
+}>();
 
 // 响应式数据
-const isPlaying = ref(false)
-const progress = ref(0)
-const currentAnimation = ref<StoryboardItem | null>(null)
-const yamlPlayer = ref<YamlAnimationPlayer | null>(null)
-const progressInterval = ref<number | null>(null)
+const isPlaying = ref(false);
+const progress = ref(0);
+const currentAnimation = ref<StoryboardItem | null>(null);
+const yamlPlayer = ref<YamlAnimationPlayer | null>(null);
+const progressInterval = ref<number | null>(null);
 
 // 播放动画
 const playAnimation = async () => {
   if (!currentAnimation.value) {
-    console.warn('无法播放动画：缺少动画数据')
-    return
+    console.warn("无法播放动画：缺少动画数据");
+    return;
   }
 
   // 如果没有YamlAnimationPlayer实例，先创建一个
-  if (!yamlPlayer.value && props.canvas && currentAnimation.value.animationScript) {
+  if (!yamlPlayer.value && props.canvas) {
     try {
-      yamlPlayer.value = new YamlAnimationPlayer(props.canvas as any, currentAnimation.value.animationScript);
-      console.log('创建动画播放器实例');
+      yamlPlayer.value = new YamlAnimationPlayer(props.canvas as any);
+      console.log("创建动画播放器实例");
     } catch (error) {
-      console.error('创建动画播放器失败:', error);
+      console.error("创建动画播放器失败:", error);
       return;
     }
   }
 
   if (!yamlPlayer.value) {
-    console.warn('无法播放动画：YamlAnimationPlayer实例未创建')
+    console.warn("无法播放动画：YamlAnimationPlayer实例未创建");
     return;
   }
 
   try {
-    isPlaying.value = true
-    emit('animationStart')
+    isPlaying.value = true;
+    emit("animationStart");
 
     // 直接播放动画
-    yamlPlayer.value.play()
+    yamlPlayer.value.play();
 
     // 开始进度监控
-    startProgressMonitoring()
-
+    startProgressMonitoring();
   } catch (error) {
-    console.error('动画播放失败:', error)
-    stopAnimation()
+    console.error("动画播放失败:", error);
+    stopAnimation();
   }
-}
+};
 
 // 暂停动画
 const pauseAnimation = () => {
   if (yamlPlayer.value && isPlaying.value) {
-    yamlPlayer.value.pause()
-    isPlaying.value = false
-    clearProgressInterval()
+    yamlPlayer.value.pause();
+    isPlaying.value = false;
+    clearProgressInterval();
   }
-}
+};
 
 // 停止动画
 const stopAnimation = () => {
   if (yamlPlayer.value) {
-    yamlPlayer.value.stop()
+    yamlPlayer.value.stop();
   }
 
-  isPlaying.value = false
-  progress.value = 0
-  clearProgressInterval()
-  emit('animationEnd')
-}
+  isPlaying.value = false;
+  progress.value = 0;
+  clearProgressInterval();
+  emit("animationEnd");
+};
 
 // 重播动画
 const replayAnimation = () => {
-  stopAnimation()
+  stopAnimation();
   setTimeout(() => {
-    playAnimation()
-  }, 100)
-}
+    playAnimation();
+  }, 100);
+};
 
 // 开始进度监控
 const startProgressMonitoring = () => {
-  clearProgressInterval()
+  clearProgressInterval();
   progressInterval.value = window.setInterval(() => {
     if (yamlPlayer.value) {
-      const progressValue = yamlPlayer.value.getProgress() * 100
-      progress.value = progressValue
-      emit('animationProgress', progressValue)
+      const progressValue = yamlPlayer.value.getProgress() * 100;
+      progress.value = progressValue;
+      emit("animationProgress", progressValue);
 
       // 检查动画是否完成
       if (!yamlPlayer.value.getPlayingStatus() && progressValue >= 100) {
-        stopAnimation()
+        stopAnimation();
       }
     } else {
       // 如果没有播放器实例，停止监控
-      clearProgressInterval()
+      clearProgressInterval();
     }
-  }, 100)
-}
+  }, 100);
+};
 
 // 清除进度更新
 const clearProgressInterval = () => {
   if (progressInterval.value) {
-    clearInterval(progressInterval.value)
-    progressInterval.value = null
+    clearInterval(progressInterval.value);
+    progressInterval.value = null;
   }
-}
+};
 
 // 设置当前动画
 const setAnimation = async (item: StoryboardItem) => {
-  currentAnimation.value = item
-  stopAnimation() // 停止当前播放的动画
+  currentAnimation.value = item;
+  stopAnimation(); // 停止当前播放的动画
 
-  // 重新创建YamlAnimationPlayer实例，使用新的动画脚本
-  if (props.canvas && item.animationScript) {
+  // 使用setYamlScript方法设置新的动画脚本
+  if (yamlPlayer.value && item.animationScript) {
     try {
-      if (yamlPlayer.value) {
-        yamlPlayer.value.clear();
-        yamlPlayer.value = null;
-      }
-      
-      yamlPlayer.value = new YamlAnimationPlayer(props.canvas as any, item.animationScript);
-      
-      // 等待动画初始化完成
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      console.log('动画数据已更新');
+      yamlPlayer.value.setYamlScript(item.animationScript);
+      console.log("动画数据已更新");
     } catch (error) {
-      console.error('更新动画数据失败:', error);
+      console.error("更新动画数据失败:", error);
     }
   }
-}
+};
 
 // 暴露方法给父组件（只保留必要的）
 defineExpose({
-  setAnimation
-})
-
-// 监听canvas变化，但不立即创建YamlAnimationPlayer实例
-watch(() => props.canvas, (newCanvas, oldCanvas) => {
-  // 如果画布发生变化，清理旧的实例
-  if (newCanvas !== oldCanvas) {
-    if (yamlPlayer.value) {
-      yamlPlayer.value.clear();
-      yamlPlayer.value = null;
-    }
-  }
-}, { immediate: true, deep: true })
+  setAnimation,
+  playAnimation,
+});
 
 // 生命周期
+onMounted(() => {
+  // 页面加载时不需要立即创建实例，等播放时再创建
+  console.log("动画播放器组件已挂载");
+});
+
 onUnmounted(() => {
-  stopAnimation()
-  clearProgressInterval()
+  stopAnimation();
+  clearProgressInterval();
   if (yamlPlayer.value) {
-    yamlPlayer.value.clear()
-    yamlPlayer.value = null
+    yamlPlayer.value.clear();
+    yamlPlayer.value = null;
   }
-})
+});
 </script>
 
 <style scoped>
@@ -318,7 +317,7 @@ onUnmounted(() => {
 }
 
 .animation-info .progress-bar .progress-fill::after {
-  content: '';
+  content: "";
   @apply absolute top-0 right-0 w-2 h-full bg-white opacity-30 animate-pulse;
 }
 

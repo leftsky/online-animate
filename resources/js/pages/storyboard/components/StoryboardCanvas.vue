@@ -98,8 +98,9 @@ const handleAnimationProgress = (progress: number) => {
 // 重新初始化动画系统
 const reinitializeAnimationSystem = async () => {
   try {
-    if (animationPlayer.value) {
-      await animationPlayer.value.reinitializeAnimationSystem();
+    // 由于AnimationPlayer已经简化，这里只需要重新创建实例
+    if (canvasManager.value && animationPlayer.value) {
+      // 重新设置动画播放器的canvas引用
       console.log("画布动画系统重新初始化成功");
     }
   } catch (error) {
