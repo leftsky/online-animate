@@ -72,7 +72,7 @@ export class YamlAnimationPlayer extends BasePlayer {
     public async setYamlScript(yamlScript: string): Promise<void> {
         this.yamlScript = yamlScript;
         console.log('🎬 设置YAML脚本', yamlScript);
-        
+
         // 等待初始化完成
         await this.initializeAnimation();
         console.log('🎬 动画初始化完成');
@@ -386,14 +386,22 @@ export class YamlAnimationPlayer extends BasePlayer {
             throw new Error('Invalid animation data: data must be a valid object');
         }
 
+        console.log('🔍 转换动画数据 - 原始数据:', {
+            initialPosition: animationData.initialPosition,
+            x: animationData.initialPosition?.x,
+            y: animationData.initialPosition?.y
+        });
+
         const initial: InitialPosition = {
-            x: this.validateNumber(animationData.initialPosition?.x, 100, 'initialPosition.x'),
-            y: this.validateNumber(animationData.initialPosition?.y, 100, 'initialPosition.y'),
+            x: this.validateNumber(animationData.initialPosition?.x, 0, 'initialPosition.x'),
+            y: this.validateNumber(animationData.initialPosition?.y, 0, 'initialPosition.y'),
             scaleX: this.validateNumber(animationData.initialPosition?.scaleX, 1, 'initialPosition.scaleX'),
             scaleY: this.validateNumber(animationData.initialPosition?.scaleY, 1, 'initialPosition.scaleY'),
             opacity: this.validateNumber(animationData.initialPosition?.opacity, 1, 'initialPosition.opacity'),
             rotation: this.validateNumber(animationData.initialPosition?.rotation, 0, 'initialPosition.rotation')
         };
+
+        console.log('🔍 转换后的初始位置:', initial);
 
         const animations: AnimationEffect[] = (animationData.animationSequences || []).map((anim, index) => {
             if (!anim || typeof anim !== 'object') {
@@ -412,8 +420,8 @@ export class YamlAnimationPlayer extends BasePlayer {
                     return {
                         time: kf.startTime,
                         properties: {
-                            x: kf.x,
-                            y: kf.y,
+                            x: kf.x !== undefined ? kf.x + initial.x : undefined,
+                            y: kf.y !== undefined ? kf.y + initial.y : undefined,
                             scaleX: kf.scaleX,
                             scaleY: kf.scaleY,
                             opacity: kf.opacity,
@@ -437,11 +445,16 @@ export class YamlAnimationPlayer extends BasePlayer {
      * 验证数值参数
      */
     private validateNumber(value: any, defaultValue: number, fieldName: string): number {
+        console.log(`🔍 验证数值 ${fieldName}:`, { value, type: typeof value, defaultValue });
+
         if (typeof value === 'number' && !isNaN(value) && isFinite(value)) {
+            console.log(`✅ ${fieldName} 验证通过:`, value);
             return value;
         }
         if (value !== undefined && value !== null) {
-            console.warn(`Invalid ${fieldName}: ${value}, using default value ${defaultValue}`);
+            console.warn(`⚠️ ${fieldName} 验证失败: ${value}, 使用默认值 ${defaultValue}`);
+        } else {
+            console.log(`ℹ️ ${fieldName} 未设置, 使用默认值 ${defaultValue}`);
         }
         return defaultValue;
     }
@@ -511,6 +524,15 @@ export class YamlAnimationPlayer extends BasePlayer {
             }
 
             // 设置初始属性
+            console.log('🎯 设置对象初始属性:', {
+                left: initial.x,
+                top: initial.y,
+                opacity: initial.opacity,
+                scaleX: initial.scaleX,
+                scaleY: initial.scaleY,
+                angle: initial.rotation
+            });
+
             obj.set({
                 left: initial.x,
                 top: initial.y,
@@ -520,6 +542,11 @@ export class YamlAnimationPlayer extends BasePlayer {
                 angle: initial.rotation,
                 selectable: false,
                 evented: false
+            });
+
+            console.log('✅ 对象初始属性设置完成，当前位置:', {
+                left: obj.left,
+                top: obj.top
             });
 
             return obj;
