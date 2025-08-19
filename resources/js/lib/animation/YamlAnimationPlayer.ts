@@ -350,8 +350,6 @@ export class YamlAnimationPlayer extends BasePlayer {
             throw new Error('Invalid animation data: data must be a valid object');
         }
 
-
-
         const initial: InitialPosition = {
             x: this.parsePosition(animationData.initialPosition?.x, 0, 'initialPosition.x'),
             y: this.parsePosition(animationData.initialPosition?.y, 0, 'initialPosition.y'),
