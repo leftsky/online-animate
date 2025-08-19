@@ -117,7 +117,7 @@ export class AnimationParser {
      * 核心方法：YAML -> JSON
      */
     static parseYamlToJson(yamlScript: string): AnimationData {
-        console.log('AnimationParser.parseYamlToJson - 输入YAML:', yamlScript);
+        // console.log('AnimationParser.parseYamlToJson - 输入YAML:', yamlScript);
 
         if (!yamlScript || !yamlScript.trim()) {
             console.log('AnimationParser.parseYamlToJson - 输入为空，返回null');
@@ -130,7 +130,7 @@ export class AnimationParser {
 
             // 使用js-yaml解析YAML
             const parsed = yaml.load(preprocessedText) as any;
-            console.log('AnimationParser.parseYamlToJson - YAML解析结果:', parsed);
+            // console.log('AnimationParser.parseYamlToJson - YAML解析结果:', parsed);
 
             if (!parsed || typeof parsed !== 'object') {
                 console.log('AnimationParser.parseYamlToJson - 解析结果无效，返回null');
@@ -151,7 +151,7 @@ export class AnimationParser {
                 }));
             }
 
-            console.log('AnimationParser.parseYamlToJson - 最终输出结果:', parsed);
+            // console.log('AnimationParser.parseYamlToJson - 最终输出结果:', parsed);
             return parsed;
         } catch (error) {
             console.error('YAML解析失败:', error);

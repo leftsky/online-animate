@@ -56,15 +56,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted, readonly, watch } from 'vue'
+import { ref, onUnmounted, watch } from 'vue'
 import { Play, Pause, Square, RotateCcw } from 'lucide-vue-next'
 import type { StoryboardItem } from './types'
-import { AnimationParser, type AnimationData } from '@/lib/AnimationParser'
-import { CanvasCore } from '@/lib/CanvasCore'
+import { YamlAnimationPlayer } from '@/lib/animation'
 
 // Props
 interface Props {
-  canvas?: any | null
+  canvas?: HTMLCanvasElement | string | any | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -82,26 +81,38 @@ const emit = defineEmits<{
 const isPlaying = ref(false)
 const progress = ref(0)
 const currentAnimation = ref<StoryboardItem | null>(null)
-const canvasCore = ref<CanvasCore | null>(null)
+const yamlPlayer = ref<YamlAnimationPlayer | null>(null)
 const progressInterval = ref<number | null>(null)
 
 // 播放动画
 const playAnimation = async () => {
-  if (!currentAnimation.value || !canvasCore.value) {
-    console.warn('无法播放动画：缺少动画数据或CanvasCore实例')
+  if (!currentAnimation.value) {
+    console.warn('无法播放动画：缺少动画数据')
     return
+  }
+
+  // 如果没有YamlAnimationPlayer实例，先创建一个
+  if (!yamlPlayer.value && props.canvas && currentAnimation.value.animationScript) {
+    try {
+      yamlPlayer.value = new YamlAnimationPlayer(props.canvas as any, currentAnimation.value.animationScript);
+      console.log('创建动画播放器实例');
+    } catch (error) {
+      console.error('创建动画播放器失败:', error);
+      return;
+    }
+  }
+
+  if (!yamlPlayer.value) {
+    console.warn('无法播放动画：YamlAnimationPlayer实例未创建')
+    return;
   }
 
   try {
     isPlaying.value = true
     emit('animationStart')
 
-    // 解析动画脚本
-    const animationData = await parseAnimationScript(currentAnimation.value.animationScript || '')
-
-    // 加载并播放动画
-    await canvasCore.value.loadAnimation(animationData)
-    canvasCore.value.play(animationData)
+    // 直接播放动画
+    yamlPlayer.value.play()
 
     // 开始进度监控
     startProgressMonitoring()
@@ -114,8 +125,8 @@ const playAnimation = async () => {
 
 // 暂停动画
 const pauseAnimation = () => {
-  if (canvasCore.value && isPlaying.value) {
-    canvasCore.value.pause()
+  if (yamlPlayer.value && isPlaying.value) {
+    yamlPlayer.value.pause()
     isPlaying.value = false
     clearProgressInterval()
   }
@@ -123,8 +134,8 @@ const pauseAnimation = () => {
 
 // 停止动画
 const stopAnimation = () => {
-  if (canvasCore.value) {
-    canvasCore.value.stop()
+  if (yamlPlayer.value) {
+    yamlPlayer.value.stop()
   }
 
   isPlaying.value = false
@@ -145,43 +156,20 @@ const replayAnimation = () => {
 const startProgressMonitoring = () => {
   clearProgressInterval()
   progressInterval.value = window.setInterval(() => {
-    if (canvasCore.value) {
-      const state = canvasCore.value.getPlaybackState()
-      progress.value = state.progress * 100
-      emit('animationProgress', progress.value)
+    if (yamlPlayer.value) {
+      const progressValue = yamlPlayer.value.getProgress() * 100
+      progress.value = progressValue
+      emit('animationProgress', progressValue)
 
       // 检查动画是否完成
-      if (!state.isPlaying && progress.value >= 100) {
+      if (!yamlPlayer.value.getPlayingStatus() && progressValue >= 100) {
         stopAnimation()
       }
+    } else {
+      // 如果没有播放器实例，停止监控
+      clearProgressInterval()
     }
   }, 100)
-}
-
-// 解析动画脚本
-const parseAnimationScript = async (script: string): Promise<AnimationData> => {
-  const getDefaultAnimation = (): AnimationData => ({
-    name: '默认动画',
-    initialPosition: { x: 0, y: 0, opacity: 1, scaleX: 1, scaleY: 1, rotation: 0 },
-    animationSequences: [{
-      id: 'default',
-      name: '淡入',
-      duration: 1000,
-      easing: 'ease',
-      keyframes: [
-        { startTime: 0, duration: 1000, opacity: 0 },
-        { startTime: 1000, duration: 0, opacity: 1 }
-      ]
-    }]
-  })
-
-  try {
-    const parsedData = AnimationParser.parseYamlToJson(script)
-    return (parsedData && Object.keys(parsedData).length > 0) ? parsedData : getDefaultAnimation()
-  } catch (error) {
-    console.error('解析动画脚本失败:', error)
-    return getDefaultAnimation()
-  }
 }
 
 // 清除进度更新
@@ -197,84 +185,49 @@ const setAnimation = async (item: StoryboardItem) => {
   currentAnimation.value = item
   stopAnimation() // 停止当前播放的动画
 
-  // 如果有画布和图片路径，加载图片到画布
-  if (props.canvas && item.imagePath) {
-    await loadImageToCanvas(item)
+  // 重新创建YamlAnimationPlayer实例，使用新的动画脚本
+  if (props.canvas && item.animationScript) {
+    try {
+      if (yamlPlayer.value) {
+        yamlPlayer.value.clear();
+        yamlPlayer.value = null;
+      }
+      
+      yamlPlayer.value = new YamlAnimationPlayer(props.canvas as any, item.animationScript);
+      
+      // 等待动画初始化完成
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      console.log('动画数据已更新');
+    } catch (error) {
+      console.error('更新动画数据失败:', error);
+    }
   }
 }
 
-// 加载图片到画布
-const loadImageToCanvas = async (item: StoryboardItem) => {
-  if (!props.canvas || !item.imagePath) return
-
-  try {
-    // 清除画布上的非网格线对象
-    const objects = props.canvas.getObjects().filter((obj: any) => !obj.isGridLine)
-    objects.forEach((obj: any) => props.canvas.remove(obj))
-
-    // 创建图片对象
-    const { Image } = await import('fabric')
-
-    return new Promise((resolve) => {
-      Image.fromURL(item.imagePath, {
-        crossOrigin: 'anonymous'
-      }).then((img: any) => {
-        if (!props.canvas) return
-
-        // 设置图片属性
-        img.set({
-          left: props.canvas.width / 2 - 100,
-          top: props.canvas.height / 2 - 100,
-          scaleX: 0.5,
-          scaleY: 0.5,
-          originX: 'center',
-          originY: 'center'
-        })
-
-        // 添加到画布
-        props.canvas.add(img)
-        props.canvas.setActiveObject(img)
-        props.canvas.renderAll()
-
-        resolve(img)
-      })
-    })
-  } catch (error) {
-    console.error('加载图片到画布失败:', error)
-  }
-}
-
-// 清除动画
-const clearAnimation = () => {
-  stopAnimation()
-  currentAnimation.value = null
-}
-
-// 暴露方法给父组件
+// 暴露方法给父组件（只保留必要的）
 defineExpose({
-  setAnimation,
-  clearAnimation,
-  playAnimation,
-  pauseAnimation,
-  stopAnimation,
-  replayAnimation,
-  isPlaying: readonly(isPlaying),
-  currentAnimation: readonly(currentAnimation)
+  setAnimation
 })
 
-// 监听canvas变化，初始化CanvasCore实例
-watch(() => props.canvas, (newCanvas) => {
-  if (newCanvas && !canvasCore.value) {
-    canvasCore.value = new CanvasCore(newCanvas)
+// 监听canvas变化，但不立即创建YamlAnimationPlayer实例
+watch(() => props.canvas, (newCanvas, oldCanvas) => {
+  // 如果画布发生变化，清理旧的实例
+  if (newCanvas !== oldCanvas) {
+    if (yamlPlayer.value) {
+      yamlPlayer.value.clear();
+      yamlPlayer.value = null;
+    }
   }
-}, { immediate: true })
+}, { immediate: true, deep: true })
 
 // 生命周期
 onUnmounted(() => {
   stopAnimation()
   clearProgressInterval()
-  if (canvasCore.value) {
-    canvasCore.value = null
+  if (yamlPlayer.value) {
+    yamlPlayer.value.clear()
+    yamlPlayer.value = null
   }
 })
 </script>
@@ -305,13 +258,10 @@ onUnmounted(() => {
   @apply opacity-0 transform translate-y-2;
 }
 
-
-
 /* 控制按钮 */
 .animation-controls {
   @apply space-y-2;
   min-height: 88px;
-  /* 固定控制按钮区域高度 */
 }
 
 .animation-controls .control-group {
@@ -350,7 +300,6 @@ onUnmounted(() => {
 .animation-info {
   @apply bg-muted/30 border border-border rounded-lg p-3;
   min-height: 80px;
-  /* 固定最小高度，避免布局变化 */
   display: flex;
   flex-direction: column;
   justify-content: center;
