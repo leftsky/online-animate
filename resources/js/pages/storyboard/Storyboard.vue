@@ -7,6 +7,8 @@ import StoryboardCanvas from './components/StoryboardCanvas.vue'
 import Timeline from './components/Timeline.vue'
 import StoryboardList from './components/StoryboardList.vue'
 import ToastProvider from '@/components/ui/toast/ToastProvider.vue'
+import { YamlAnimationPlayer } from '@/lib/animation/YamlAnimationPlayer'
+import { AnimationParser } from '@/lib/AnimationParser'
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -126,11 +128,11 @@ const handlePlayAllStoryboards = async (items: any[]) => {
         for (const item of reversedItems) {
             try {
                 // 创建新的动画播放器实例
-                const { YamlAnimationPlayer } = await import('@/lib/animation/YamlAnimationPlayer');
                 const player = new YamlAnimationPlayer(coreHandles.value.canvasManager);
 
-                // 设置动画脚本
-                await player.setYamlScript(item.animationScript);
+                // 解析YAML字符串为动画数据
+                const animationData = AnimationParser.parseYamlToJson(item.animationScript);
+                await player.setAnimationData(animationData);
 
                 // 开始播放
                 player.play();

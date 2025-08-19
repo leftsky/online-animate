@@ -1,5 +1,5 @@
 import { FabricObject, Rect, FabricImage } from 'fabric';
-import { AnimationData, AnimationParser } from '../AnimationParser';
+import { AnimationData } from '../AnimationParser';
 import { BasePlayer } from './BasePlayer';
 import { CanvasManager } from './CanvasManager';
 
@@ -62,7 +62,7 @@ interface ParsedAnimationData {
 export class YamlAnimationPlayer extends BasePlayer {
     private animationObjects: Map<string, FabricObject> = new Map();
     private parsedAnimationData: ParsedAnimationData | null = null;
-    private yamlScript: string = '';
+    private animationData: AnimationData | null = null;
     private playbackSpeed: number = 1.0;
 
     constructor(canvasManager: CanvasManager) {
@@ -71,10 +71,10 @@ export class YamlAnimationPlayer extends BasePlayer {
     }
 
     /**
-     * 设置YAML脚本
+     * 设置动画数据
      */
-    public async setYamlScript(yamlScript: string): Promise<void> {
-        this.yamlScript = yamlScript;
+    public async setAnimationData(animationData: AnimationData): Promise<void> {
+        this.animationData = animationData;
 
         // 等待初始化完成
         await this.initializeAnimation();
@@ -85,40 +85,18 @@ export class YamlAnimationPlayer extends BasePlayer {
      */
     private async initializeAnimation(): Promise<void> {
         try {
-            // 解析YAML脚本
-            const animationData = this.parseYamlScript(this.yamlScript);
+            if (!this.animationData) {
+                throw new Error('动画数据未设置');
+            }
 
             // 准备动画对象
-            await this.prepareAnimation(animationData);
+            await this.prepareAnimation(this.animationData);
         } catch (error) {
             console.error('动画初始化失败:', error);
             throw error; // 直接抛出错误，不创建默认动画
         }
     }
 
-    /**
-     * 解析YAML脚本
-     */
-    private parseYamlScript(yamlScript: string): AnimationData {
-        if (!yamlScript || !yamlScript.trim()) {
-            throw new Error('YAML脚本为空');
-        }
-
-        try {
-            // 调用AnimationParser.parseYamlToJson
-            const parsedData = AnimationParser.parseYamlToJson(yamlScript);
-
-            if (!parsedData || Object.keys(parsedData).length === 0) {
-                throw new Error('YAML解析结果为空');
-            }
-
-
-            return parsedData;
-        } catch (error) {
-            console.error('❌ YAML解析失败:', error);
-            throw new Error(`YAML解析失败: ${error}`);
-        }
-    }
 
     /**
      * 准备动画
@@ -130,6 +108,7 @@ export class YamlAnimationPlayer extends BasePlayer {
 
             // 转换数据格式
             this.parsedAnimationData = this.convertAnimationData(animationData);
+            console.log('🔍 转换后的动画数据:', this.parsedAnimationData);
 
             // 创建目标对象
             const targetObject = await this.createTargetObject();
@@ -157,14 +136,14 @@ export class YamlAnimationPlayer extends BasePlayer {
      * 播放动画
      */
     public play(): void {
-        // 检查是否设置了脚本
-        if (!this.yamlScript || !this.yamlScript.trim()) {
-            throw new Error('未设置YAML脚本，请先调用setYamlScript()');
+        // 检查是否设置了动画数据
+        if (!this.animationData) {
+            throw new Error('未设置动画数据，请先调用setAnimationData()');
         }
 
         // 检查是否已初始化
         if (!this.isReady()) {
-            throw new Error('动画数据初始化失败，请检查YAML脚本格式');
+            throw new Error('动画数据初始化失败，请检查动画数据格式');
         }
 
         if (this.isCurrentlyPlaying()) {
@@ -365,6 +344,8 @@ export class YamlAnimationPlayer extends BasePlayer {
      * 转换AnimationData为内部使用的ParsedAnimationData
      */
     private convertAnimationData(animationData: AnimationData): ParsedAnimationData {
+        console.log('🔄 开始转换动画数据:', animationData);
+
         if (!animationData || typeof animationData !== 'object') {
             throw new Error('Invalid animation data: data must be a valid object');
         }
@@ -413,7 +394,7 @@ export class YamlAnimationPlayer extends BasePlayer {
 
         const width = parseInt(this.parseDimension(animationData.width, 100, 'width').toString());
         const height = parseInt(this.parseDimension(animationData.height, 100, 'height').toString());
-        animationData.media += `?imageView2/2/w/${width}/h/${height}`;
+        const media = animationData.media ? `${animationData.media}?imageView2/2/w/${width}/h/${height}` : '';
 
         return {
             target: 'default',
@@ -421,7 +402,7 @@ export class YamlAnimationPlayer extends BasePlayer {
             scaleY: 1,
             width: width,
             height: height,
-            media: animationData.media,
+            media: media,
             zindex: animationData.zindex || 0,
             initial,
             animations

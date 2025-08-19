@@ -8,29 +8,9 @@
         </DialogDescription>
       </DialogHeader>
 
-      <div class="flex h-[70vh] min-h-[600px]">
-        <!-- 左侧Canvas区域 -->
-        <div class="flex-1 p-6 pr-3">
-          <div class="w-full h-full bg-muted rounded-lg overflow-hidden">
-            <canvas ref="canvasElement" class="w-full h-full"></canvas>
-          </div>
-        </div>
-
-        <!-- 右侧详情面板 -->
-        <div class="w-80 p-6 pl-3 overflow-y-auto">
-          <!-- 基本信息 -->
-          <div class="space-y-4 mb-6">
-            <div>
-              <h3 class="text-lg font-semibold mb-2">基本信息</h3>
-              <div class="space-y-2 text-sm">
-                <div><span class="text-muted-foreground">姓名:</span> {{ character?.name }}</div>
-                <div><span class="text-muted-foreground">性别:</span> {{ getGenderText(character?.gender) }}</div>
-                <div v-if="character?.age"><span class="text-muted-foreground">年龄:</span> {{ character.age }}岁</div>
-                <div v-if="character?.description"><span class="text-muted-foreground">描述:</span> {{ character.description }}</div>
-              </div>
-            </div>
-          </div>
-
+      <div class="flex h-[70vh] min-h-[600px] gap-4">
+        <!-- 左侧信息面板 -->
+        <div class="w-80 p-6 overflow-y-auto">
           <!-- 主图预览 -->
           <div class="mb-6">
             <h4 class="text-md font-medium mb-3">主图</h4>
@@ -64,6 +44,19 @@
             />
           </div>
 
+          <!-- 基本信息 -->
+          <div class="space-y-4 mb-6">
+            <div>
+              <h3 class="text-lg font-semibold mb-2">基本信息</h3>
+              <div class="space-y-2 text-sm">
+                <div><span class="text-muted-foreground">姓名:</span> {{ character?.name }}</div>
+                <div><span class="text-muted-foreground">性别:</span> {{ getGenderText(character?.gender) }}</div>
+                <div v-if="character?.age"><span class="text-muted-foreground">年龄:</span> {{ character.age }}岁</div>
+                <div v-if="character?.description"><span class="text-muted-foreground">描述:</span> {{ character.description }}</div>
+              </div>
+            </div>
+          </div>
+
           <!-- 四视图 -->
           <div class="mb-6" v-if="additionalResources?.fourViews">
             <h4 class="text-md font-medium mb-3">四视图</h4>
@@ -92,9 +85,19 @@
               </div>
             </div>
           </div>
+        </div>
 
+        <!-- 中间Canvas区域 -->
+        <div class="flex-1 p-6">
+          <div class="w-full h-full bg-muted rounded-lg overflow-hidden">
+            <canvas ref="canvasElement" class="w-full h-full"></canvas>
+          </div>
+        </div>
+
+        <!-- 右侧身体部位面板 -->
+        <div class="w-80 p-6 overflow-y-auto">
           <!-- 身体部位 -->
-          <div v-if="additionalResources?.bodyParts">
+          <div>
             <h4 class="text-md font-medium mb-3">身体部位</h4>
             <div class="space-y-4">
               <div v-for="(part, partKey) in bodyPartsConfig" :key="partKey">
@@ -108,7 +111,7 @@
                     @click="switchToImage('bodyParts', `${partKey}.${viewKey}`)"
                   >
                     <img 
-                      v-if="additionalResources.bodyParts[partKey]?.[viewKey]" 
+                      v-if="additionalResources?.bodyParts?.[partKey]?.[viewKey]" 
                       :src="additionalResources.bodyParts[partKey][viewKey]" 
                       :alt="`${part.label} ${view.label}`"
                       class="w-full h-full object-cover"
@@ -137,6 +140,8 @@ import { ref, computed, watch, onUnmounted, nextTick } from 'vue';
 import { Image } from 'lucide-vue-next';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CanvasManager } from '@/lib/animation/CanvasManager';
+import { YamlAnimationPlayer } from '@/lib/animation/YamlAnimationPlayer';
+import { type AnimationData } from '@/lib/AnimationParser';
 import { FabricImage } from 'fabric';
 import { mediaApi } from '@/utils/api';
 import { uploadApi } from '@/utils/api';
@@ -162,6 +167,7 @@ const { toast } = useToast();
 // Canvas相关
 const canvasElement = ref<HTMLCanvasElement>();
 let canvasManager: CanvasManager | null = null;
+let yamlPlayer: YamlAnimationPlayer | null = null;
 const selectedImage = ref<string>('main');
 
 // 文件上传相关
@@ -218,12 +224,76 @@ const getGenderText = (gender?: number) => {
   return option ? option.label : '未知';
 };
 
+// 生成默认动画数据
+const generateDefaultAnimationData = (imagePath?: string): AnimationData => {
+  const media = imagePath || props.character?.image_path || '';
+  
+  return {
+    media: media,
+    width: 300,
+    height: 400,
+    zindex: 1,
+    initialPosition: {
+      x: 400,
+      y: 300,
+      scaleX: 1.0,
+      scaleY: 1.0,
+      opacity: 1.0,
+      rotation: 0
+    },
+    animationSequences: [
+      // 轻微浮动动画
+      {
+        id: 'gentle_float',
+        duration: 3000,
+        easing: 'ease-in-out',
+        keyframes: [
+          {
+            startTime: 0,
+            duration: 1500,
+            x: 0,
+            y: 0,
+            scaleX: 1.0,
+            scaleY: 1.0,
+            opacity: 1.0,
+            rotation: 0
+          },
+          {
+            startTime: 1500,
+            duration: 1500,
+            x: 0,
+            y: -10,
+            scaleX: 1.05,
+            scaleY: 1.05,
+            opacity: 1.0,
+            rotation: 0
+          },
+          {
+            startTime: 3000,
+            duration: 0,
+            x: 0,
+            y: 0,
+            scaleX: 1.0,
+            scaleY: 1.0,
+            opacity: 1.0,
+            rotation: 0
+          }
+        ]
+      }
+    ]
+  };
+};
+
 // 初始化Canvas
 const initCanvas = async () => {
   if (!canvasElement.value) return;
   
   try {
-    // 销毁现有的canvas
+    // 销毁现有的canvas和播放器
+    if (yamlPlayer) {
+      yamlPlayer.clear();
+      yamlPlayer = null;
+    }
     if (canvasManager) {
       canvasManager.dispose();
     }
@@ -231,10 +301,47 @@ const initCanvas = async () => {
     // 创建新的canvas管理器
     canvasManager = new CanvasManager(canvasElement.value);
     
-    // 加载主图
-    await loadMainImage();
+    // 尝试使用 YAML 播放器
+    try {
+      await initYamlPlayer();
+    } catch (error) {
+      console.warn('YAML 播放器初始化失败，使用静态图片:', error);
+      // 回退到原有的静态图片显示
+      await loadMainImage();
+    }
   } catch (error) {
     console.error('Canvas初始化失败:', error);
+  }
+};
+
+// 初始化 YAML 播放器
+const initYamlPlayer = async () => {
+  if (!canvasManager) return;
+  
+  try {
+    console.log('🎬 开始初始化 YAML 播放器...');
+    
+    // 创建新的 YAML 播放器
+    yamlPlayer = new YamlAnimationPlayer(canvasManager);
+    
+    // 设置默认动画数据
+    const defaultAnimationData = generateDefaultAnimationData();
+    console.log('📝 生成的动画数据:', defaultAnimationData);
+    
+    await yamlPlayer.setAnimationData(defaultAnimationData);
+    console.log('✅ 动画数据设置成功');
+    
+    // 检查播放器状态
+    console.log('🎯 播放器就绪状态:', yamlPlayer.isReady());
+    console.log('⏱️ 总时长:', yamlPlayer.getDuration());
+    
+    // 开始播放
+    yamlPlayer.play();
+    console.log('▶️ 开始播放动画');
+    
+  } catch (error) {
+    console.error('❌ YAML 播放器初始化失败:', error);
+    throw error;
   }
 };
 
@@ -243,39 +350,61 @@ const loadMainImage = async () => {
   if (!canvasManager || !props.character?.image_path) return;
   
   try {
-    const canvas = canvasManager.getCanvas();
-    canvas.clear();
+    console.log('🖼️ 开始加载主图:', props.character.image_path);
     
-    const img = await FabricImage.fromURL(props.character.image_path, {
-      crossOrigin: 'anonymous'
-    });
+    // 尝试使用 YAML 播放器加载主图
+    if (yamlPlayer) {
+      console.log('🎬 使用 YAML 播放器加载主图');
+      const mainImageAnimationData = generateDefaultAnimationData(props.character.image_path);
+      await yamlPlayer.setAnimationData(mainImageAnimationData);
+      yamlPlayer.play();
+    } else {
+      console.log('📷 回退到静态图片显示');
+      // 回退到静态图片显示
+      const canvas = canvasManager.getCanvas();
+      canvas.clear();
+      
+      const img = await FabricImage.fromURL(props.character.image_path, {
+        crossOrigin: 'anonymous'
+      });
+      
+      // 计算缩放比例以适应画布
+      const canvasWidth = canvas.getWidth();
+      const canvasHeight = canvas.getHeight();
+      const imgWidth = img.width || 1;
+      const imgHeight = img.height || 1;
+      
+      console.log('📐 Canvas 尺寸:', canvasWidth, 'x', canvasHeight);
+      console.log('🖼️ 图片尺寸:', imgWidth, 'x', imgHeight);
+      
+      const scaleX = canvasWidth / imgWidth;
+      const scaleY = canvasHeight / imgHeight;
+      const scale = Math.min(scaleX, scaleY) * 0.8; // 留一些边距
+      
+      const centerX = canvasWidth / 2;
+      const centerY = canvasHeight / 2;
+      
+      console.log('🎯 设置图片位置:', centerX, centerY, '缩放:', scale);
+      
+      img.set({
+        scaleX: scale,
+        scaleY: scale,
+        left: centerX,
+        top: centerY,
+        originX: 'center',
+        originY: 'center',
+        selectable: false,
+        evented: false
+      });
+      
+      canvas.add(img);
+      canvas.renderAll();
+      console.log('✅ 静态图片加载完成');
+    }
     
-    // 计算缩放比例以适应画布
-    const canvasWidth = canvas.getWidth();
-    const canvasHeight = canvas.getHeight();
-    const imgWidth = img.width || 1;
-    const imgHeight = img.height || 1;
-    
-    const scaleX = canvasWidth / imgWidth;
-    const scaleY = canvasHeight / imgHeight;
-    const scale = Math.min(scaleX, scaleY) * 0.8; // 留一些边距
-    
-    img.set({
-      scaleX: scale,
-      scaleY: scale,
-      left: canvasWidth / 2,
-      top: canvasHeight / 2,
-      originX: 'center',
-      originY: 'center',
-      selectable: false,
-      evented: false
-    });
-    
-    canvas.add(img);
-    canvas.renderAll();
     selectedImage.value = 'main';
   } catch (error) {
-    console.error('加载主图失败:', error);
+    console.error('❌ 加载主图失败:', error);
   }
 };
 
@@ -284,36 +413,44 @@ const loadImage = async (imageUrl: string) => {
   if (!canvasManager || !imageUrl) return;
   
   try {
-    const canvas = canvasManager.getCanvas();
-    canvas.clear();
-    
-    const img = await FabricImage.fromURL(imageUrl, {
-      crossOrigin: 'anonymous'
-    });
-    
-    // 计算缩放比例以适应画布
-    const canvasWidth = canvas.getWidth();
-    const canvasHeight = canvas.getHeight();
-    const imgWidth = img.width || 1;
-    const imgHeight = img.height || 1;
-    
-    const scaleX = canvasWidth / imgWidth;
-    const scaleY = canvasHeight / imgHeight;
-    const scale = Math.min(scaleX, scaleY) * 0.8; // 留一些边距
-    
-    img.set({
-      scaleX: scale,
-      scaleY: scale,
-      left: canvasWidth / 2,
-      top: canvasHeight / 2,
-      originX: 'center',
-      originY: 'center',
-      selectable: false,
-      evented: false
-    });
-    
-    canvas.add(img);
-    canvas.renderAll();
+    // 尝试使用 YAML 播放器加载图片
+    if (yamlPlayer) {
+      const imageAnimationData = generateDefaultAnimationData(imageUrl);
+      await yamlPlayer.setAnimationData(imageAnimationData);
+      yamlPlayer.play();
+    } else {
+      // 回退到静态图片显示
+      const canvas = canvasManager.getCanvas();
+      canvas.clear();
+      
+      const img = await FabricImage.fromURL(imageUrl, {
+        crossOrigin: 'anonymous'
+      });
+      
+      // 计算缩放比例以适应画布
+      const canvasWidth = canvas.getWidth();
+      const canvasHeight = canvas.getHeight();
+      const imgWidth = img.width || 1;
+      const imgHeight = img.height || 1;
+      
+      const scaleX = canvasWidth / imgWidth;
+      const scaleY = canvasHeight / imgHeight;
+      const scale = Math.min(scaleX, scaleY) * 0.8; // 留一些边距
+      
+      img.set({
+        scaleX: scale,
+        scaleY: scale,
+        left: canvasWidth / 2,
+        top: canvasHeight / 2,
+        originX: 'center',
+        originY: 'center',
+        selectable: false,
+        evented: false
+      });
+      
+      canvas.add(img);
+      canvas.renderAll();
+    }
   } catch (error) {
     console.error('加载图片失败:', error);
   }
@@ -391,7 +528,11 @@ const handleMainImageUpload = async (event: Event) => {
 
 // 切换到指定图片
 const switchToImage = (category: string, path: string) => {
-  if (!additionalResources.value) return;
+  if (!additionalResources.value) {
+    // 如果没有数据，只更新选中状态，不加载图片
+    selectedImage.value = `${category}.${path}`;
+    return;
+  }
   
   let imageUrl = '';
   if (category === 'fourViews') {
@@ -403,6 +544,9 @@ const switchToImage = (category: string, path: string) => {
   
   if (imageUrl) {
     loadImage(imageUrl);
+    selectedImage.value = `${category}.${path}`;
+  } else {
+    // 如果没有图片，只更新选中状态
     selectedImage.value = `${category}.${path}`;
   }
 };
@@ -425,6 +569,9 @@ watch(() => props.character, async (newCharacter) => {
 
 // 组件卸载时清理
 onUnmounted(() => {
+  if (yamlPlayer) {
+    yamlPlayer.clear();
+  }
   if (canvasManager) {
     canvasManager.dispose();
   }
