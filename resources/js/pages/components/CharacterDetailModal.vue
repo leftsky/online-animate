@@ -14,34 +14,23 @@
           <!-- 主图预览 -->
           <div class="mb-6">
             <h4 class="text-md font-medium mb-3">主图</h4>
-            <div 
+            <div
               class="relative aspect-square bg-muted rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-              :class="{ 'ring-2 ring-primary': selectedImage === 'main' }"
-              @click="handleMainImageClick"
-            >
-              <img 
-                v-if="character?.image_path" 
-                :src="character.image_path" 
-                :alt="character.name"
-                class="w-full h-full object-cover"
-              />
+              :class="{ 'ring-2 ring-primary': selectedImage === 'main' }" @click="handleMainImageClick">
+              <img v-if="character?.image_path" :src="character.image_path" :alt="character.name"
+                class="w-full h-full object-cover" />
               <div v-else class="w-full h-full flex items-center justify-center">
                 <Image class="w-8 h-8 text-muted-foreground" />
               </div>
               <!-- 上传提示 -->
-              <div class="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+              <div
+                class="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
                 <span v-if="!isUploading" class="text-white text-sm font-medium">点击上传图片</span>
                 <span v-else class="text-white text-sm font-medium">上传中...</span>
               </div>
             </div>
             <!-- 隐藏的文件输入 -->
-            <input
-              ref="mainImageInput"
-              type="file"
-              accept="image/*"
-              class="hidden"
-              @change="handleMainImageUpload"
-            />
+            <input ref="mainImageInput" type="file" accept="image/*" class="hidden" @change="handleMainImageUpload" />
           </div>
 
           <!-- 基本信息 -->
@@ -52,7 +41,8 @@
                 <div><span class="text-muted-foreground">姓名:</span> {{ character?.name }}</div>
                 <div><span class="text-muted-foreground">性别:</span> {{ getGenderText(character?.gender) }}</div>
                 <div v-if="character?.age"><span class="text-muted-foreground">年龄:</span> {{ character.age }}岁</div>
-                <div v-if="character?.description"><span class="text-muted-foreground">描述:</span> {{ character.description }}</div>
+                <div v-if="character?.description"><span class="text-muted-foreground">描述:</span> {{
+                  character.description }}</div>
               </div>
             </div>
           </div>
@@ -61,19 +51,12 @@
           <div class="mb-6" v-if="additionalResources?.fourViews">
             <h4 class="text-md font-medium mb-3">四视图</h4>
             <div class="grid grid-cols-2 gap-2">
-              <div 
-                v-for="(view, key) in fourViewsConfig" 
-                :key="key"
+              <div v-for="(view, key) in fourViewsConfig" :key="key"
                 class="relative aspect-square bg-muted rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
                 :class="{ 'ring-2 ring-primary': selectedImage === `fourViews.${key}` }"
-                @click="switchToImage('fourViews', key)"
-              >
-                <img 
-                  v-if="additionalResources.fourViews[key]" 
-                  :src="additionalResources.fourViews[key]" 
-                  :alt="view.label"
-                  class="w-full h-full object-cover"
-                />
+                @click="switchToImage('fourViews', key)">
+                <img v-if="additionalResources.fourViews[key]" :src="additionalResources.fourViews[key]"
+                  :alt="view.label" class="w-full h-full object-cover" />
                 <div v-else class="w-full h-full flex items-center justify-center">
                   <Image class="w-4 h-4 text-muted-foreground" />
                 </div>
@@ -91,26 +74,8 @@
         <div class="flex-1 p-6">
           <div class="relative w-full h-full bg-muted rounded-lg overflow-hidden">
             <canvas ref="canvasElement" class="w-full h-full"></canvas>
-            
-            <!-- 播放控制按钮 -->
-            <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
-              <button
-                v-if="!isPlaying"
-                @click="startAnimation"
-                class="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-              >
-                <Play class="w-4 h-4" />
-                播放动画
-              </button>
-              <button
-                v-else
-                @click="pauseAnimation"
-                class="flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/90 transition-colors"
-              >
-                <Pause class="w-4 h-4" />
-                暂停动画
-              </button>
-            </div>
+
+
           </div>
         </div>
 
@@ -123,19 +88,13 @@
               <div v-for="(part, partKey) in bodyPartsConfig" :key="partKey">
                 <h5 class="text-sm font-medium mb-2">{{ part.label }}</h5>
                 <div class="grid grid-cols-2 gap-1">
-                  <div 
-                    v-for="(view, viewKey) in fourViewsConfig" 
-                    :key="viewKey"
+                  <div v-for="(view, viewKey) in fourViewsConfig" :key="viewKey"
                     class="relative aspect-square bg-muted rounded overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
                     :class="{ 'ring-2 ring-primary': selectedImage === `bodyParts.${partKey}.${viewKey}` }"
-                    @click="switchToImage('bodyParts', `${partKey}.${viewKey}`)"
-                  >
-                    <img 
-                      v-if="additionalResources?.bodyParts?.[partKey]?.[viewKey]" 
-                      :src="additionalResources.bodyParts[partKey][viewKey]" 
-                      :alt="`${part.label} ${view.label}`"
-                      class="w-full h-full object-cover"
-                    />
+                    @click="switchToImage('bodyParts', `${partKey}.${viewKey}`)">
+                    <img v-if="additionalResources?.bodyParts?.[partKey]?.[viewKey]"
+                      :src="additionalResources.bodyParts[partKey][viewKey]" :alt="`${part.label} ${view.label}`"
+                      class="w-full h-full object-cover" />
                     <div v-else class="w-full h-full flex items-center justify-center">
                       <Image class="w-3 h-3 text-muted-foreground" />
                     </div>
@@ -156,8 +115,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
-import { Image, Play, Pause } from 'lucide-vue-next';
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
+import { Image } from 'lucide-vue-next';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CanvasManager } from '@/lib/animation/CanvasManager';
 import { YamlAnimationPlayer } from '@/lib/animation/YamlAnimationPlayer';
@@ -226,10 +185,10 @@ const additionalResources = computed(() => {
   if (!props.character?.additional_resources) return null;
   try {
     // 如果additional_resources是数组，取第一个元素作为JSON字符串
-    const resourcesData = Array.isArray(props.character.additional_resources) 
-      ? props.character.additional_resources[0] 
+    const resourcesData = Array.isArray(props.character.additional_resources)
+      ? props.character.additional_resources[0]
       : props.character.additional_resources;
-    
+
     if (typeof resourcesData === 'string') {
       return JSON.parse(resourcesData);
     }
@@ -248,23 +207,19 @@ const getGenderText = (gender?: number) => {
 // 生成默认动画数据
 const generateDefaultAnimationData = (imagePath?: string): AnimationData => {
   const media = imagePath || props.character?.image_path || '';
-  
+
   // 获取Canvas的实际尺寸来计算中心位置
   let canvasWidth = 800;
   let canvasHeight = 600;
-  
+
   if (canvasManager) {
     const dimensions = canvasManager.getDimensions();
     canvasWidth = dimensions.width;
     canvasHeight = dimensions.height;
-  } else if (canvasElement.value) {
-    // 如果canvasManager还没初始化，尝试从canvas元素获取
-    canvasWidth = canvasElement.value.width || 800;
-    canvasHeight = canvasElement.value.height || 600;
   }
-  
+
   console.log('🎯 计算动画初始位置，Canvas尺寸:', { canvasWidth, canvasHeight });
-  
+
   return {
     name: "default",
     description: "默认动画",
@@ -328,320 +283,93 @@ const generateDefaultAnimationData = (imagePath?: string): AnimationData => {
 // 初始化Canvas
 const initCanvas = async () => {
   if (!canvasElement.value) return;
-  
-  try {
-    // 销毁现有的canvas和播放器
-    if (yamlPlayer) {
-      yamlPlayer.clear();
-      yamlPlayer = null;
-    }
-    if (canvasManager) {
-      canvasManager.dispose();
-    }
-    
-    // 获取Canvas容器的实际尺寸
-    const canvasContainer = canvasElement.value.parentElement;
-    if (!canvasContainer) {
-      console.error('Canvas容器未找到');
-      return;
-    }
-    
-    const rect = canvasContainer.getBoundingClientRect();
-    const width = Math.max(rect.width - 48, 400); // 减去padding，最小400px
-    const height = Math.max(rect.height - 48, 300); // 减去padding，最小300px
-    
-    console.log('📐 Canvas容器尺寸:', { width, height, rect });
-    
-    // 设置Canvas元素的实际尺寸
-    canvasElement.value.width = width;
-    canvasElement.value.height = height;
-    
-    // 创建新的canvas管理器，传入明确的尺寸
-    canvasManager = new CanvasManager(canvasElement.value, {
-      width: width,
-      height: height
-    } as any);
-    
-    console.log('✅ Canvas初始化完成，尺寸:', canvasManager.getDimensions());
-    
-    // 尝试使用 YAML 播放器
-    try {
-      await initYamlPlayer();
-    } catch (error) {
-      console.warn('YAML 播放器初始化失败，使用静态图片:', error);
-      // 清理可能的部分初始化状态
-      yamlPlayer = null;
-      // 回退到原有的静态图片显示
-      await loadMainImage();
-    }
-  } catch (error) {
-    console.error('Canvas初始化失败:', error);
+
+  destroyCanvas();
+
+  const canvasContainer = canvasElement.value.parentElement;
+  if (!canvasContainer) return;
+
+  const rect = canvasContainer.getBoundingClientRect();
+  const width = Math.max(rect.width - 48, 400);
+  const height = Math.max(rect.height - 48, 300);
+
+  canvasElement.value.width = width;
+  canvasElement.value.height = height;
+
+  canvasManager = new CanvasManager(canvasElement.value, {
+    width: width,
+    height: height
+  } as any);
+
+  await initYamlPlayer();
+};
+
+// 销毁Canvas资源
+const destroyCanvas = () => {
+  if (isPlaying.value) {
+    pauseAnimation();
   }
+
+  if (yamlPlayer) {
+    yamlPlayer.clear();
+    yamlPlayer = null;
+  }
+
+  if (canvasManager) {
+    canvasManager.dispose();
+    canvasManager = null;
+  }
+
+  isPlaying.value = false;
+  selectedImage.value = 'main';
 };
 
 // 初始化 YAML 播放器
 const initYamlPlayer = async () => {
-  if (!canvasManager) {
-    console.warn('Canvas管理器未初始化');
-    return;
+  if (!canvasManager) return;
+
+  if (yamlPlayer) {
+    yamlPlayer.clear();
+    yamlPlayer = null;
   }
-  
-  try {
-    console.log('🎬 开始初始化 YAML 播放器...');
-    
-    // 清理旧的播放器实例
-    if (yamlPlayer) {
-      try {
-        yamlPlayer.clear();
-      } catch (clearError) {
-        console.warn('清理旧播放器实例时出错:', clearError);
-      }
-      yamlPlayer = null;
-    }
-    
-    // 创建新的 YAML 播放器
-    yamlPlayer = new YamlAnimationPlayer(canvasManager);
-    
-    // 设置默认动画数据
-    const defaultAnimationData = generateDefaultAnimationData();
-    console.log('📝 生成的动画数据:', defaultAnimationData);
-    
-    // 使用超时机制防止初始化卡死
-    const initPromise = yamlPlayer.setAnimationData(defaultAnimationData);
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('初始化超时')), 10000); // 10秒超时
-    });
-    
-    await Promise.race([initPromise, timeoutPromise]);
-    console.log('✅ 动画数据设置成功');
-    
-    // 检查播放器状态
-    if (yamlPlayer && yamlPlayer.isReady()) {
-      console.log('🎯 播放器就绪状态:', yamlPlayer.isReady());
-      console.log('⏱️ 总时长:', yamlPlayer.getDuration());
-      // 不自动播放，等待用户点击播放按钮
-    } else {
-      console.warn('⚠️ yamlPlayer 未就绪，可能是异步初始化未完成');
-      // 不抛出错误，允许后续在startAnimation中重试
-    }
-    
-  } catch (error: any) {
-    console.error('❌ YAML 播放器初始化失败:', error);
-    
-    // 清理播放器实例
-    if (yamlPlayer) {
-      try {
-        yamlPlayer.clear();
-      } catch (clearError) {
-        console.warn('清理失败的播放器实例时出错:', clearError);
-      }
-      yamlPlayer = null;
-    }
-    
-    // 根据错误类型决定是否抛出错误
-    if (error?.message?.includes('超时')) {
-      console.warn('初始化超时，将在播放时重试');
-      // 不抛出错误，允许后续重试
-    } else {
-      throw error;
-    }
-  }
+
+  yamlPlayer = new YamlAnimationPlayer(canvasManager);
+  const defaultAnimationData = generateDefaultAnimationData();
+  await yamlPlayer.setAnimationData(defaultAnimationData);
 };
 
 // 开始播放动画
 const startAnimation = async () => {
-  if (!yamlPlayer) {
-    console.warn('播放器实例不存在');
-    toast.error('播放器未初始化');
-    return;
-  }
-
-  try {
-    // 检查播放器是否就绪
-    if (!yamlPlayer.isReady()) {
-      console.warn('播放器未就绪，尝试重新初始化...');
-      
-      // 尝试重新初始化播放器
-      try {
-        const defaultAnimationData = generateDefaultAnimationData();
-        await yamlPlayer.setAnimationData(defaultAnimationData);
-        
-        // 再次检查是否就绪
-        if (!yamlPlayer.isReady()) {
-          throw new Error('重新初始化后播放器仍未就绪');
-        }
-      } catch (initError) {
-        console.error('重新初始化播放器失败:', initError);
-        toast.error('播放器初始化失败');
-        return;
-      }
-    }
-
-    // 开始播放动画
-    yamlPlayer.play();
-    isPlaying.value = true;
-    console.log('▶️ 开始播放动画');
-    
-  } catch (error: any) {
-    console.error('播放动画失败:', error);
-    isPlaying.value = false;
-    
-    // 根据错误类型提供更具体的错误信息
-    if (error?.message?.includes('未设置动画数据')) {
-      toast.error('动画数据未设置，请检查配置');
-    } else if (error?.message?.includes('初始化失败')) {
-      toast.error('动画初始化失败，请检查数据格式');
-    } else {
-      toast.error('播放动画失败: ' + (error?.message || '未知错误'));
-    }
-  }
+  if (!yamlPlayer || !yamlPlayer.isReady()) return;
+  
+  yamlPlayer.play();
+  isPlaying.value = true;
 };
 
 // 暂停动画
 const pauseAnimation = () => {
   if (yamlPlayer) {
-    try {
-      yamlPlayer.pause();
-      isPlaying.value = false;
-      console.log('⏸️ 暂停动画');
-    } catch (error: any) {
-      console.error('暂停动画失败:', error);
-    }
+    yamlPlayer.pause();
+    isPlaying.value = false;
   }
 };
 
 // 加载主图
 const loadMainImage = async () => {
-  if (!canvasManager || !props.character?.image_path) return;
-  
-  try {
-    console.log('🖼️ 开始加载主图:', props.character.image_path);
-    
-    // 尝试使用 YAML 播放器加载主图
-    if (yamlPlayer) {
-      try {
-        console.log('🎬 使用 YAML 播放器加载主图');
-        const mainImageAnimationData = generateDefaultAnimationData(props.character.image_path);
-        await yamlPlayer.setAnimationData(mainImageAnimationData);
-        
-        // 检查播放器是否就绪
-        if (yamlPlayer.isReady()) {
-          yamlPlayer.play();
-        } else {
-          console.warn('播放器未就绪，回退到静态图片显示');
-          throw new Error('播放器未就绪');
-        }
-      } catch (yamlError) {
-        console.warn('YAML播放器加载失败，回退到静态图片:', yamlError);
-        // 清理失败的播放器状态
-        if (yamlPlayer) {
-          try {
-            yamlPlayer.clear();
-          } catch (clearError) {
-            console.warn('清理播放器状态失败:', clearError);
-          }
-        }
-        // 继续执行静态图片加载逻辑
-      }
-    }
-    
-    // 如果没有yamlPlayer或yamlPlayer加载失败，使用静态图片显示
-    if (!yamlPlayer || !yamlPlayer.isReady()) {
-      console.log('📷 回退到静态图片显示');
-      // 回退到静态图片显示
-      const canvas = canvasManager.getCanvas();
-      canvas.clear();
-      
-      const img = await FabricImage.fromURL(props.character.image_path, {
-        crossOrigin: 'anonymous'
-      });
-      
-      // 计算缩放比例以适应画布
-      const canvasWidth = canvas.getWidth();
-      const canvasHeight = canvas.getHeight();
-      const imgWidth = img.width || 1;
-      const imgHeight = img.height || 1;
-      
-      console.log('📐 Canvas 尺寸:', canvasWidth, 'x', canvasHeight);
-      console.log('🖼️ 图片尺寸:', imgWidth, 'x', imgHeight);
-      
-      const scaleX = canvasWidth / imgWidth;
-      const scaleY = canvasHeight / imgHeight;
-      const scale = Math.min(scaleX, scaleY) * 0.8; // 留一些边距
-      
-      const centerX = canvasWidth / 2;
-      const centerY = canvasHeight / 2;
-      
-      console.log('🎯 设置图片位置:', centerX, centerY, '缩放:', scale);
-      
-      img.set({
-        scaleX: scale,
-        scaleY: scale,
-        left: centerX,
-        top: centerY,
-        originX: 'center',
-        originY: 'center',
-        selectable: false,
-        evented: false
-      });
-      
-      canvas.add(img);
-      canvas.renderAll();
-      console.log('✅ 静态图片加载完成');
-    }
-    
-    selectedImage.value = 'main';
-  } catch (error: any) {
-    console.error('❌ 加载主图失败:', error);
-  }
+  if (!yamlPlayer || !props.character?.image_path) return;
+
+  const mainImageAnimationData = generateDefaultAnimationData(props.character.image_path);
+  await yamlPlayer.setAnimationData(mainImageAnimationData);
+  selectedImage.value = 'main';
 };
 
 // 加载指定图片
 const loadImage = async (imageUrl: string) => {
-  if (!canvasManager || !imageUrl) return;
-  
-  try {
-    // 尝试使用 YAML 播放器加载图片
-    if (yamlPlayer) {
-      const imageAnimationData = generateDefaultAnimationData(imageUrl);
-      await yamlPlayer.setAnimationData(imageAnimationData);
-      yamlPlayer.play();
-    } else {
-      // 回退到静态图片显示
-      const canvas = canvasManager.getCanvas();
-      canvas.clear();
-      
-      const img = await FabricImage.fromURL(imageUrl, {
-        crossOrigin: 'anonymous'
-      });
-      
-      // 计算缩放比例以适应画布
-      const canvasWidth = canvas.getWidth();
-      const canvasHeight = canvas.getHeight();
-      const imgWidth = img.width || 1;
-      const imgHeight = img.height || 1;
-      
-      const scaleX = canvasWidth / imgWidth;
-      const scaleY = canvasHeight / imgHeight;
-      const scale = Math.min(scaleX, scaleY) * 0.8; // 留一些边距
-      
-      img.set({
-        scaleX: scale,
-        scaleY: scale,
-        left: canvasWidth / 2,
-        top: canvasHeight / 2,
-        originX: 'center',
-        originY: 'center',
-        selectable: false,
-        evented: false
-      });
-      
-      canvas.add(img);
-      canvas.renderAll();
-    }
-  } catch (error) {
-    console.error('加载图片失败:', error);
-  }
+  if (!yamlPlayer || !imageUrl) return;
+
+  const imageAnimationData = generateDefaultAnimationData(imageUrl);
+  await yamlPlayer.setAnimationData(imageAnimationData);
+  yamlPlayer.play();
 };
 
 // 处理主图点击
@@ -654,33 +382,33 @@ const handleMainImageClick = () => {
 const handleMainImageUpload = async (event: Event) => {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
-  
+
   if (!file || !props.character) return;
-  
+
   // 验证文件类型
   if (!file.type.startsWith('image/')) {
     toast.error('请选择图片文件');
     return;
   }
-  
+
   // 验证文件大小 (最大50MB)
   if (file.size > 50 * 1024 * 1024) {
     toast.error('文件大小不能超过50MB');
     return;
   }
-  
+
   isUploading.value = true;
-  
+
   try {
     // 使用项目现有的上传API
     const uploadResult = await uploadApi.uploadFile(file, { type: 'image' });
-    
+
     if (uploadResult.success && uploadResult.data?.url) {
       // 使用项目现有的人物更新API
       const updateResult = await mediaApi.updateCharacter(props.character.id, {
         image_path: uploadResult.data.url
       });
-      
+
       if (updateResult.success) {
         // 通知父组件更新数据
         if (props.character) {
@@ -690,10 +418,10 @@ const handleMainImageUpload = async (event: Event) => {
           };
           emit('character-updated', updatedCharacter);
         }
-        
+
         // 重新加载Canvas
         await loadMainImage();
-        
+
         // 显示成功消息
         toast.success('主图更新成功');
       } else {
@@ -721,7 +449,7 @@ const switchToImage = (category: string, path: string) => {
     selectedImage.value = `${category}.${path}`;
     return;
   }
-  
+
   let imageUrl = '';
   if (category === 'fourViews') {
     imageUrl = additionalResources.value.fourViews?.[path];
@@ -729,7 +457,7 @@ const switchToImage = (category: string, path: string) => {
     const [partKey, viewKey] = path.split('.');
     imageUrl = additionalResources.value.bodyParts?.[partKey]?.[viewKey];
   }
-  
+
   if (imageUrl) {
     loadImage(imageUrl);
     selectedImage.value = `${category}.${path}`;
@@ -739,37 +467,27 @@ const switchToImage = (category: string, path: string) => {
   }
 };
 
-// 组件挂载时初始化
-onMounted(async () => {
-  if (props.open && props.character) {
+// 监听对话框开关状态
+watch(() => props.open, async (newOpen) => {
+  if (newOpen) {
+    // 对话框打开时初始化Canvas
     await nextTick();
     await initCanvas();
+    // 初始加载主图并自动播放动画
+    await loadMainImage();
+    // 自动开始播放动画
+    setTimeout(() => {
+      startAnimation();
+    }, 500); // 延迟500ms确保初始化完成
+  } else {
+    // 对话框关闭时销毁Canvas资源
+    destroyCanvas();
   }
-});
-
-// // 监听弹窗打开状态
-// watch(() => props.open, async (newOpen) => {
-//   if (newOpen && props.character && !canvasManager) {
-//     await nextTick();
-//     await initCanvas();
-//   }
-// });
-
-// // 监听人物变化
-// watch(() => props.character, async (newCharacter) => {
-//   if (newCharacter && props.open && !canvasManager) {
-//     await nextTick();
-//     await initCanvas();
-//   }
-// });
+}, { immediate: true });
 
 // 组件卸载时清理
 onUnmounted(() => {
-  if (yamlPlayer) {
-    yamlPlayer.clear();
-  }
-  if (canvasManager) {
-    canvasManager.dispose();
-  }
+  // 组件卸载时清理资源
+  destroyCanvas();
 });
 </script>

@@ -136,4 +136,59 @@ export abstract class BasePlayer implements IPlayer {
   protected getCurrentProgress(): number {
     return Math.min(this.currentTime / this.totalDuration, 1);
   }
+
+  /**
+   * 生成唯一ID
+   */
+  protected generateId(): string {
+    return 'obj_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+  }
+
+  /**
+   * 解析数值（支持百分比和绝对值）
+   * @param value 要解析的值
+   * @param defaultValue 默认值
+   * @param percentageReference 百分比参考值（100%对应的数值），为空时不支持百分比字符串
+   * @returns 解析后的数值
+   */
+  protected parseNumericValue(value: any, defaultValue: number, percentageReference?: number): number {
+    // 如果是数字，直接返回
+    if (typeof value === 'number' && !isNaN(value) && isFinite(value)) {
+      return value;
+    }
+
+    // 如果是字符串，检查是否为百分比
+    if (typeof value === 'string') {
+      const trimmedValue = value.trim();
+
+      // 检查是否为百分比格式 (例如: "50%", "100%")
+      if (trimmedValue.endsWith('%')) {
+        // 如果没有提供百分比参考值，则不支持百分比字符串
+        if (percentageReference === undefined) {
+          return defaultValue;
+        }
+
+        const percentage = parseFloat(trimmedValue.slice(0, -1));
+        if (!isNaN(percentage) && isFinite(percentage)) {
+          return (percentage / 100) * percentageReference;
+        }
+      }
+
+      // 如果没有提供百分比参考值，则不允许字符串
+      if (percentageReference === undefined) {
+        return defaultValue;
+      }
+
+      // 尝试解析为数字
+      const numericValue = parseFloat(trimmedValue);
+      if (!isNaN(numericValue) && isFinite(numericValue)) {
+        return numericValue;
+      }
+    }
+
+    // 如果解析失败，使用默认值
+    return defaultValue;
+  }
+
+
 }
