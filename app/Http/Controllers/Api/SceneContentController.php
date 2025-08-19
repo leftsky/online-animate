@@ -38,12 +38,8 @@ class SceneContentController extends WebApiController
         // 按图层顺序排序
         $query->orderByLayer();
 
-        // 分页参数
-        $limit = $request->get('limit', 20);
-        $offset = $request->get('offset', 0);
-        
-        // 应用分页
-        $contents = $query->offset($offset)->limit($limit)->get();
+        // 获取所有数据，不分页
+        $contents = $query->get();
 
         return $this->success($contents, '获取分镜内容列表成功');
     }
@@ -166,7 +162,7 @@ class SceneContentController extends WebApiController
     {
         // 验证请求数据
         $validated = $request->validate([
-            'scene_id' => 'required|integer|exists:scenes,id',
+            'scene_id' => 'required|integer',
             'dragged_id' => 'required|integer|exists:scene_contents,id',
             'target_id' => 'nullable|integer|exists:scene_contents,id'
         ]);
@@ -263,12 +259,8 @@ class SceneContentController extends WebApiController
 
             DB::update($updateSql, [$sceneId]);
 
-            // 返回更新后的列表
-            $updatedContents = SceneContent::where('scene_id', $sceneId)
-                ->orderBy('layer_order')
-                ->get();
-
-            return $this->success($updatedContents, '分镜内容排序更新成功');
+            // 返回成功状态，不返回列表数据
+            return $this->success(null, '分镜内容排序更新成功');
 
         } catch (\Exception $e) {
             return $this->serverError('更新分镜内容排序失败：' . $e->getMessage());

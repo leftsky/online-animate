@@ -47,6 +47,7 @@ interface ParsedAnimationData {
     width: number;
     height: number;
     media?: string;
+    zindex?: number;
     initial: InitialPosition;
     animations: AnimationEffect[];
     singleAnimation?: {
@@ -441,6 +442,7 @@ export class YamlAnimationPlayer extends BasePlayer {
             width: width,
             height: height,
             media: animationData.media,
+            zindex: animationData.zindex || 0,
             initial,
             animations
         };
@@ -620,6 +622,12 @@ export class YamlAnimationPlayer extends BasePlayer {
                 selectable: false,
                 evented: false
             });
+
+            // 设置Z轴层级
+            if (this.parsedAnimationData.zindex !== undefined) {
+                obj.set('zIndex', this.parsedAnimationData.zindex);
+                console.log('🎯 设置对象Z轴层级:', this.parsedAnimationData.zindex);
+            }
 
             console.log('✅ 对象初始属性设置完成，当前位置:', {
                 left: obj.left,

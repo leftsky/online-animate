@@ -64,6 +64,8 @@ export interface AnimationData {
     width?: number | string;
     // 图片高度（支持数字或百分比字符串，如 "50%"）
     height?: number | string;
+    // Z轴层级，数字越大越靠前
+    zindex?: number;
     // 分镜初始位置
     initialPosition?: InitialPosition;
     // 分镜动画序列

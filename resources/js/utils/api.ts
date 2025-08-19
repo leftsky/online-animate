@@ -4,6 +4,7 @@
  */
 
 import axios, { type AxiosResponse, type AxiosRequestConfig } from 'axios';
+import { AnimationParser } from '@/lib/AnimationParser';
 
 export interface ApiResponse<T = any> {
     success: boolean;
@@ -54,11 +55,11 @@ apiClient.interceptors.response.use(
             code: error.response?.status || 500,
             message: error.response?.data?.message || error.message || '请求失败',
         };
-        
+
         if (error.response?.data?.errors) {
             response.errors = error.response.data.errors;
         }
-        
+
         return Promise.resolve(response);
     }
 );
@@ -74,8 +75,8 @@ export async function apiGet<T = any>(url: string, config?: AxiosRequestConfig):
  * POST 请求
  */
 export async function apiPost<T = any>(
-    url: string, 
-    data?: any, 
+    url: string,
+    data?: any,
     config?: AxiosRequestConfig
 ): Promise<ApiResponse<T>> {
     return apiClient.post(url, data, config);
@@ -85,8 +86,8 @@ export async function apiPost<T = any>(
  * PUT 请求
  */
 export async function apiPut<T = any>(
-    url: string, 
-    data?: any, 
+    url: string,
+    data?: any,
     config?: AxiosRequestConfig
 ): Promise<ApiResponse<T>> {
     return apiClient.put(url, data, config);
@@ -96,7 +97,7 @@ export async function apiPut<T = any>(
  * DELETE 请求
  */
 export async function apiDelete<T = any>(
-    url: string, 
+    url: string,
     config?: AxiosRequestConfig
 ): Promise<ApiResponse<T>> {
     return apiClient.delete(url, config);
@@ -128,7 +129,7 @@ export const uploadApi = {
         formData.append('file', file);
         if (options.type) formData.append('type', options.type);
         if (options.folder) formData.append('folder', options.folder);
-        
+
         return apiPost('/upload', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
@@ -144,15 +145,15 @@ export const sceneContentApi = {
     /**
      * 获取分镜内容列表
      */
-    getList(params: { 
-        scene_id?: number | null; 
-        element_type?: string; 
+    getList(params: {
+        scene_id?: number | null;
+        element_type?: string;
         status?: number;
         limit?: number;
         offset?: number;
     } = {}): Promise<ApiResponse> {
         const queryParams = new URLSearchParams();
-        
+
         if (params.scene_id !== undefined) {
             queryParams.append('scene_id', params.scene_id === null ? 'null' : String(params.scene_id));
         }
@@ -160,9 +161,46 @@ export const sceneContentApi = {
         if (params.status !== undefined) queryParams.append('status', String(params.status));
         if (params.limit) queryParams.append('limit', String(params.limit));
         if (params.offset) queryParams.append('offset', String(params.offset));
-        
+
         const url = `/scene-contents${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-        return apiGet(url);
+        
+        return apiGet(url).then(response => {
+            // 如果请求成功且有数据，处理 YAML 脚本
+            if (response.success && response.data && Array.isArray(response.data)) {
+                const processedData = response.data.map(item => {
+                    if (item.animation_script) {
+                        try {
+                            // 使用 AnimationParser 解析 YAML 脚本
+                            const parsed = AnimationParser.parseYamlToJson(item.animation_script);
+                            
+                            // 添加 media 和 zindex 字段
+                            if (parsed) {
+                                parsed.media = item.element_source || '';
+                                parsed.zindex = item.layer_order || 0;
+                                
+                                // 转换回 YAML
+                                const updatedScript = AnimationParser.parseJsonToYaml(parsed);
+                                
+                                return {
+                                    ...item,
+                                    animation_script: updatedScript
+                                };
+                            }
+                        } catch (error) {
+                            console.warn('解析 YAML 脚本失败:', error);
+                        }
+                    }
+                    return item;
+                });
+                
+                return {
+                    ...response,
+                    data: processedData
+                };
+            }
+            
+            return response;
+        });
     },
 
     /**
@@ -273,7 +311,7 @@ export const apiUtils = {
 
         try {
             const response = await responsePromise;
-            
+
             if (this.isSuccess(response)) {
                 if (showSuccessToast && successMessage) {
                     this.showSuccess(successMessage);

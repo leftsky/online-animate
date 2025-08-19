@@ -108,7 +108,7 @@ const handleChangeImage = (item: any, resource: any) => {
 // 处理播放整个分镜序列
 const handlePlayAllStoryboards = async (items: any[]) => {
     console.log('同时播放所有分镜内容:', items);
-    
+
     if (items.length === 0) {
         console.warn('没有分镜内容可播放');
         return;
@@ -128,31 +128,31 @@ const handlePlayAllStoryboards = async (items: any[]) => {
 
         // 第二步：为每个分镜内容创建独立的动画播放器实例
         const animationPlayers: any[] = [];
-        
+
         for (const item of items) {
             try {
                 // 创建新的动画播放器实例
                 const { YamlAnimationPlayer } = await import('@/lib/animation/YamlAnimationPlayer');
                 const player = new YamlAnimationPlayer(coreHandles.value.canvasManager);
-                
+
                 // 设置动画脚本
                 await player.setYamlScript(item.animationScript);
-                
+
                 // 开始播放
                 player.play();
-                
+
                 animationPlayers.push(player);
                 console.log('开始播放分镜内容:', item.elementName);
             } catch (error) {
                 console.error(`播放分镜内容 ${item.elementName} 失败:`, error);
             }
         }
-        
+
         console.log(`所有分镜内容开始同时播放，共 ${animationPlayers.length} 个动画`);
-        
+
         // 可以在这里添加停止所有动画的逻辑
         // 比如在某个时间后自动停止，或者提供停止按钮
-        
+
     } catch (error) {
         console.error('同时播放分镜内容失败:', error);
     }
@@ -189,8 +189,8 @@ const handlePlayAllStoryboards = async (items: any[]) => {
 
           <!-- 右侧分镜列表 -->
           <div class="w-80 border-l">
-            <StoryboardList 
-              @preview-animation="handlePreviewAnimation" 
+            <StoryboardList
+              @preview-animation="handlePreviewAnimation"
               @update-item="handleUpdateItem"
               @play-item="handlePlayItem"
               @play-all-storyboards="handlePlayAllStoryboards"

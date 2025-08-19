@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Symfony\Component\Yaml\Yaml;
+use Symfony\Component\Yaml\Exception\ParseException;
 
 class SceneContent extends Model
 {
@@ -34,6 +36,26 @@ class SceneContent extends Model
     ];
 
     /**
+     * 访问器：获取包含 zindex 的 YAML 脚本
+     */
+    // public function getAnimationScriptAttribute($value)
+    // {
+    //     try {
+    //         // 解析现有的 YAML 脚本
+    //         $parsed = Yaml::parse($value);
+
+    //         // 添加 zindex 字段（使用 layer_order 的值）
+    //         $parsed['zindex'] = $this->layer_order;
+
+    //         // 重新转换为 YAML 字符串
+    //         return Yaml::dump($parsed, 2, 2, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK);
+    //     } catch (ParseException $e) {
+    //         // 如果解析失败，返回原始脚本
+    //         return $value;
+    //     }
+    // }
+
+    /**
      * 按分镜ID筛选
      */
     public function scopeByScene($query, $sceneId)
@@ -63,36 +85,21 @@ class SceneContent extends Model
     public function validateAnimationScript($script = null)
     {
         $script = $script ?: $this->animation_script;
-        
+
         if (empty($script)) {
             return ['valid' => true, 'message' => '脚本为空'];
         }
 
-        // 基本格式验证
-        $lines = explode("\n", trim($script));
-        $hasValidStructure = false;
-        
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if (empty($line)) continue;
-            
-            // 检查是否包含基本的动画属性
-            if (strpos($line, 'duration:') !== false || 
-                strpos($line, 'keyframes:') !== false ||
-                strpos($line, 'easing:') !== false) {
-                $hasValidStructure = true;
-                break;
-            }
-        }
-
-        if (!$hasValidStructure) {
+        try {
+            // 使用 Symfony YAML 解析器验证格式
+            Yaml::parse($script);
+            return ['valid' => true, 'message' => '脚本格式正确'];
+        } catch (ParseException $e) {
             return [
-                'valid' => false, 
-                'message' => '动画脚本格式不正确，缺少必要的动画属性'
+                'valid' => false,
+                'message' => 'YAML 格式错误: ' . $e->getMessage()
             ];
         }
-
-        return ['valid' => true, 'message' => '脚本格式正确'];
     }
 
     /**
@@ -101,53 +108,18 @@ class SceneContent extends Model
     public function parseAnimationScript($script = null)
     {
         $script = $script ?: $this->animation_script;
-        
+
         if (empty($script)) {
             return [];
         }
 
-        $parsed = [];
-        $lines = explode("\n", trim($script));
-        $currentSection = null;
-        
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if (empty($line)) continue;
-            
-            // 解析键值对
-            if (strpos($line, ':') !== false && !preg_match('/^\s*-/', $line)) {
-                [$key, $value] = explode(':', $line, 2);
-                $key = trim($key);
-                $value = trim($value);
-                
-                if ($key === 'keyframes') {
-                    $currentSection = 'keyframes';
-                    $parsed[$key] = [];
-                } else {
-                    $parsed[$key] = $value;
-                }
-            }
-            // 解析关键帧
-            elseif ($currentSection === 'keyframes' && preg_match('/^\s*-\s*(.+)/', $line, $matches)) {
-                $keyframeData = trim($matches[1]);
-                $keyframe = [];
-                
-                // 解析关键帧属性
-                $attributes = explode(',', $keyframeData);
-                foreach ($attributes as $attr) {
-                    if (strpos($attr, ':') !== false) {
-                        [$attrKey, $attrValue] = explode(':', $attr, 2);
-                        $keyframe[trim($attrKey)] = trim($attrValue);
-                    }
-                }
-                
-                if (!empty($keyframe)) {
-                    $parsed['keyframes'][] = $keyframe;
-                }
-            }
+        try {
+            // 使用 Symfony YAML 解析器直接解析为数组
+            return Yaml::parse($script);
+        } catch (ParseException $e) {
+            // 解析失败时返回空数组
+            return [];
         }
-        
-        return $parsed;
     }
 
     /**
