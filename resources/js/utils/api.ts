@@ -206,6 +206,17 @@ export const sceneContentApi = {
      */
     delete(id: number): Promise<ApiResponse> {
         return apiDelete(`/scene-contents/${id}`);
+    },
+
+    /**
+     * 重新排序分镜内容
+     */
+    reorder(data: {
+        scene_id: number;
+        dragged_id: number;
+        target_id?: number | null;
+    }): Promise<ApiResponse> {
+        return apiPost('/scene-contents/reorder', data);
     }
 };
 

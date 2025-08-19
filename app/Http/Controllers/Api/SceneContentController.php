@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Models\SceneContent;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 
 class SceneContentController extends WebApiController
 {
@@ -155,6 +156,122 @@ class SceneContentController extends WebApiController
             return $this->success(null, '分镜内容删除成功');
         } catch (\Exception $e) {
             return $this->serverError('删除分镜内容失败：' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 重新排序分镜内容
+     */
+    public function reorder(Request $request): JsonResponse
+    {
+        // 验证请求数据
+        $validated = $request->validate([
+            'scene_id' => 'required|integer|exists:scenes,id',
+            'dragged_id' => 'required|integer|exists:scene_contents,id',
+            'target_id' => 'nullable|integer|exists:scene_contents,id'
+        ]);
+
+        $sceneId = $validated['scene_id'];
+        $draggedId = $validated['dragged_id'];
+        $targetId = $validated['target_id'];
+
+        try {
+            // 验证被拖动的项目是否属于指定分镜
+            $draggedContent = SceneContent::where('id', $draggedId)
+                ->where('scene_id', $sceneId)
+                ->first();
+
+            if (!$draggedContent) {
+                return $this->validationError('被拖动的项目不属于指定分镜');
+            }
+
+            // 验证目标项目是否属于指定分镜（如果提供）
+            if ($targetId) {
+                $targetContent = SceneContent::where('id', $targetId)
+                    ->where('scene_id', $sceneId)
+                    ->first();
+
+                if (!$targetContent) {
+                    return $this->validationError('目标项目不属于指定分镜');
+                }
+            }
+
+            // 获取当前分镜下的所有内容，按layer_order排序
+            $contents = SceneContent::where('scene_id', $sceneId)
+                ->orderBy('layer_order')
+                ->get();
+
+            if ($contents->isEmpty()) {
+                return $this->validationError('分镜下没有内容');
+            }
+
+            // 构建新的顺序
+            $newOrder = [];
+            $draggedItem = null;
+
+            // 先找到被拖动的项目
+            foreach ($contents as $content) {
+                if ($content->id == $draggedId) {
+                    $draggedItem = $content;
+                    break;
+                }
+            }
+
+            if (!$draggedItem) {
+                return $this->validationError('未找到被拖动的项目');
+            }
+
+            // 重新构建顺序
+            $newLayerOrder = 1;
+            
+            foreach ($contents as $content) {
+                // 跳过被拖动的项目，稍后插入
+                if ($content->id == $draggedId) {
+                    continue;
+                }
+
+                // 如果遇到目标位置，先插入被拖动的项目
+                if ($targetId && $content->id == $targetId) {
+                    $newOrder[$draggedId] = $newLayerOrder++;
+                }
+
+                // 添加当前项目
+                $newOrder[$content->id] = $newLayerOrder++;
+            }
+
+            // 如果没有目标位置或目标位置在最后，将被拖动的项目放在最后
+            if (!isset($newOrder[$draggedId])) {
+                $newOrder[$draggedId] = $newLayerOrder;
+            }
+
+            // 构建批量更新的SQL
+            $caseStatements = [];
+            $ids = [];
+            
+            foreach ($newOrder as $id => $layerOrder) {
+                $caseStatements[] = "WHEN {$id} THEN {$layerOrder}";
+                $ids[] = $id;
+            }
+
+            $caseSql = implode(' ', $caseStatements);
+            $idsList = implode(',', $ids);
+
+            // 执行批量更新
+            $updateSql = "UPDATE scene_contents 
+                         SET layer_order = CASE id {$caseSql} END 
+                         WHERE scene_id = ? AND id IN ({$idsList})";
+
+            DB::update($updateSql, [$sceneId]);
+
+            // 返回更新后的列表
+            $updatedContents = SceneContent::where('scene_id', $sceneId)
+                ->orderBy('layer_order')
+                ->get();
+
+            return $this->success($updatedContents, '分镜内容排序更新成功');
+
+        } catch (\Exception $e) {
+            return $this->serverError('更新分镜内容排序失败：' . $e->getMessage());
         }
     }
 }

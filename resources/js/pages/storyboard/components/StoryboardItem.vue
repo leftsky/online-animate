@@ -14,13 +14,17 @@
         <GripVertical class="w-3 h-3" />
       </div>
 
-      <!-- 缩略图 - 缩小尺寸 -->
+      <!-- 缩略图 - 支持点击更换 -->
       <div
-        class="relative w-12 h-12 rounded-md overflow-hidden bg-muted cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-        @click.stop="previewImage">
+        class="relative w-12 h-12 rounded-md overflow-hidden bg-muted cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all group/thumbnail"
+        @click.stop="openResourceSelector">
         <img v-if="item.imagePath" :src="item.imagePath" :alt="item.elementName" class="w-full h-full object-cover" />
         <div v-else class="w-full h-full flex items-center justify-center">
           <Image class="w-4 h-4 text-muted-foreground" />
+        </div>
+        <!-- 更换图片提示 -->
+        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover/thumbnail:opacity-100 transition-opacity flex items-center justify-center">
+          <span class="text-xs text-white font-medium">更换</span>
         </div>
       </div>
 
@@ -55,6 +59,10 @@
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" class="w-48">
+          <DropdownMenuItem @click="openResourceSelector">
+            <Image class="w-4 h-4 mr-2" />
+            更换图片
+          </DropdownMenuItem>
           <DropdownMenuItem @click="viewSource">
             <Code class="w-4 h-4 mr-2" />
             查看源码
@@ -78,6 +86,14 @@
 
     <!-- 图片预览组件 -->
     <ImagePreview ref="imagePreview" :src="item.imagePath" :alt="item.elementName" />
+    
+    <!-- 资源选择器 -->
+    <ResourceLibrarySelector
+      :visible="resourceSelectorVisible" 
+      title="选择图片资源"
+      @close="closeResourceSelector"
+      @select="handleResourceSelect"
+    />
   </div>
 </template>
 
@@ -100,9 +116,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import ImagePreview from './ImagePreview.vue';
+import ResourceLibrarySelector from '@/components/ResourceLibrarySelector.vue';
 import type { StoryboardItem } from './types';
 
 interface Props {
@@ -118,6 +135,7 @@ interface Emits {
   delete: [id: string];
   previewAnimation: [item: StoryboardItem];
   select: [id: string];
+  changeImage: [item: StoryboardItem, resource: any];
 }
 
 const props = defineProps<Props>();
@@ -125,17 +143,28 @@ const emit = defineEmits<Emits>();
 
 // 编辑状态
 const imagePreview = ref<InstanceType<typeof ImagePreview>>();
+const resourceSelectorVisible = ref(false);
 
 // 切换显示/隐藏
 const toggleVisibility = () => {
   emit('toggleVisibility', props.item.id);
 };
 
-// 预览图片
-const previewImage = () => {
-  if (props.item.imagePath) {
-    imagePreview.value?.open();
-  }
+// 打开资源选择器
+const openResourceSelector = () => {
+  resourceSelectorVisible.value = true;
+};
+
+// 关闭资源选择器
+const closeResourceSelector = () => {
+  resourceSelectorVisible.value = false;
+};
+
+// 处理资源选择
+const handleResourceSelect = (resource: any) => {
+  console.log('选择资源:', resource);
+  emit('changeImage', props.item, resource);
+  closeResourceSelector();
 };
 
 // 预览动画

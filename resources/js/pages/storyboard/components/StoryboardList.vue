@@ -24,6 +24,7 @@ const emit = defineEmits<{
     addNewItem: [];
     previewAnimation: [item: StoryboardItemType];
     updateItem: [item: StoryboardItemType];
+    changeImage: [item: StoryboardItemType, resource: any];
     playAllStoryboards: [items: StoryboardItemType[]];
 }>();
 
@@ -348,10 +349,57 @@ const deleteItem = async (itemId: string) => {
 };
 
 // 拖拽排序处理
-const onDragEnd = () => {
-    storyboardItems.value.forEach((item, index) => {
-        item.layerOrder = index + 1;
-    });
+const onDragEnd = async (event: any) => {
+    try {
+        // 获取拖拽信息
+        const { oldIndex, newIndex } = event;
+        
+        // 如果没有位置变化，不需要更新
+        if (oldIndex === newIndex) {
+            return;
+        }
+
+        // 获取被拖动的项目
+        const draggedItem = storyboardItems.value[newIndex];
+        const draggedId = parseInt(draggedItem.id.toString());
+
+        // 获取目标位置前的项目ID
+        let targetId: number | null = null;
+        if (newIndex > 0) {
+            targetId = parseInt(storyboardItems.value[newIndex - 1].id.toString());
+        }
+
+        console.log('拖拽排序:', {
+            draggedId,
+            targetId,
+            oldIndex,
+            newIndex
+        });
+
+        // 调用重排序接口
+        const response = await sceneContentApi.reorder({
+            scene_id: 1, // 当前分镜ID，这里可能需要动态获取
+            dragged_id: draggedId,
+            target_id: targetId
+        });
+
+        if (response.success) {
+            // 更新本地数据
+            storyboardItems.value = response.data;
+            
+            // 更新本地layerOrder
+            storyboardItems.value.forEach((item, index) => {
+                item.layerOrder = index + 1;
+            });
+
+            toast.success('排序更新成功');
+        } else {
+            toast.error('排序更新失败', response.message);
+        }
+    } catch (error) {
+        console.error('拖拽排序失败:', error);
+        toast.error('排序更新失败，请重试');
+    }
 };
 
 // 添加新项目
@@ -361,29 +409,41 @@ const addNewItem = () => {
 };
 
 // 处理创建内容对话框的确认事件
-const handleCreateContent = async (data: { file: File; elementName: string }) => {
+const handleCreateContent = async (data: { file?: File; resource?: any; elementName: string; mode: 'upload' | 'select' }) => {
     try {
         createContentDialog.value?.setLoading(true);
-        toast.info('正在上传图片...');
+        
+        let mediaUrl: string;
+        
+        if (data.mode === 'upload' && data.file) {
+            // 上传模式：上传文件
+            toast.info('正在上传图片...');
+            const uploadResult = await uploadApi.uploadFile(data.file, {
+                type: 'image',
+                folder: 'storyboard'
+            });
 
-        // 1. 上传图片
-        const uploadResult = await uploadApi.uploadFile(data.file, {
-            type: 'image',
-            folder: 'storyboard'
-        });
-
-        if (!uploadResult.success || !uploadResult.data) {
-            toast.error('图片上传失败', uploadResult.message);
+            if (!uploadResult.success || !uploadResult.data) {
+                toast.error('图片上传失败', uploadResult.message);
+                return;
+            }
+            
+            mediaUrl = uploadResult.data.url;
+        } else if (data.mode === 'select' && data.resource) {
+            // 选择模式：使用已有资源
+            mediaUrl = data.resource.url;
+        } else {
+            toast.error('数据格式错误');
             return;
         }
 
         toast.info('正在创建分镜内容...');
 
-        // 2. 准备动画数据，使用 AnimationParser 的 JSON 结构体
+        // 准备动画数据，使用 AnimationParser 的 JSON 结构体
         const elementName = data.elementName;
         const animationData = {
             name: elementName,
-            media: uploadResult.data.url,
+            media: mediaUrl,
             initialPosition: {
                 x: 0,
                 y: 0,
@@ -415,13 +475,13 @@ const handleCreateContent = async (data: { file: File; elementName: string }) =>
             scene_id: 1,
             element_name: elementName,
             element_type: 'image',
-            element_source: uploadResult.data.url,
+            element_source: mediaUrl,
             animation_script: animationScript,
             layer_order: storyboardItems.value.length + 1,
             status: 1
         };
 
-        // 3. 调用API创建分镜内容
+        // 调用API创建分镜内容
         const createResult = await sceneContentApi.create(createData);
 
         if (createResult.success && createResult.data) {
@@ -508,7 +568,7 @@ const savePositionChanges = async () => {
             scaleX: Number(editingPosition.value.scaleX),
             scaleY: Number(editingPosition.value.scaleY),
             opacity: Number(editingPosition.value.opacity)
-        };
+        } as const;
 
         // 获取原始值
         const originalPosition = getInitialPosition();
@@ -613,6 +673,41 @@ const playAllStoryboards = () => {
     emit('playAllStoryboards', storyboardItems.value);
 };
 
+// 处理图片更换
+const handleChangeImage = async (item: StoryboardItemType, resource: any) => {
+    console.log('更换图片:', item.elementName, resource);
+    
+    try {
+        // 更新动画脚本中的媒体路径
+        const animationData = AnimationParser.parseYamlToJson(item.animationScript);
+        if (animationData) {
+            animationData.media = resource.url;
+            
+            const newAnimationScript = AnimationParser.parseJsonToYaml(animationData);
+            
+            // 创建更新后的项目
+            const updatedItem = {
+                ...item,
+                element_source: resource.url,
+                imagePath: resource.url,
+                thumbnail: resource.url,
+                animationScript: newAnimationScript
+            };
+            
+            // 提交到API
+            await submitToApi(updatedItem);
+            
+            // 触发更新事件
+            emit('updateItem', updatedItem);
+            
+            toast.success('图片更换成功');
+        }
+    } catch (error) {
+        console.error('更换图片失败:', error);
+        toast.error('更换图片失败，请重试');
+    }
+};
+
 </script>
 
 <template>
@@ -655,7 +750,7 @@ const playAllStoryboards = () => {
                     @update-name="handleUpdateName" @toggle-visibility="handleToggleVisibility"
                     @view-source="handleViewSource" @manage-animations="handleManageAnimations"
                     @preview-animation="handlePreviewAnimation" @duplicate="handleDuplicate" @delete="deleteItem"
-                    @select="selectItem" />
+                    @select="selectItem" @change-image="handleChangeImage" />
             </VueDraggable>
 
             <!-- 空状态 -->

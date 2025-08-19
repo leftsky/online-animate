@@ -109,6 +109,97 @@ export class CanvasManager {
   }
 
   /**
+   * 获取画布视口大小（考虑缩放）
+   */
+  public getViewportSize(): { width: number; height: number } {
+    if (this.isDisposed) {
+      return { width: 0, height: 0 };
+    }
+    return {
+      width: this.canvas.getWidth() * this.canvas.getZoom(),
+      height: this.canvas.getHeight() * this.canvas.getZoom()
+    };
+  }
+
+  /**
+   * 获取画布缩放比例
+   */
+  public getZoom(): number {
+    if (this.isDisposed) {
+      return 1;
+    }
+    return this.canvas.getZoom();
+  }
+
+  /**
+   * 获取画布中心点坐标
+   */
+  public getCenter(): { x: number; y: number } {
+    if (this.isDisposed) {
+      return { x: 0, y: 0 };
+    }
+    return {
+      x: this.canvas.getWidth() / 2,
+      y: this.canvas.getHeight() / 2
+    };
+  }
+
+  /**
+   * 获取画布边界信息
+   */
+  public getBounds(): { 
+    left: number; 
+    top: number; 
+    right: number; 
+    bottom: number; 
+    width: number; 
+    height: number; 
+  } {
+    if (this.isDisposed) {
+      return { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 };
+    }
+    const width = this.canvas.getWidth();
+    const height = this.canvas.getHeight();
+    return {
+      left: 0,
+      top: 0,
+      right: width,
+      bottom: height,
+      width,
+      height
+    };
+  }
+
+  /**
+   * 获取画布完整信息
+   */
+  public getCanvasInfo(): {
+    dimensions: { width: number; height: number };
+    viewport: { width: number; height: number };
+    zoom: number;
+    center: { x: number; y: number };
+    bounds: { left: number; top: number; right: number; bottom: number; width: number; height: number };
+  } {
+    if (this.isDisposed) {
+      return {
+        dimensions: { width: 0, height: 0 },
+        viewport: { width: 0, height: 0 },
+        zoom: 1,
+        center: { x: 0, y: 0 },
+        bounds: { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 }
+      };
+    }
+    
+    return {
+      dimensions: this.getDimensions(),
+      viewport: this.getViewportSize(),
+      zoom: this.getZoom(),
+      center: this.getCenter(),
+      bounds: this.getBounds()
+    };
+  }
+
+  /**
    * 检查是否已销毁
    */
   public getDisposedStatus(): boolean {

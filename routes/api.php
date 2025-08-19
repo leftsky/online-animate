@@ -27,6 +27,9 @@ Route::middleware(['auth', 'verified'])->prefix('web/api')->name('web.api.')->gr
 
     // 分镜内容管理接口
     Route::apiResource('scene-contents', SceneContentController::class);
+    
+    // 分镜内容重排序接口
+    Route::post('scene-contents/reorder', [SceneContentController::class, 'reorder'])->name('scene-contents.reorder');
 });
 
 Route::middleware(['auth', 'verified'])->prefix('web/api')->name('web.api.')->group(function () {

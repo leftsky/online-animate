@@ -2,10 +2,10 @@ import * as yaml from 'js-yaml';
 
 // 初始位置配置
 export interface InitialPosition {
-    /** X轴坐标位置 */
-    x?: number;
-    /** Y轴坐标位置 */
-    y?: number;
+    /** X轴坐标位置（支持数字或百分比字符串，如 "50%"） */
+    x?: number | string;
+    /** Y轴坐标位置（支持数字或百分比字符串，如 "50%"） */
+    y?: number | string;
     /** X轴缩放比例，1为原始大小 */
     scaleX?: number;
     /** Y轴缩放比例，1为原始大小 */
@@ -22,10 +22,10 @@ export interface Keyframe {
     startTime?: number;
     /** 持续时间，单位为毫秒 */
     duration: number;
-    /** 关键帧X轴坐标位置 */
-    x?: number;
-    /** 关键帧Y轴坐标位置 */
-    y?: number;
+    /** 关键帧X轴坐标位置（支持数字或百分比字符串，如 "50%"） */
+    x?: number | string;
+    /** 关键帧Y轴坐标位置（支持数字或百分比字符串，如 "50%"） */
+    y?: number | string;
     /** 关键帧X轴缩放比例 */
     scaleX?: number;
     /** 关键帧Y轴缩放比例 */
@@ -60,10 +60,10 @@ export interface AnimationData {
     name?: string;
     // 分镜描述
     description?: string;
-    // 图片宽度
-    width?: number;
-    // 图片高度
-    height?: number;
+    // 图片宽度（支持数字或百分比字符串，如 "50%"）
+    width?: number | string;
+    // 图片高度（支持数字或百分比字符串，如 "50%"）
+    height?: number | string;
     // 分镜初始位置
     initialPosition?: InitialPosition;
     // 分镜动画序列

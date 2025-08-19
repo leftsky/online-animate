@@ -1,4 +1,4 @@
-import { FabricObject, Rect, FabricText, Circle, FabricImage } from 'fabric';
+import { FabricObject, Rect, FabricImage } from 'fabric';
 import { AnimationData, AnimationParser } from '../AnimationParser';
 import { BasePlayer } from './BasePlayer';
 import { CanvasManager } from './CanvasManager';
@@ -44,6 +44,9 @@ interface ParsedAnimationData {
     target: string;
     scaleX: number;
     scaleY: number;
+    width: number;
+    height: number;
+    media?: string;
     initial: InitialPosition;
     animations: AnimationEffect[];
     singleAnimation?: {
@@ -98,8 +101,8 @@ export class YamlAnimationPlayer extends BasePlayer {
     }
 
     /**
- * 解析YAML脚本
- */
+     * 解析YAML脚本
+     */
     private parseYamlScript(yamlScript: string): AnimationData {
         if (!yamlScript || !yamlScript.trim()) {
             throw new Error('YAML脚本为空');
@@ -108,9 +111,6 @@ export class YamlAnimationPlayer extends BasePlayer {
         try {
             // 调用AnimationParser.parseYamlToJson
             const parsedData = AnimationParser.parseYamlToJson(yamlScript);
-
-            // 缩放media；获得根节点的width和height；用七牛云的参数拼接上去
-            parsedData.media += `?imageView2/2/w/${parsedData.width}/h/${parsedData.height}`;
 
             if (!parsedData || Object.keys(parsedData).length === 0) {
                 throw new Error('YAML解析结果为空');
@@ -136,13 +136,7 @@ export class YamlAnimationPlayer extends BasePlayer {
             this.parsedAnimationData = this.convertAnimationData(animationData);
 
             // 创建目标对象
-            const targetObject = await this.createTargetObject(
-                this.parsedAnimationData.target,
-                this.parsedAnimationData.initial,
-                animationData.media,
-                animationData.width,
-                animationData.height
-            );
+            const targetObject = await this.createTargetObject();
 
             if (targetObject) {
                 this.animationObjects.set(this.parsedAnimationData.target, targetObject);
@@ -152,7 +146,7 @@ export class YamlAnimationPlayer extends BasePlayer {
                 console.log('🎨 动画对象已添加到画布:', targetObject);
 
                 // 计算总动画时长
-                this.calculateTotalDuration(this.parsedAnimationData.animations);
+                this.calculateTotalDuration();
                 console.log('⏱️ 总动画时长:', this.getPlaybackState().totalDuration, 'ms');
 
                 // 渲染画布
@@ -191,7 +185,7 @@ export class YamlAnimationPlayer extends BasePlayer {
             console.log('🎬 开始播放动画');
 
             // 开始动画循环
-            this.startAnimationLoop(() => this.animateFrame(this.parsedAnimationData!));
+            this.startAnimationLoop(() => this.animateFrame());
         } catch (error) {
             console.error('播放动画失败:', error);
             this.setPlayingState(false);
@@ -367,7 +361,7 @@ export class YamlAnimationPlayer extends BasePlayer {
                         ...kf,
                         time: kf.time + animationStartTime
                     }));
-                    this.updateKeyframeAnimation(targetObject, adjustedKeyframes, time, this.parsedAnimationData.scaleX, this.parsedAnimationData.scaleY);
+                    this.updateKeyframeAnimation(targetObject, adjustedKeyframes, time);
                 } else {
                     this.updateAnimationEffect(targetObject, animation, animationProgress);
                 }
@@ -389,12 +383,14 @@ export class YamlAnimationPlayer extends BasePlayer {
         console.log('🔍 转换动画数据 - 原始数据:', {
             initialPosition: animationData.initialPosition,
             x: animationData.initialPosition?.x,
-            y: animationData.initialPosition?.y
+            y: animationData.initialPosition?.y,
+            width: animationData.width,
+            height: animationData.height
         });
 
         const initial: InitialPosition = {
-            x: this.validateNumber(animationData.initialPosition?.x, 0, 'initialPosition.x'),
-            y: this.validateNumber(animationData.initialPosition?.y, 0, 'initialPosition.y'),
+            x: this.parsePosition(animationData.initialPosition?.x, 0, 'initialPosition.x'),
+            y: this.parsePosition(animationData.initialPosition?.y, 0, 'initialPosition.y'),
             scaleX: this.validateNumber(animationData.initialPosition?.scaleX, 1, 'initialPosition.scaleX'),
             scaleY: this.validateNumber(animationData.initialPosition?.scaleY, 1, 'initialPosition.scaleY'),
             opacity: this.validateNumber(animationData.initialPosition?.opacity, 1, 'initialPosition.opacity'),
@@ -413,6 +409,8 @@ export class YamlAnimationPlayer extends BasePlayer {
                 duration: this.validateNumber(anim.duration, 1000, `animations[${index}].duration`),
                 easing: anim.easing || 'ease',
                 keyframes: anim.keyframes?.map((kf, kfIndex) => {
+                    const x = this.parsePosition(kf.x, 0, 'keyframes.x');
+                    const y = this.parsePosition(kf.y, 0, 'keyframes.y');
                     if (!kf || typeof kf !== 'object' || typeof kf.startTime !== 'number') {
                         console.warn(`Invalid keyframe at animations[${index}].keyframes[${kfIndex}], skipping`);
                         return null;
@@ -420,8 +418,8 @@ export class YamlAnimationPlayer extends BasePlayer {
                     return {
                         time: kf.startTime,
                         properties: {
-                            x: kf.x !== undefined ? kf.x + initial.x : undefined,
-                            y: kf.y !== undefined ? kf.y + initial.y : undefined,
+                            x: x + initial.x,
+                            y: y + initial.y,
                             scaleX: kf.scaleX,
                             scaleY: kf.scaleY,
                             opacity: kf.opacity,
@@ -432,10 +430,17 @@ export class YamlAnimationPlayer extends BasePlayer {
             };
         }).filter(anim => anim !== null) as AnimationEffect[];
 
+        const width = parseInt(this.parseDimension(animationData.width, 100, 'width').toString());
+        const height = parseInt(this.parseDimension(animationData.height, 100, 'height').toString());
+        animationData.media += `?imageView2/2/w/${width}/h/${height}`;
+
         return {
             target: 'default',
             scaleX: 1,
             scaleY: 1,
+            width: width,
+            height: height,
+            media: animationData.media,
             initial,
             animations
         };
@@ -460,6 +465,102 @@ export class YamlAnimationPlayer extends BasePlayer {
     }
 
     /**
+     * 解析尺寸值（支持百分比）
+     */
+    private parseDimension(value: any, defaultValue: number, fieldName: string): number {
+        console.log(`🔍 解析尺寸 ${fieldName}:`, { value, type: typeof value, defaultValue });
+
+        // 如果是数字，直接返回
+        if (typeof value === 'number' && !isNaN(value) && isFinite(value)) {
+            console.log(`✅ ${fieldName} 数字验证通过:`, value);
+            return value;
+        }
+
+        // 如果是字符串，检查是否为百分比
+        if (typeof value === 'string') {
+            const trimmedValue = value.trim();
+
+            // 检查是否为百分比格式 (例如: "50%", "100%")
+            if (trimmedValue.endsWith('%')) {
+                const percentage = parseFloat(trimmedValue.slice(0, -1));
+                if (!isNaN(percentage) && isFinite(percentage)) {
+                    // 获取画布尺寸
+                    const canvasDimensions = this.getCanvasManager().getDimensions();
+                    const isWidth = fieldName.toLowerCase().includes('width');
+                    const canvasSize = isWidth ? canvasDimensions.width : canvasDimensions.height;
+                    const calculatedValue = (percentage / 100) * canvasSize;
+
+                    console.log(`✅ ${fieldName} 百分比解析成功: ${trimmedValue} -> ${calculatedValue} (画布${isWidth ? '宽度' : '高度'}: ${canvasSize})`);
+                    return calculatedValue;
+                }
+            }
+
+            // 尝试解析为数字
+            const numericValue = parseFloat(trimmedValue);
+            if (!isNaN(numericValue) && isFinite(numericValue)) {
+                console.log(`✅ ${fieldName} 字符串转数字成功:`, numericValue);
+                return numericValue;
+            }
+        }
+
+        // 如果解析失败，使用默认值
+        if (value !== undefined && value !== null) {
+            console.warn(`⚠️ ${fieldName} 解析失败: ${value}, 使用默认值 ${defaultValue}`);
+        } else {
+            console.log(`ℹ️ ${fieldName} 未设置, 使用默认值 ${defaultValue}`);
+        }
+        return defaultValue;
+    }
+
+    /**
+     * 解析位置值（支持百分比）
+     */
+    private parsePosition(value: any, defaultValue: number, fieldName: string): number {
+        console.log(`🔍 解析位置 ${fieldName}:`, { value, type: typeof value, defaultValue });
+
+        // 如果是数字，直接返回
+        if (typeof value === 'number' && !isNaN(value) && isFinite(value)) {
+            console.log(`✅ ${fieldName} 数字验证通过:`, value);
+            return value;
+        }
+
+        // 如果是字符串，检查是否为百分比
+        if (typeof value === 'string') {
+            const trimmedValue = value.trim();
+
+            // 检查是否为百分比格式 (例如: "50%", "100%")
+            if (trimmedValue.endsWith('%')) {
+                const percentage = parseFloat(trimmedValue.slice(0, -1));
+                if (!isNaN(percentage) && isFinite(percentage)) {
+                    // 获取画布尺寸
+                    const canvasDimensions = this.getCanvasManager().getDimensions();
+                    const isX = fieldName.toLowerCase().includes('x');
+                    const canvasSize = isX ? canvasDimensions.width : canvasDimensions.height;
+                    const calculatedValue = (percentage / 100) * canvasSize;
+
+                    console.log(`✅ ${fieldName} 百分比解析成功: ${trimmedValue} -> ${calculatedValue} (画布${isX ? '宽度' : '高度'}: ${canvasSize})`);
+                    return calculatedValue;
+                }
+            }
+
+            // 尝试解析为数字
+            const numericValue = parseFloat(trimmedValue);
+            if (!isNaN(numericValue) && isFinite(numericValue)) {
+                console.log(`✅ ${fieldName} 字符串转数字成功:`, numericValue);
+                return numericValue;
+            }
+        }
+
+        // 如果解析失败，使用默认值
+        if (value !== undefined && value !== null) {
+            console.warn(`⚠️ ${fieldName} 解析失败: ${value}, 使用默认值 ${defaultValue}`);
+        } else {
+            console.log(`ℹ️ ${fieldName} 未设置, 使用默认值 ${defaultValue}`);
+        }
+        return defaultValue;
+    }
+
+    /**
      * 生成唯一ID
      */
     private generateId(): string {
@@ -469,77 +570,53 @@ export class YamlAnimationPlayer extends BasePlayer {
     /**
      * 创建目标对象
      */
-    private async createTargetObject(target: string, initial: InitialPosition, media?: string, width?: number, height?: number): Promise<FabricObject | null> {
+    private async createTargetObject(): Promise<FabricObject | null> {
         try {
+            if (!this.parsedAnimationData) {
+                throw new Error('动画数据未初始化');
+            }
+
             let obj: FabricObject;
 
             // 如果有media字段，优先使用图片
-            if (media) {
+            if (this.parsedAnimationData.media) {
                 try {
-                    obj = await FabricImage.fromURL(media, {
+                    obj = await FabricImage.fromURL(this.parsedAnimationData.media, {
                         crossOrigin: 'anonymous'
                     });
                 } catch (error) {
                     console.warn('加载图片失败，使用默认方块:', error);
                     obj = new Rect({
-                        width: width || 100,
-                        height: height || 100,
+                        width: this.parsedAnimationData.width,
+                        height: this.parsedAnimationData.height,
                         fill: '#FF9800'
                     });
                 }
-            } else if (target.includes('image') || target.includes('img')) {
-                obj = new Rect({
-                    width: width || 100,
-                    height: height || 100,
-                    fill: '#cccccc',
-                    stroke: '#999999',
-                    strokeWidth: 2
-                });
-            } else if (target.includes('text')) {
-                obj = new FabricText('示例文本', {
-                    fontSize: 24,
-                    fill: '#333333',
-                    fontFamily: 'Arial'
-                });
-            } else if (target.includes('rect') || target.includes('rectangle')) {
-                obj = new Rect({
-                    width: width || 100,
-                    height: height || 60,
-                    fill: '#4CAF50',
-                    rx: 5,
-                    ry: 5
-                });
-            } else if (target.includes('circle')) {
-                const radius = width ? width / 2 : (height ? height / 2 : 50);
-                obj = new Circle({
-                    radius: radius,
-                    fill: '#2196F3'
-                });
             } else {
                 obj = new Rect({
-                    width: width || 80,
-                    height: height || 80,
+                    width: this.parsedAnimationData.width,
+                    height: this.parsedAnimationData.height,
                     fill: '#FF9800'
                 });
             }
 
             // 设置初始属性
             console.log('🎯 设置对象初始属性:', {
-                left: initial.x,
-                top: initial.y,
-                opacity: initial.opacity,
-                scaleX: initial.scaleX,
-                scaleY: initial.scaleY,
-                angle: initial.rotation
+                left: this.parsedAnimationData.initial.x,
+                top: this.parsedAnimationData.initial.y,
+                opacity: this.parsedAnimationData.initial.opacity,
+                scaleX: this.parsedAnimationData.initial.scaleX,
+                scaleY: this.parsedAnimationData.initial.scaleY,
+                angle: this.parsedAnimationData.initial.rotation
             });
 
             obj.set({
-                left: initial.x,
-                top: initial.y,
-                opacity: initial.opacity,
-                scaleX: initial.scaleX,
-                scaleY: initial.scaleY,
-                angle: initial.rotation,
+                left: this.parsedAnimationData.initial.x,
+                top: this.parsedAnimationData.initial.y,
+                opacity: this.parsedAnimationData.initial.opacity,
+                scaleX: this.parsedAnimationData.initial.scaleX,
+                scaleY: this.parsedAnimationData.initial.scaleY,
+                angle: this.parsedAnimationData.initial.rotation,
                 selectable: false,
                 evented: false
             });
@@ -559,9 +636,11 @@ export class YamlAnimationPlayer extends BasePlayer {
     /**
      * 计算总动画时长
      */
-    private calculateTotalDuration(animations: AnimationEffect[]): void {
+    private calculateTotalDuration(): void {
+        if (!this.parsedAnimationData) return;
+
         let totalDuration = 0;
-        for (const animation of animations) {
+        for (const animation of this.parsedAnimationData.animations) {
             const duration = typeof animation.duration === 'string'
                 ? this.parseDuration(animation.duration)
                 : animation.duration;
@@ -573,8 +652,8 @@ export class YamlAnimationPlayer extends BasePlayer {
     /**
  * 动画帧循环
  */
-    private animateFrame(animationData: ParsedAnimationData): void {
-        if (!this.isCurrentlyPlaying()) return;
+    private animateFrame(): void {
+        if (!this.isCurrentlyPlaying() || !this.parsedAnimationData) return;
 
         this.updateCurrentTime();
         const progress = this.getCurrentProgress();
@@ -585,7 +664,7 @@ export class YamlAnimationPlayer extends BasePlayer {
         }
 
         // 更新所有动画对象
-        this.updateAnimations(animationData, progress);
+        this.updateAnimations(progress);
 
         // 渲染画布
         this.render();
@@ -598,16 +677,18 @@ export class YamlAnimationPlayer extends BasePlayer {
         }
 
         // 继续下一帧
-        this.animationId = requestAnimationFrame(() => this.animateFrame(animationData));
+        this.animationId = requestAnimationFrame(() => this.animateFrame());
     }
 
     /**
      * 更新动画
      */
-    private updateAnimations(animationData: ParsedAnimationData, progress: number): void {
-        const targetObject = this.animationObjects.get(animationData.target);
+    private updateAnimations(progress: number): void {
+        if (!this.parsedAnimationData) return;
+
+        const targetObject = this.animationObjects.get(this.parsedAnimationData.target);
         if (!targetObject) {
-            console.warn('⚠️ 目标对象未找到:', animationData.target);
+            console.warn('⚠️ 目标对象未找到:', this.parsedAnimationData.target);
             return;
         }
 
@@ -616,8 +697,8 @@ export class YamlAnimationPlayer extends BasePlayer {
         let accumulatedTime = 0;
 
         // 顺序处理每个动画
-        for (let i = 0; i < animationData.animations.length; i++) {
-            const animation = animationData.animations[i];
+        for (let i = 0; i < this.parsedAnimationData.animations.length; i++) {
+            const animation = this.parsedAnimationData.animations[i];
             const duration = typeof animation.duration === 'string'
                 ? this.parseDuration(animation.duration)
                 : animation.duration;
@@ -642,7 +723,7 @@ export class YamlAnimationPlayer extends BasePlayer {
                         ...kf,
                         time: kf.time + animationStartTime
                     }));
-                    this.updateKeyframeAnimation(targetObject, adjustedKeyframes, currentTime, animationData.scaleX, animationData.scaleY);
+                    this.updateKeyframeAnimation(targetObject, adjustedKeyframes, currentTime);
                 } else {
                     // 处理普通动画效果
                     this.updateAnimationEffect(targetObject, animation, animationProgress);
@@ -658,8 +739,8 @@ export class YamlAnimationPlayer extends BasePlayer {
     /**
      * 更新关键帧动画
      */
-    private updateKeyframeAnimation(obj: FabricObject, keyframes: AnimationKeyframe[], currentTime: number, baseScaleX: number = 1, baseScaleY: number = 1): void {
-        if (keyframes.length === 0) return;
+    private updateKeyframeAnimation(obj: FabricObject, keyframes: AnimationKeyframe[], currentTime: number): void {
+        if (keyframes.length === 0 || !this.parsedAnimationData) return;
 
         // 找到当前时间对应的关键帧
         let currentFrame: AnimationKeyframe | null = null;
@@ -684,10 +765,10 @@ export class YamlAnimationPlayer extends BasePlayer {
         if (nextFrame && currentTime < nextFrame.time) {
             const frameProgress = (currentTime - currentFrame.time) / (nextFrame.time - currentFrame.time);
             const interpolatedProps = this.interpolateProperties(currentFrame.properties, nextFrame.properties, frameProgress);
-            this.applyProperties(obj, interpolatedProps, baseScaleX, baseScaleY);
+            this.applyProperties(obj, interpolatedProps);
         } else {
             // 直接应用当前帧属性
-            this.applyProperties(obj, currentFrame.properties, baseScaleX, baseScaleY);
+            this.applyProperties(obj, currentFrame.properties);
         }
     }
 
@@ -725,7 +806,9 @@ export class YamlAnimationPlayer extends BasePlayer {
     /**
      * 应用属性到对象
      */
-    private applyProperties(obj: FabricObject, properties: any, baseScaleX: number = 1, baseScaleY: number = 1): void {
+    private applyProperties(obj: FabricObject, properties: any): void {
+        if (!this.parsedAnimationData) return;
+
         const updates: any = {};
         if (properties.x !== undefined) updates.left = properties.x;
         if (properties.y !== undefined) updates.top = properties.y;
@@ -733,11 +816,11 @@ export class YamlAnimationPlayer extends BasePlayer {
 
         // 处理缩放属性，乘以基础缩放比例
         if (properties.scale !== undefined) {
-            updates.scaleX = properties.scale * baseScaleX;
-            updates.scaleY = properties.scale * baseScaleY;
+            updates.scaleX = properties.scale * this.parsedAnimationData.scaleX;
+            updates.scaleY = properties.scale * this.parsedAnimationData.scaleY;
         }
-        if (properties.scaleX !== undefined) updates.scaleX = properties.scaleX * baseScaleX;
-        if (properties.scaleY !== undefined) updates.scaleY = properties.scaleY * baseScaleY;
+        if (properties.scaleX !== undefined) updates.scaleX = properties.scaleX * this.parsedAnimationData.scaleX;
+        if (properties.scaleY !== undefined) updates.scaleY = properties.scaleY * this.parsedAnimationData.scaleY;
 
         if (properties.opacity !== undefined) updates.opacity = properties.opacity;
         if (properties.skewX !== undefined) updates.skewX = properties.skewX;

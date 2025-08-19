@@ -99,6 +99,12 @@ const handlePlayItem = async (item: any) => {
     await handlePreviewAnimation(item);
 }
 
+// 处理图片更换
+const handleChangeImage = (item: any, resource: any) => {
+    console.log('更换图片:', item, resource);
+    // 这里可以添加额外的处理逻辑
+}
+
 // 处理播放整个分镜序列
 const handlePlayAllStoryboards = async (items: any[]) => {
     console.log('同时播放所有分镜内容:', items);
@@ -188,6 +194,7 @@ const handlePlayAllStoryboards = async (items: any[]) => {
               @update-item="handleUpdateItem"
               @play-item="handlePlayItem"
               @play-all-storyboards="handlePlayAllStoryboards"
+              @change-image="handleChangeImage"
             />
           </div>
         </div>

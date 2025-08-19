@@ -31,8 +31,8 @@
                   <Label class="text-xs">宽度</Label>
                   <Input
                     v-model="animationData.width"
-                    type="number"
-                    placeholder="自动"
+                    type="text"
+                    placeholder="100 或 50%"
                     class="h-8 text-xs"
                   />
                 </div>
@@ -40,8 +40,8 @@
                   <Label class="text-xs">高度</Label>
                   <Input
                     v-model="animationData.height"
-                    type="number"
-                    placeholder="自动"
+                    type="text"
+                    placeholder="100 或 50%"
                     class="h-8 text-xs"
                   />
                 </div>
@@ -61,8 +61,8 @@
                   <Label class="text-xs">X 位置</Label>
                   <Input
                     v-model="animationData.initialPosition!.x"
-                    type="number"
-                    placeholder="0"
+                    type="text"
+                    placeholder="0 或 25%"
                     class="h-8 text-xs"
                   />
                 </div>
@@ -70,8 +70,8 @@
                   <Label class="text-xs">Y 位置</Label>
                   <Input
                     v-model="animationData.initialPosition!.y"
-                    type="number"
-                    placeholder="0"
+                    type="text"
+                    placeholder="0 或 25%"
                     class="h-8 text-xs"
                   />
                 </div>
