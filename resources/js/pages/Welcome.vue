@@ -4,31 +4,9 @@ import { onMounted } from 'vue';
 import { initializeTheme } from '@/composables/useAppearance';
 import WelcomeUserMenu from '@/components/WelcomeUserMenu.vue';
 import Icon from '@/components/Icon.vue';
-import { gsap } from 'gsap';
 
 onMounted(() => {
     initializeTheme();
-    
-    // GSAP animations
-    gsap.fromTo('.hero-title', 
-        { opacity: 0, y: 50 },
-        { opacity: 1, y: 0, duration: 1, ease: 'power2.out' }
-    );
-    
-    gsap.fromTo('.hero-subtitle', 
-        { opacity: 0, y: 30 },
-        { opacity: 1, y: 0, duration: 1, delay: 0.2, ease: 'power2.out' }
-    );
-    
-    gsap.fromTo('.feature-card', 
-        { opacity: 0, y: 30 },
-        { opacity: 1, y: 0, duration: 0.8, stagger: 0.1, delay: 0.4, ease: 'power2.out' }
-    );
-    
-    gsap.fromTo('.cta-buttons', 
-        { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, duration: 0.8, delay: 0.8, ease: 'power2.out' }
-    );
 });
 </script>
 
@@ -70,14 +48,14 @@ onMounted(() => {
         <section class="pt-24 pb-12 px-4 sm:px-6 lg:px-8">
             <div class="max-w-7xl mx-auto">
                 <div class="text-center">
-                    <h1 class="hero-title text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6">
+                    <h1 class="hero-title animate-fade-in-up text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6">
                         创造精彩
                         <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">动画</span>
                     </h1>
-                    <p class="hero-subtitle text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto">
+                    <p class="hero-subtitle animate-fade-in-up-delay-1 text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto">
                         专业的在线动画制作平台，让您的创意变为现实。无需复杂软件，在浏览器中即可制作精美动画。
                     </p>
-                    <div class="cta-buttons flex flex-col sm:flex-row gap-4 justify-center mb-16">
+                    <div class="cta-buttons animate-fade-in-up-delay-2 flex flex-col sm:flex-row gap-4 justify-center mb-16">
                         <Link
                             v-if="!$page.props.auth.user"
                             :href="route('register')"
@@ -108,21 +86,21 @@ onMounted(() => {
                     <p class="text-xl text-gray-600 dark:text-gray-300">强大的功能，简单的操作</p>
                 </div>
                 <div class="grid md:grid-cols-3 gap-8">
-                    <div class="feature-card bg-white dark:bg-gray-900 p-8 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-2">
+                    <div class="feature-card animate-fade-in-up-delay-3 bg-white dark:bg-gray-900 p-8 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-2">
                         <div class="w-16 h-16 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mb-6">
                             <Icon name="smile" class="w-8 h-8 text-white" />
                         </div>
                         <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">简单易用</h3>
                         <p class="text-gray-600 dark:text-gray-300">直观的界面设计，无需专业技能即可上手，拖拽式操作让动画制作变得简单。</p>
                     </div>
-                    <div class="feature-card bg-white dark:bg-gray-900 p-8 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-2">
+                    <div class="feature-card animate-fade-in-up-delay-4 bg-white dark:bg-gray-900 p-8 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-2">
                         <div class="w-16 h-16 bg-gradient-to-r from-green-500 to-green-600 rounded-lg flex items-center justify-center mb-6">
                             <Icon name="zap" class="w-8 h-8 text-white" />
                         </div>
                         <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">实时预览</h3>
                         <p class="text-gray-600 dark:text-gray-300">所见即所得，实时查看动画效果，随时调整参数，立即看到变化。</p>
                     </div>
-                    <div class="feature-card bg-white dark:bg-gray-900 p-8 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-2">
+                    <div class="feature-card animate-fade-in-up-delay-5 bg-white dark:bg-gray-900 p-8 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-2">
                         <div class="w-16 h-16 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg flex items-center justify-center mb-6">
                             <Icon name="share2" class="w-8 h-8 text-white" />
                         </div>
@@ -285,3 +263,46 @@ onMounted(() => {
         </footer>
     </div>
 </template>
+
+<style scoped>
+/* 淡入上升动画 */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in-up {
+    animation: fadeInUp 1s ease-out forwards;
+}
+
+.animate-fade-in-up-delay-1 {
+    animation: fadeInUp 1s ease-out 0.2s forwards;
+    opacity: 0;
+}
+
+.animate-fade-in-up-delay-2 {
+    animation: fadeInUp 0.8s ease-out 0.8s forwards;
+    opacity: 0;
+}
+
+.animate-fade-in-up-delay-3 {
+    animation: fadeInUp 0.8s ease-out 0.4s forwards;
+    opacity: 0;
+}
+
+.animate-fade-in-up-delay-4 {
+    animation: fadeInUp 0.8s ease-out 0.5s forwards;
+    opacity: 0;
+}
+
+.animate-fade-in-up-delay-5 {
+    animation: fadeInUp 0.8s ease-out 0.6s forwards;
+    opacity: 0;
+}
+</style>

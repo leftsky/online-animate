@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { gsap } from 'gsap'
 import { Head } from '@inertiajs/vue3'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { type BreadcrumbItem } from '@/types'
@@ -18,7 +17,8 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 const canvasRef = ref<InstanceType<typeof StoryboardCanvas>>()
 const selectedObject = ref(null)
-const timeline = ref<gsap.core.Timeline>()
+const isPlaying = ref(false)
+const currentTime = ref(0)
 
 // 对象选择处理
 const handleObjectSelected = (object: any) => {
@@ -33,27 +33,24 @@ const handleObjectModified = (object: any) => {
 
 // 时间轴控制
 const handlePlay = () => {
-    if (timeline.value) {
-        timeline.value.play()
-    }
+    isPlaying.value = true
+    // 这里可以添加实际的动画播放逻辑
 }
 
 const handlePause = () => {
-    if (timeline.value) {
-        timeline.value.pause()
-    }
+    isPlaying.value = false
+    // 这里可以添加实际的动画暂停逻辑
 }
 
 const handleStop = () => {
-    if (timeline.value) {
-        timeline.value.restart().pause()
-    }
+    isPlaying.value = false
+    currentTime.value = 0
+    // 这里可以添加实际的动画停止逻辑
 }
 
 const handleSeek = (time: number) => {
-    if (timeline.value) {
-        timeline.value.seek(time)
-    }
+    currentTime.value = time
+    // 这里可以添加实际的动画跳转逻辑
 }
 
 const handleAddKeyframe = () => {
@@ -75,11 +72,9 @@ const handleSelectItem = (item: any) => {
 const handlePlayItem = (item: any) => {
     console.log('Play storyboard item:', item)
     // 播放指定的动画项目
-    if (item.animation && timeline.value) {
-        // 这里可以根据动画数据创建GSAP动画
-        timeline.value.clear()
-        // 添加动画到时间轴的逻辑
-        timeline.value.play()
+    if (item.animation) {
+        // 这里可以添加实际的动画播放逻辑
+        isPlaying.value = true
     }
 }
 
@@ -119,8 +114,9 @@ const handlePreviewAnimation = async (item: any) => {
 
 // 初始化
 onMounted(() => {
-    // 初始化GSAP时间轴
-    timeline.value = gsap.timeline({ paused: true })
+    // 初始化状态
+    isPlaying.value = false
+    currentTime.value = 0
 })
 </script>
 
@@ -174,6 +170,8 @@ onMounted(() => {
                 <Timeline
                     :duration="10"
                     :selected-object="selectedObject"
+                    :is-playing="isPlaying"
+                    :current-time="currentTime"
                     @play="handlePlay"
                     @pause="handlePause"
                     @stop="handleStop"

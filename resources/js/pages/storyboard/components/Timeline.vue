@@ -12,10 +12,14 @@ interface Keyframe {
 interface Props {
     duration?: number;
     selectedObject?: any;
+    isPlaying?: boolean;
+    currentTime?: number;
 }
 
 const props = withDefaults(defineProps<Props>(), {
     duration: 10, // 默认10秒
+    isPlaying: false,
+    currentTime: 0,
 });
 
 const emit = defineEmits<{
@@ -27,9 +31,9 @@ const emit = defineEmits<{
     removeKeyframe: [keyframeId: string];
 }>();
 
-// 播放状态
-const isPlaying = ref(false);
-const currentTime = ref(0);
+// 播放状态 - 使用props或本地状态
+const isPlaying = computed(() => props.isPlaying);
+const currentTime = computed(() => props.currentTime);
 const keyframes = ref<Keyframe[]>([]);
 
 // 时间轴设置
