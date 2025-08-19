@@ -19,9 +19,7 @@ Route::get('resource-library', function () {
     return Inertia::render('ResourceLibrary');
 })->middleware(['auth', 'verified'])->name('resource-library');
 
-Route::get('animation-parser-test', function () {
-    return Inertia::render('AnimationParserTest');
-})->middleware(['auth', 'verified'])->name('animation-parser-test');
+
 
 // 包含 API 路由
 require __DIR__ . '/api.php';
