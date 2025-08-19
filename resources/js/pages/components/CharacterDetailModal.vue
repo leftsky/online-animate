@@ -89,8 +89,28 @@
 
         <!-- 中间Canvas区域 -->
         <div class="flex-1 p-6">
-          <div class="w-full h-full bg-muted rounded-lg overflow-hidden">
+          <div class="relative w-full h-full bg-muted rounded-lg overflow-hidden">
             <canvas ref="canvasElement" class="w-full h-full"></canvas>
+            
+            <!-- 播放控制按钮 -->
+            <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
+              <button
+                v-if="!isPlaying"
+                @click="startAnimation"
+                class="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                <Play class="w-4 h-4" />
+                播放动画
+              </button>
+              <button
+                v-else
+                @click="pauseAnimation"
+                class="flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/90 transition-colors"
+              >
+                <Pause class="w-4 h-4" />
+                暂停动画
+              </button>
+            </div>
           </div>
         </div>
 
@@ -136,8 +156,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
-import { Image } from 'lucide-vue-next';
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
+import { Image, Play, Pause } from 'lucide-vue-next';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CanvasManager } from '@/lib/animation/CanvasManager';
 import { YamlAnimationPlayer } from '@/lib/animation/YamlAnimationPlayer';
@@ -169,6 +189,7 @@ const canvasElement = ref<HTMLCanvasElement>();
 let canvasManager: CanvasManager | null = null;
 let yamlPlayer: YamlAnimationPlayer | null = null;
 const selectedImage = ref<string>('main');
+const isPlaying = ref(false);
 
 // 文件上传相关
 const mainImageInput = ref<HTMLInputElement>();
@@ -341,10 +362,7 @@ const initYamlPlayer = async () => {
     if (yamlPlayer && yamlPlayer.isReady()) {
       console.log('🎯 播放器就绪状态:', yamlPlayer.isReady());
       console.log('⏱️ 总时长:', yamlPlayer.getDuration());
-      
-      // 开始播放
-      yamlPlayer.play();
-      console.log('▶️ 开始播放动画');
+      // 不自动播放，等待用户点击播放按钮
     } else {
       console.warn('⚠️ yamlPlayer 未就绪，无法播放动画');
       throw new Error('播放器未就绪');
@@ -355,6 +373,36 @@ const initYamlPlayer = async () => {
     // 清理播放器实例
     yamlPlayer = null;
     throw error;
+  }
+};
+
+// 开始播放动画
+const startAnimation = () => {
+  if (yamlPlayer && yamlPlayer.isReady()) {
+    try {
+      yamlPlayer.play();
+      isPlaying.value = true;
+      console.log('▶️ 开始播放动画');
+    } catch (error) {
+      console.error('播放动画失败:', error);
+      toast.error('播放动画失败');
+    }
+  } else {
+    console.warn('播放器未就绪');
+    toast.error('播放器未就绪');
+  }
+};
+
+// 暂停动画
+const pauseAnimation = () => {
+  if (yamlPlayer) {
+    try {
+      yamlPlayer.pause();
+      isPlaying.value = false;
+      console.log('⏸️ 暂停动画');
+    } catch (error) {
+      console.error('暂停动画失败:', error);
+    }
   }
 };
 
