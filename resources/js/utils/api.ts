@@ -139,6 +139,193 @@ export const uploadApi = {
 };
 
 /**
+ * 媒体资源相关 API
+ */
+export const mediaApi = {
+    /**
+     * 获取场景列表
+     */
+    getScenarios(params: {
+        limit?: number;
+        offset?: number;
+        search?: string;
+        category?: string;
+        status?: number;
+    } = {}): Promise<ApiResponse> {
+        const queryParams = new URLSearchParams();
+        if (params.limit) queryParams.append('limit', String(params.limit));
+        if (params.offset) queryParams.append('offset', String(params.offset));
+        if (params.search) queryParams.append('search', params.search);
+        if (params.category) queryParams.append('category', params.category);
+        if (params.status !== undefined) queryParams.append('status', String(params.status));
+
+        const url = `/media_scenarios${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+        return apiGet(url);
+    },
+
+    /**
+     * 创建场景
+     */
+    createScenario(data: {
+        name: string;
+        description?: string;
+        image_path?: string;
+        generation_prompt?: string;
+        category?: string;
+        tags?: string[];
+    }): Promise<ApiResponse> {
+        return apiPost('/media_scenarios', data);
+    },
+
+    /**
+     * 更新场景
+     */
+    updateScenario(id: string | number, data: {
+        name?: string;
+        description?: string;
+        image_path?: string;
+        generation_prompt?: string;
+        category?: string;
+        tags?: string[];
+    }): Promise<ApiResponse> {
+        return apiPut(`/media_scenarios/${id}`, data);
+    },
+
+    /**
+     * 删除场景
+     */
+    deleteScenario(id: string | number): Promise<ApiResponse> {
+        return apiDelete(`/media_scenarios/${id}`);
+    },
+
+    /**
+     * 获取人物列表
+     */
+    getCharacters(params: {
+        limit?: number;
+        offset?: number;
+        search?: string;
+        category?: string;
+        status?: number;
+        gender?: number;
+    } = {}): Promise<ApiResponse> {
+        const queryParams = new URLSearchParams();
+        if (params.limit) queryParams.append('limit', String(params.limit));
+        if (params.offset) queryParams.append('offset', String(params.offset));
+        if (params.search) queryParams.append('search', params.search);
+        if (params.category) queryParams.append('category', params.category);
+        if (params.status !== undefined) queryParams.append('status', String(params.status));
+        if (params.gender !== undefined) queryParams.append('gender', String(params.gender));
+
+        const url = `/media_characters${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+        return apiGet(url);
+    },
+
+    /**
+     * 创建人物
+     */
+    createCharacter(data: {
+        name: string;
+        description?: string;
+        gender?: number;
+        age?: number;
+        image_path?: string;
+        additional_resources?: string;
+        personality?: string;
+        occupation?: string;
+        tags?: string[];
+    }): Promise<ApiResponse> {
+        return apiPost('/media_characters', data);
+    },
+
+    /**
+     * 更新人物
+     */
+    updateCharacter(id: string | number, data: {
+        name?: string;
+        description?: string;
+        gender?: number;
+        age?: number;
+        image_path?: string;
+        additional_resources?: string;
+        personality?: string;
+        occupation?: string;
+        tags?: string[];
+    }): Promise<ApiResponse> {
+        return apiPut(`/media_characters/${id}`, data);
+    },
+
+    /**
+     * 删除人物
+     */
+    deleteCharacter(id: string | number): Promise<ApiResponse> {
+        return apiDelete(`/media_characters/${id}`);
+    },
+
+    /**
+     * 获取物品列表
+     */
+    getItems(params: {
+        limit?: number;
+        offset?: number;
+        search?: string;
+        category?: string;
+        status?: number;
+        type?: string;
+    } = {}): Promise<ApiResponse> {
+        const queryParams = new URLSearchParams();
+        if (params.limit) queryParams.append('limit', String(params.limit));
+        if (params.offset) queryParams.append('offset', String(params.offset));
+        if (params.search) queryParams.append('search', params.search);
+        if (params.category) queryParams.append('category', params.category);
+        if (params.status !== undefined) queryParams.append('status', String(params.status));
+        if (params.type) queryParams.append('type', params.type);
+
+        const url = `/media_items${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+        return apiGet(url);
+    },
+
+    /**
+     * 创建物品
+     */
+    createItem(data: {
+        name: string;
+        description?: string;
+        image_path?: string;
+        generation_prompt?: string;
+        category?: string;
+        type?: string;
+        properties?: any[];
+        tags?: string[];
+    }): Promise<ApiResponse> {
+        return apiPost('/media_items', data);
+    },
+
+    /**
+     * 更新物品
+     */
+    updateItem(id: string | number, data: {
+        name?: string;
+        description?: string;
+        image_path?: string;
+        generation_prompt?: string;
+        category?: string;
+        type?: string;
+        properties?: any[];
+        tags?: string[];
+    }): Promise<ApiResponse> {
+        return apiPut(`/media_items/${id}`, data);
+    },
+
+    /**
+     * 删除物品
+     */
+    deleteItem(id: string | number): Promise<ApiResponse> {
+        return apiDelete(`/media_items/${id}`);
+    }
+};
+
+/**
  * 分镜内容相关 API
  */
 export const sceneContentApi = {
@@ -162,7 +349,7 @@ export const sceneContentApi = {
         if (params.limit) queryParams.append('limit', String(params.limit));
         if (params.offset) queryParams.append('offset', String(params.offset));
 
-        const url = `/scene-contents${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+        const url = `/scene_contents${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
         
         return apiGet(url).then(response => {
             // 如果请求成功且有数据，处理 YAML 脚本
@@ -215,14 +402,14 @@ export const sceneContentApi = {
         layer_order?: number;
         status?: number;
     }): Promise<ApiResponse> {
-        return apiPost('/scene-contents', data);
+        return apiPost('/scene_contents', data);
     },
 
     /**
      * 获取分镜内容详情
      */
     get(id: number): Promise<ApiResponse> {
-        return apiGet(`/scene-contents/${id}`);
+        return apiGet(`/scene_contents/${id}`);
     },
 
     /**
@@ -236,14 +423,14 @@ export const sceneContentApi = {
         layer_order?: number;
         status?: number;
     }): Promise<ApiResponse> {
-        return apiPut(`/scene-contents/${id}`, data);
+        return apiPut(`/scene_contents/${id}`, data);
     },
 
     /**
      * 删除分镜内容
      */
     delete(id: number): Promise<ApiResponse> {
-        return apiDelete(`/scene-contents/${id}`);
+        return apiDelete(`/scene_contents/${id}`);
     },
 
     /**
@@ -254,7 +441,7 @@ export const sceneContentApi = {
         dragged_id: number;
         target_id?: number | null;
     }): Promise<ApiResponse> {
-        return apiPost('/scene-contents/reorder', data);
+        return apiPost('/scene_contents/reorder', data);
     }
 };
 
@@ -339,6 +526,7 @@ export const apiUtils = {
 export default {
     config: configApi,
     upload: uploadApi,
+    media: mediaApi,
     sceneContent: sceneContentApi,
     utils: apiUtils,
     // 直接方法

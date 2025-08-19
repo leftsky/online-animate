@@ -48,37 +48,6 @@
                 </Input>
               </div>
               <div class="flex gap-2">
-                <div class="relative">
-                  <Button
-                    variant="outline"
-                    @click="showCategoryDropdown = !showCategoryDropdown"
-                    class="w-40 justify-between"
-                  >
-                    {{ selectedCategory || '全部分类' }}
-                    <ChevronDown class="w-4 h-4" />
-                  </Button>
-                  <div
-                    v-if="showCategoryDropdown"
-                    class="absolute top-full left-0 z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg"
-                  >
-                    <div class="p-1">
-                      <div
-                        class="px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer rounded"
-                        @click="selectCategory('')"
-                      >
-                        全部分类
-                      </div>
-                      <div
-                        v-for="category in categories"
-                        :key="category"
-                        class="px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer rounded"
-                        @click="selectCategory(category)"
-                      >
-                        {{ category }}
-                      </div>
-                    </div>
-                  </div>
-                </div>
                 <Button @click="showAddDialog = true" class="whitespace-nowrap">
                   <Plus class="w-4 h-4 mr-2" />
                   添加{{ getCurrentTabTitle() }}
@@ -114,7 +83,6 @@
                 <!-- 资源信息 -->
                 <div class="space-y-0.5">
                   <h3 class="font-medium text-xs text-foreground truncate">{{ resource.name }}</h3>
-                  <p v-if="resource.category" class="text-xs text-muted-foreground truncate">{{ resource.category }}</p>
                   <p v-if="resource.description" class="text-xs text-muted-foreground truncate">{{ resource.description }}</p>
                 </div>
 
@@ -149,9 +117,9 @@
             <!-- 分页组件 -->
             <div v-if="pagination.total > 0" class="mt-6">
               <Pagination
-                :total="pagination.total"
-                :limit="pagination.limit"
-                :offset="pagination.offset"
+                :total="Number(pagination.total)"
+                :limit="Number(pagination.limit)"
+                :offset="Number(pagination.offset)"
                 @update:offset="handleOffsetChange"
                 @update:limit="handleLimitChange"
               />
@@ -181,10 +149,7 @@
               <Textarea id="description" v-model="newResource.description" placeholder="输入描述" rows="3" />
             </div>
 
-            <div class="space-y-2">
-              <Label for="category">分类</Label>
-              <Input id="category" v-model="newResource.category" placeholder="输入分类" />
-            </div>
+
 
             <div v-if="activeTab === 'characters'" class="space-y-2">
               <Label for="gender">性别</Label>
@@ -234,12 +199,19 @@
         :resource-type="activeTab === 'scenarios' ? 'scenario' : activeTab === 'characters' ? 'character' : 'item'"
         @upload-complete="handleBatchUploadComplete"
       />
+
+      <!-- 人物详情弹窗 -->
+      <CharacterDetailModal
+        v-model:open="showCharacterDetail"
+        :character="selectedCharacter"
+        @character-updated="handleCharacterUpdated"
+      />
     </div>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { 
   Library, 
   Image, 
@@ -260,10 +232,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/composables/useToast';
 import AppLayout from '@/layouts/AppLayout.vue';
-import MediaUploader from '@/components/MediaUploader.vue';
 import Pagination from '@/components/ui/pagination/Pagination.vue';
 import BatchUploadDialog from '@/components/BatchUploadDialog.vue';
-import { mediaApi, type MediaScenario, type MediaCharacter, type MediaItem, type SearchParams } from '@/services/mediaApi';
+import CharacterDetailModal from '@/components/CharacterDetailModal.vue';
+import { mediaApi } from '@/utils/api';
+import { type MediaScenario, type MediaCharacter, type MediaItem } from '@/services/mediaApi';
 
 // 面包屑导航
 const breadcrumbs = [
@@ -289,29 +262,26 @@ const genderOptions = [
 // 响应式数据
 const activeTab = ref('scenarios');
 const searchQuery = ref('');
-const selectedCategory = ref('');
 const selectedStatus = ref('');
 const selectedGender = ref('');
 const selectedItemType = ref('');
 const showAddDialog = ref(false);
-const showCategoryDropdown = ref(false);
 const showGenderDropdown = ref(false);
 const showBatchUploadDialog = ref(false);
-const uploadedFiles = ref<any[]>([]);
+const showCharacterDetail = ref(false);
+const selectedCharacter = ref<MediaCharacter | null>(null);
 const loading = ref(false);
 
 // 新资源数据
 const newResource = ref({
   name: '',
   description: '',
-  category: '',
   gender: 0,
   age: '' as string
 });
 
 // 真实数据
 const resources = ref<(MediaScenario | MediaCharacter | MediaItem)[]>([]);
-const categories = ref<string[]>([]);
 const pagination = ref({
   total: 0,
   limit: 20,
@@ -321,6 +291,11 @@ const pagination = ref({
 
 // 计算属性
 const filteredResources = computed(() => {
+  // 确保resources.value是数组
+  if (!Array.isArray(resources.value)) {
+    return [];
+  }
+  
   let filtered = resources.value.filter(resource => {
     if (activeTab.value === 'scenarios') return 'generation_prompt' in resource;
     if (activeTab.value === 'characters') return 'gender' in resource;
@@ -333,10 +308,6 @@ const filteredResources = computed(() => {
       resource.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
       resource.description?.toLowerCase().includes(searchQuery.value.toLowerCase())
     );
-  }
-  
-  if (selectedCategory.value) {
-    filtered = filtered.filter(resource => resource.category === selectedCategory.value);
   }
   
   return filtered;
@@ -360,7 +331,29 @@ const getGenderText = (gender: number) => {
 
 const selectResource = (resource: any) => {
   console.log('选择资源:', resource);
-  // TODO: 实现资源选择逻辑
+  
+  // 如果是人物类型，打开人物详情弹窗
+  if (activeTab.value === 'characters' && 'gender' in resource) {
+    selectedCharacter.value = resource as MediaCharacter;
+    showCharacterDetail.value = true;
+  }
+  // 其他类型资源的处理逻辑可以在这里添加
+};
+
+// 处理人物信息更新
+const handleCharacterUpdated = (updatedCharacter: MediaCharacter) => {
+  // 更新选中的角色
+  selectedCharacter.value = updatedCharacter;
+  
+  // 更新资源列表中的对应角色
+  const index = resources.value.findIndex(r => r.id === updatedCharacter.id);
+  if (index !== -1) {
+    resources.value[index] = updatedCharacter;
+  }
+  
+  // 显示成功消息
+  const { toast } = useToast();
+  toast.success('人物信息更新成功');
 };
 
 // 删除资源
@@ -421,64 +414,14 @@ const handleBatchUploadComplete = (results: any[]) => {
   }
 };
 
-const selectCategory = (category: string) => {
-  selectedCategory.value = category;
-  showCategoryDropdown.value = false;
-  loadResources();
-};
+
 
 const selectGender = (gender: number) => {
   newResource.value.gender = gender;
   showGenderDropdown.value = false;
 };
 
-const handleUploadComplete = (files: any[]) => {
-  uploadedFiles.value = files;
-  console.log('文件上传完成:', files);
-};
 
-const handleAutoCreateResource = async (file: any): Promise<any> => {
-  try {
-    console.log('自动创建资源:', file);
-    
-    let response;
-    const resourceData = {
-      name: '未命名',
-      image_path: file.url,
-      description: '',
-      category: '',
-      status: 1
-    };
-    
-    if (activeTab.value === 'scenarios') {
-      response = await mediaApi.createScenario({
-        ...resourceData,
-        generation_prompt: '',
-        tags: []
-      });
-    } else if (activeTab.value === 'items') {
-      response = await mediaApi.createItem({
-        ...resourceData,
-        generation_prompt: '',
-        type: '',
-        properties: [],
-        tags: []
-      });
-    }
-    
-    if (response?.success) {
-      const { toast } = useToast();
-      toast.success(`已自动创建${getCurrentTabTitle()}资源`);
-      // 重新加载资源列表
-      loadResources();
-      return response.data;
-    }
-  } catch (error) {
-    console.error('自动创建资源失败:', error);
-    const { toast } = useToast();
-    toast.error('自动创建资源失败');
-  }
-};
 
 const handleAddResource = async () => {
   if (!newResource.value.name.trim()) {
@@ -494,22 +437,19 @@ const handleAddResource = async () => {
     if (activeTab.value === 'scenarios') {
       response = await mediaApi.createScenario({
         name: newResource.value.name,
-        description: newResource.value.description,
-        category: newResource.value.category
+        description: newResource.value.description
       });
     } else if (activeTab.value === 'characters') {
       response = await mediaApi.createCharacter({
         name: newResource.value.name,
         description: newResource.value.description,
-        category: newResource.value.category,
         gender: newResource.value.gender,
         age: newResource.value.age ? parseInt(newResource.value.age) : undefined
       });
     } else if (activeTab.value === 'items') {
       response = await mediaApi.createItem({
         name: newResource.value.name,
-        description: newResource.value.description,
-        category: newResource.value.category
+        description: newResource.value.description
       });
     }
 
@@ -536,7 +476,6 @@ const resetForm = () => {
   newResource.value = {
     name: '',
     description: '',
-    category: '',
     gender: 0,
     age: ''
   };
@@ -546,45 +485,91 @@ const resetForm = () => {
 const loadResources = async () => {
   loading.value = true;
   try {
-    const params: SearchParams = {
+    const params = {
       limit: pagination.value.limit,
       offset: pagination.value.offset,
       search: searchQuery.value,
-      category: selectedCategory.value,
-      status: selectedStatus.value
+      status: selectedStatus.value ? Number(selectedStatus.value) : undefined
     };
 
     let response;
     if (activeTab.value === 'scenarios') {
       response = await mediaApi.getScenarios(params);
-      resources.value = response.data; // 使用返回的data数组
-      pagination.value = response.pagination; // 更新分页信息
-      // 提取分类
-      const allCategories = response.data.map((r: MediaScenario) => r.category).filter((c): c is string => Boolean(c));
-      categories.value = [...new Set(allCategories)];
+      // 确保resources.value是数组
+      if (Array.isArray(response.data)) {
+        resources.value = response.data;
+      } else if (response.data && Array.isArray(response.data.data)) {
+        resources.value = response.data.data;
+      } else {
+        resources.value = [];
+      }
+      
+      // 处理分页信息
+      if (response.data && response.data.pagination) {
+        const paginationData = response.data.pagination;
+        pagination.value = {
+          total: Number(paginationData.total || 0),
+          limit: Number(paginationData.limit || 20),
+          offset: Number(paginationData.offset || 0),
+          has_more: paginationData.has_more || false
+        };
+      }
     } else if (activeTab.value === 'characters') {
       // 人物需要额外的性别筛选
-      const characterParams = { ...params, gender: selectedGender.value };
+      const characterParams = { 
+        ...params, 
+        gender: selectedGender.value ? Number(selectedGender.value) : undefined 
+      };
       response = await mediaApi.getCharacters(characterParams);
-      resources.value = response.data; // 使用返回的data数组
-      pagination.value = response.pagination; // 更新分页信息
-      // 提取分类
-      const allCategories = response.data.map((r: MediaCharacter) => r.category).filter((c): c is string => Boolean(c));
-      categories.value = [...new Set(allCategories)];
+      // 确保resources.value是数组
+      if (Array.isArray(response.data)) {
+        resources.value = response.data;
+      } else if (response.data && Array.isArray(response.data.data)) {
+        resources.value = response.data.data;
+      } else {
+        resources.value = [];
+      }
+      
+      // 处理分页信息
+      if (response.data && response.data.pagination) {
+        const paginationData = response.data.pagination;
+        pagination.value = {
+          total: Number(paginationData.total || 0),
+          limit: Number(paginationData.limit || 20),
+          offset: Number(paginationData.offset || 0),
+          has_more: paginationData.has_more || false
+        };
+      }
     } else if (activeTab.value === 'items') {
       // 物品需要额外的类型筛选
       const itemParams = { ...params, type: selectedItemType.value };
       response = await mediaApi.getItems(itemParams);
-      resources.value = response.data; // 使用返回的data数组
-      pagination.value = response.pagination; // 更新分页信息
-      // 提取分类
-      const allCategories = response.data.map((r: MediaItem) => r.category).filter((c): c is string => Boolean(c));
-      categories.value = [...new Set(allCategories)];
+      // 确保resources.value是数组
+      if (Array.isArray(response.data)) {
+        resources.value = response.data;
+      } else if (response.data && Array.isArray(response.data.data)) {
+        resources.value = response.data.data;
+      } else {
+        resources.value = [];
+      }
+      
+      // 处理分页信息
+      if (response.data && response.data.pagination) {
+        const paginationData = response.data.pagination;
+        pagination.value = {
+          total: Number(paginationData.total || 0),
+          limit: Number(paginationData.limit || 20),
+          offset: Number(paginationData.offset || 0),
+          has_more: paginationData.has_more || false
+        };
+      }
     }
   } catch (error) {
     console.error('加载资源失败:', error);
     const { toast } = useToast();
     toast.error('加载资源失败');
+    // 确保在错误时也设置为空数组
+    resources.value = [];
   } finally {
     loading.value = false;
   }
@@ -601,17 +586,5 @@ onMounted(() => {
   loadResources();
 });
 
-onUnmounted(() => {
-  // 移除点击外部关闭分类下拉菜单的监听器
-  document.removeEventListener('click', handleClickOutside);
-});
 
-const handleClickOutside = (event: MouseEvent) => {
-  const dropdown = document.querySelector('.absolute.top-full.left-0.z-50.w-full.mt-1.bg-popover.border.border-border.rounded-md.shadow-lg');
-  if (dropdown && !dropdown.contains(event.target as Node)) {
-    showCategoryDropdown.value = false;
-  }
-};
-
-document.addEventListener('click', handleClickOutside);
 </script>

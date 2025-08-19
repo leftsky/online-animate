@@ -26,19 +26,19 @@ Route::middleware(['auth', 'verified'])->prefix('web/api')->name('web.api.')->gr
     Route::post('/upload', [UploadController::class, 'upload'])->name('upload');
 
     // 分镜内容管理接口
-    Route::apiResource('scene-contents', SceneContentController::class);
+    Route::apiResource('scene_contents', SceneContentController::class);
     
     // 分镜内容重排序接口
-    Route::post('scene-contents/reorder', [SceneContentController::class, 'reorder'])->name('scene-contents.reorder');
+    Route::post('scene_contents/reorder', [SceneContentController::class, 'reorder'])->name('scene_contents.reorder');
 });
 
 Route::middleware(['auth', 'verified'])->prefix('web/api')->name('web.api.')->group(function () {
     // 场景资源
-    Route::apiResource('media-scenarios', \App\Http\Controllers\Api\MediaScenarioController::class);
+    Route::apiResource('media_scenarios', \App\Http\Controllers\Api\MediaScenarioController::class);
 
     // 人物资源
-    Route::apiResource('media-characters', \App\Http\Controllers\Api\MediaCharacterController::class);
+    Route::apiResource('media_characters', \App\Http\Controllers\Api\MediaCharacterController::class);
 
     // 物品资源
-    Route::apiResource('media-items', \App\Http\Controllers\Api\MediaItemController::class);
+    Route::apiResource('media_items', \App\Http\Controllers\Api\MediaItemController::class);
 });

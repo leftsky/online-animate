@@ -6,6 +6,7 @@ use App\Models\MediaCharacter;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class MediaCharacterController extends WebApiController
@@ -27,16 +28,13 @@ class MediaCharacterController extends WebApiController
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('description', 'like', "%{$search}%")
-                      ->orWhere('personality', 'like', "%{$search}%");
+                        ->orWhere('description', 'like', "%{$search}%")
+                        ->orWhere('personality', 'like', "%{$search}%");
                 });
             })
-            ->when($category, function ($query, $category) {
-                $query->where('category', $category);
-            })
-            ->when($gender !== '', function ($query, $gender) {
-                $query->where('gender', $gender);
-            })
+            // ->when($gender !== '', function ($query, $gender) {
+            //     $query->where('gender', $gender);
+            // })
             ->when($status !== '', function ($query, $status) {
                 $query->where('status', $status);
             })
@@ -113,9 +111,10 @@ class MediaCharacterController extends WebApiController
     /**
      * 更新人物
      */
-    public function update(Request $request, MediaCharacter $character): JsonResponse
+    public function update(Request $request, MediaCharacter $mediaCharacter): JsonResponse
     {
-        if ($character->user_id !== Auth::id()) {
+        // 验证用户权限
+        if ($mediaCharacter->user_id !== Auth::id()) {
             return $this->unauthorized('无权访问此资源');
         }
 
@@ -138,12 +137,21 @@ class MediaCharacterController extends WebApiController
             return $this->validationError($validator->errors());
         }
 
-        $character->update($request->only([
-            'name', 'gender', 'age', 'description', 'personality', 'occupation', 
-            'category', 'tags', 'image_path', 'additional_resources', 'status'
+        $mediaCharacter->update($request->only([
+            'name',
+            'gender',
+            'age',
+            'description',
+            'personality',
+            'occupation',
+            'category',
+            'tags',
+            'image_path',
+            'additional_resources',
+            'status'
         ]));
 
-        return $this->success($character, '人物更新成功');
+        return $this->success($mediaCharacter, '人物更新成功');
     }
 
     /**
