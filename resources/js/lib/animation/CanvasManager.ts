@@ -48,7 +48,7 @@ export class CanvasManager {
         height = canvasElement.height || height;
       }
       
-      console.log('🎨 Canvas尺寸设置:', { width, height });
+
       
       // 如果传入的是 HTMLCanvasElement 或字符串，创建新的 Canvas 实例
       this.canvas = new Canvas(canvasElement, {

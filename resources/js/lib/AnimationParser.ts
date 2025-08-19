@@ -122,7 +122,6 @@ export class AnimationParser {
         // console.log('AnimationParser.parseYamlToJson - 输入YAML:', yamlScript);
 
         if (!yamlScript || !yamlScript.trim()) {
-            console.log('AnimationParser.parseYamlToJson - 输入为空，返回null');
             return {};
         }
 
@@ -135,7 +134,6 @@ export class AnimationParser {
             // console.log('AnimationParser.parseYamlToJson - YAML解析结果:', parsed);
 
             if (!parsed || typeof parsed !== 'object') {
-                console.log('AnimationParser.parseYamlToJson - 解析结果无效，返回null');
                 return {};
             }
 
@@ -157,7 +155,6 @@ export class AnimationParser {
             return parsed;
         } catch (error) {
             console.error('YAML解析失败:', error);
-            console.log('AnimationParser.parseYamlToJson - 解析失败，返回null');
             return {};
         }
     }

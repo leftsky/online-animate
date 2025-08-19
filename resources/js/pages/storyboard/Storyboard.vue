@@ -21,16 +21,13 @@ const coreHandles = ref<any>(null)
 // 接收画布核心句柄
 const handleCanvasReady = (handles: any) => {
     coreHandles.value = handles
-    console.log('画布核心句柄已就绪:', handles)
 }
 
 // 手动重新初始化动画系统（用于热更新后）
 const reinitializeAnimationSystem = async () => {
     try {
-        console.log('手动重新初始化动画系统...');
         if (canvasRef.value) {
             await canvasRef.value.reinitializeAnimationSystem();
-            console.log('动画系统重新初始化成功');
         }
     } catch (error) {
         console.error('动画系统重新初始化失败:', error);
@@ -39,7 +36,6 @@ const reinitializeAnimationSystem = async () => {
 
 // 处理动画预览
 const handlePreviewAnimation = async (item: any) => {
-    console.log('Preview animation for item:', item);
 
     try {
         // 检查画布引用是否存在
@@ -65,18 +61,15 @@ const handlePreviewAnimation = async (item: any) => {
         // 通过核心句柄调用动画播放功能
         await coreHandles.value.animationPlayer.setAnimation(item);
         coreHandles.value.animationPlayer.playAnimation();
-        console.log('动画预览启动成功');
     } catch (error) {
         console.error('动画预览失败:', error);
         // 如果失败，尝试重新初始化
-        console.log('尝试重新初始化动画系统...');
         await reinitializeAnimationSystem();
         // 再次尝试播放
         try {
             if (coreHandles.value?.animationPlayer) {
                 await coreHandles.value.animationPlayer.setAnimation(item);
                 coreHandles.value.animationPlayer.playAnimation();
-                console.log('重新初始化后动画播放成功');
             } else {
                 console.error('重新初始化后动画播放器仍然不可用');
             }
@@ -87,10 +80,8 @@ const handlePreviewAnimation = async (item: any) => {
 }
 
 // 处理项目更新
-const handleUpdateItem = (updatedItem: any) => {
-    console.log('更新项目:', updatedItem);
+const handleUpdateItem = () => {
     // 这里可以添加更新逻辑，比如保存到后端
-    // 暂时只是打印日志
 }
 
 // 处理播放单个项目
@@ -129,7 +120,10 @@ const handlePlayAllStoryboards = async (items: any[]) => {
         // 第二步：为每个分镜内容创建独立的动画播放器实例
         const animationPlayers: any[] = [];
 
-        for (const item of items) {
+        // 深拷贝并逆转items，避免影响原始数据
+        const reversedItems = JSON.parse(JSON.stringify(items)).reverse();
+
+        for (const item of reversedItems) {
             try {
                 // 创建新的动画播放器实例
                 const { YamlAnimationPlayer } = await import('@/lib/animation/YamlAnimationPlayer');

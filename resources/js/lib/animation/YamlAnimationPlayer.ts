@@ -75,26 +75,21 @@ export class YamlAnimationPlayer extends BasePlayer {
      */
     public async setYamlScript(yamlScript: string): Promise<void> {
         this.yamlScript = yamlScript;
-        console.log('🎬 设置YAML脚本', yamlScript);
 
         // 等待初始化完成
         await this.initializeAnimation();
-        console.log('🎬 动画初始化完成');
     }
 
     /**
      * 初始化动画数据
      */
     private async initializeAnimation(): Promise<void> {
-        console.log('🎬 初始化动画数据', this.yamlScript);
         try {
             // 解析YAML脚本
             const animationData = this.parseYamlScript(this.yamlScript);
 
             // 准备动画对象
             await this.prepareAnimation(animationData);
-
-            console.log('🎬 动画初始化完成', animationData);
         } catch (error) {
             console.error('动画初始化失败:', error);
             throw error; // 直接抛出错误，不创建默认动画
@@ -117,7 +112,7 @@ export class YamlAnimationPlayer extends BasePlayer {
                 throw new Error('YAML解析结果为空');
             }
 
-            console.log('🎯 YAML解析成功:', parsedData);
+
             return parsedData;
         } catch (error) {
             console.error('❌ YAML解析失败:', error);
@@ -144,15 +139,11 @@ export class YamlAnimationPlayer extends BasePlayer {
                 const canvas = this.getCanvas();
                 canvas.add(targetObject);
 
-                console.log('🎨 动画对象已添加到画布:', targetObject);
-
                 // 计算总动画时长
                 this.calculateTotalDuration();
-                console.log('⏱️ 总动画时长:', this.getPlaybackState().totalDuration, 'ms');
 
                 // 渲染画布
                 this.render();
-                console.log('🖼️ 画布已渲染');
             } else {
                 throw new Error('创建目标对象失败');
             }
@@ -177,13 +168,11 @@ export class YamlAnimationPlayer extends BasePlayer {
         }
 
         if (this.isCurrentlyPlaying()) {
-            console.log('动画已在播放中');
             return;
         }
 
         try {
             this.setPlayingState(true);
-            console.log('🎬 开始播放动画');
 
             // 开始动画循环
             this.startAnimationLoop(() => this.animateFrame());
@@ -203,7 +192,7 @@ export class YamlAnimationPlayer extends BasePlayer {
                 cancelAnimationFrame(this.animationId);
                 this.animationId = null;
             }
-            console.log('⏸️ 动画已暂停');
+
         }
     }
 
@@ -220,7 +209,7 @@ export class YamlAnimationPlayer extends BasePlayer {
             this.resetToInitialState();
         }
 
-        console.log('⏹️ 动画已停止');
+
     }
 
     /**
@@ -255,7 +244,6 @@ export class YamlAnimationPlayer extends BasePlayer {
      */
     public setSpeed(speed: number): void {
         this.playbackSpeed = Math.max(0.1, Math.min(5.0, speed));
-        console.log(`🎯 播放速度设置为: ${this.playbackSpeed}x`);
     }
 
     /**
@@ -381,13 +369,7 @@ export class YamlAnimationPlayer extends BasePlayer {
             throw new Error('Invalid animation data: data must be a valid object');
         }
 
-        console.log('🔍 转换动画数据 - 原始数据:', {
-            initialPosition: animationData.initialPosition,
-            x: animationData.initialPosition?.x,
-            y: animationData.initialPosition?.y,
-            width: animationData.width,
-            height: animationData.height
-        });
+
 
         const initial: InitialPosition = {
             x: this.parsePosition(animationData.initialPosition?.x, 0, 'initialPosition.x'),
@@ -397,8 +379,6 @@ export class YamlAnimationPlayer extends BasePlayer {
             opacity: this.validateNumber(animationData.initialPosition?.opacity, 1, 'initialPosition.opacity'),
             rotation: this.validateNumber(animationData.initialPosition?.rotation, 0, 'initialPosition.rotation')
         };
-
-        console.log('🔍 转换后的初始位置:', initial);
 
         const animations: AnimationEffect[] = (animationData.animationSequences || []).map((anim, index) => {
             if (!anim || typeof anim !== 'object') {
@@ -452,16 +432,11 @@ export class YamlAnimationPlayer extends BasePlayer {
      * 验证数值参数
      */
     private validateNumber(value: any, defaultValue: number, fieldName: string): number {
-        console.log(`🔍 验证数值 ${fieldName}:`, { value, type: typeof value, defaultValue });
-
         if (typeof value === 'number' && !isNaN(value) && isFinite(value)) {
-            console.log(`✅ ${fieldName} 验证通过:`, value);
             return value;
         }
         if (value !== undefined && value !== null) {
             console.warn(`⚠️ ${fieldName} 验证失败: ${value}, 使用默认值 ${defaultValue}`);
-        } else {
-            console.log(`ℹ️ ${fieldName} 未设置, 使用默认值 ${defaultValue}`);
         }
         return defaultValue;
     }
@@ -470,11 +445,8 @@ export class YamlAnimationPlayer extends BasePlayer {
      * 解析尺寸值（支持百分比）
      */
     private parseDimension(value: any, defaultValue: number, fieldName: string): number {
-        console.log(`🔍 解析尺寸 ${fieldName}:`, { value, type: typeof value, defaultValue });
-
         // 如果是数字，直接返回
         if (typeof value === 'number' && !isNaN(value) && isFinite(value)) {
-            console.log(`✅ ${fieldName} 数字验证通过:`, value);
             return value;
         }
 
@@ -492,7 +464,6 @@ export class YamlAnimationPlayer extends BasePlayer {
                     const canvasSize = isWidth ? canvasDimensions.width : canvasDimensions.height;
                     const calculatedValue = (percentage / 100) * canvasSize;
 
-                    console.log(`✅ ${fieldName} 百分比解析成功: ${trimmedValue} -> ${calculatedValue} (画布${isWidth ? '宽度' : '高度'}: ${canvasSize})`);
                     return calculatedValue;
                 }
             }
@@ -500,7 +471,6 @@ export class YamlAnimationPlayer extends BasePlayer {
             // 尝试解析为数字
             const numericValue = parseFloat(trimmedValue);
             if (!isNaN(numericValue) && isFinite(numericValue)) {
-                console.log(`✅ ${fieldName} 字符串转数字成功:`, numericValue);
                 return numericValue;
             }
         }
@@ -508,8 +478,6 @@ export class YamlAnimationPlayer extends BasePlayer {
         // 如果解析失败，使用默认值
         if (value !== undefined && value !== null) {
             console.warn(`⚠️ ${fieldName} 解析失败: ${value}, 使用默认值 ${defaultValue}`);
-        } else {
-            console.log(`ℹ️ ${fieldName} 未设置, 使用默认值 ${defaultValue}`);
         }
         return defaultValue;
     }
@@ -518,11 +486,9 @@ export class YamlAnimationPlayer extends BasePlayer {
      * 解析位置值（支持百分比）
      */
     private parsePosition(value: any, defaultValue: number, fieldName: string): number {
-        console.log(`🔍 解析位置 ${fieldName}:`, { value, type: typeof value, defaultValue });
 
         // 如果是数字，直接返回
         if (typeof value === 'number' && !isNaN(value) && isFinite(value)) {
-            console.log(`✅ ${fieldName} 数字验证通过:`, value);
             return value;
         }
 
@@ -540,7 +506,6 @@ export class YamlAnimationPlayer extends BasePlayer {
                     const canvasSize = isX ? canvasDimensions.width : canvasDimensions.height;
                     const calculatedValue = (percentage / 100) * canvasSize;
 
-                    console.log(`✅ ${fieldName} 百分比解析成功: ${trimmedValue} -> ${calculatedValue} (画布${isX ? '宽度' : '高度'}: ${canvasSize})`);
                     return calculatedValue;
                 }
             }
@@ -548,7 +513,6 @@ export class YamlAnimationPlayer extends BasePlayer {
             // 尝试解析为数字
             const numericValue = parseFloat(trimmedValue);
             if (!isNaN(numericValue) && isFinite(numericValue)) {
-                console.log(`✅ ${fieldName} 字符串转数字成功:`, numericValue);
                 return numericValue;
             }
         }
@@ -556,8 +520,6 @@ export class YamlAnimationPlayer extends BasePlayer {
         // 如果解析失败，使用默认值
         if (value !== undefined && value !== null) {
             console.warn(`⚠️ ${fieldName} 解析失败: ${value}, 使用默认值 ${defaultValue}`);
-        } else {
-            console.log(`ℹ️ ${fieldName} 未设置, 使用默认值 ${defaultValue}`);
         }
         return defaultValue;
     }
@@ -603,14 +565,6 @@ export class YamlAnimationPlayer extends BasePlayer {
             }
 
             // 设置初始属性
-            console.log('🎯 设置对象初始属性:', {
-                left: this.parsedAnimationData.initial.x,
-                top: this.parsedAnimationData.initial.y,
-                opacity: this.parsedAnimationData.initial.opacity,
-                scaleX: this.parsedAnimationData.initial.scaleX,
-                scaleY: this.parsedAnimationData.initial.scaleY,
-                angle: this.parsedAnimationData.initial.rotation
-            });
 
             obj.set({
                 left: this.parsedAnimationData.initial.x,
@@ -626,13 +580,7 @@ export class YamlAnimationPlayer extends BasePlayer {
             // 设置Z轴层级
             if (this.parsedAnimationData.zindex !== undefined) {
                 obj.set('zIndex', this.parsedAnimationData.zindex);
-                console.log('🎯 设置对象Z轴层级:', this.parsedAnimationData.zindex);
             }
-
-            console.log('✅ 对象初始属性设置完成，当前位置:', {
-                left: obj.left,
-                top: obj.top
-            });
 
             return obj;
         } catch (error) {
@@ -666,10 +614,7 @@ export class YamlAnimationPlayer extends BasePlayer {
         this.updateCurrentTime();
         const progress = this.getCurrentProgress();
 
-        // 只在关键节点输出日志
-        if (progress % 0.1 < 0.01) { // 每10%输出一次
-            console.log('🔄 动画进度:', Math.round(progress * 100) + '%');
-        }
+
 
         // 更新所有动画对象
         this.updateAnimations(progress);
@@ -680,7 +625,6 @@ export class YamlAnimationPlayer extends BasePlayer {
         // 检查是否完成
         if (progress >= 1) {
             this.setPlayingState(false);
-            console.log('🎬 所有动画播放完成');
             return;
         }
 
@@ -719,10 +663,7 @@ export class YamlAnimationPlayer extends BasePlayer {
                 // 计算这个动画的相对进度 (0-1)
                 const animationProgress = (currentTime - animationStartTime) / duration;
 
-                // 只在动画切换时输出日志
-                if (animationProgress < 0.1) {
-                    console.log(`🎬 播放动画: ${animation.id || `动画${i + 1}`}`);
-                }
+
 
                 // 处理关键帧动画
                 if (animation.keyframes && animation.keyframes.length > 0) {

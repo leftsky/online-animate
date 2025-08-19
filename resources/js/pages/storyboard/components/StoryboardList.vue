@@ -591,6 +591,7 @@ const submitToApi = async (updatedItem: StoryboardItemType) => {
   try {
     const response = await sceneContentApi.update(Number(updatedItem.id), {
       element_name: updatedItem.elementName,
+      element_source: updatedItem.imagePath, // 添加 element_source 字段
       animation_script: updatedItem.animationScript,
       layer_order: updatedItem.layerOrder,
     });
