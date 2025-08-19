@@ -1,5 +1,5 @@
 <template>
-  <Dialog v-model:open="open">
+  <Dialog :open="open" @update:open="(value) => emit('update:open', value)">
     <DialogContent class="max-w-2xl">
       <DialogHeader>
         <DialogTitle>批量上传{{ resourceTypeText }}</DialogTitle>

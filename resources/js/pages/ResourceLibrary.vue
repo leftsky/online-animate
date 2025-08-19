@@ -91,15 +91,15 @@
             </div>
 
             <!-- 资源网格 -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
               <div
                 v-for="resource in filteredResources"
                 :key="resource.id"
-                class="group relative bg-card border border-border rounded-lg p-4 hover:border-primary/50 transition-all cursor-pointer"
+                class="group relative bg-card border border-border rounded-lg p-2 hover:border-primary/50 transition-all cursor-pointer"
                 @click="selectResource(resource)"
               >
                 <!-- 资源图片 -->
-                <div class="aspect-square bg-muted rounded-md mb-3 overflow-hidden">
+                <div class="aspect-square bg-muted rounded-md mb-2 overflow-hidden">
                   <img
                     v-if="resource.image_path"
                     :src="resource.image_path"
@@ -107,23 +107,23 @@
                     class="w-full h-full object-cover group-hover:scale-105 transition-transform"
                   />
                   <div v-else class="w-full h-full flex items-center justify-center text-muted-foreground">
-                    <Image class="w-8 h-8" />
+                    <Image class="w-6 h-6" />
                   </div>
                 </div>
 
                 <!-- 资源信息 -->
-                <div class="space-y-1">
-                  <h3 class="font-medium text-sm text-foreground truncate">{{ resource.name }}</h3>
-                  <p v-if="resource.category" class="text-xs text-muted-foreground">{{ resource.category }}</p>
+                <div class="space-y-0.5">
+                  <h3 class="font-medium text-xs text-foreground truncate">{{ resource.name }}</h3>
+                  <p v-if="resource.category" class="text-xs text-muted-foreground truncate">{{ resource.category }}</p>
                   <p v-if="resource.description" class="text-xs text-muted-foreground truncate">{{ resource.description }}</p>
                 </div>
 
                 <!-- 操作按钮 -->
-                <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <DropdownMenu>
                     <DropdownMenuTrigger as-child>
-                      <Button variant="ghost" size="sm" class="h-8 w-8 p-0">
-                        <MoreVertical class="w-4 h-4" />
+                      <Button variant="ghost" size="sm" class="h-6 w-6 p-0">
+                        <MoreVertical class="w-3 h-3" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
