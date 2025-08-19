@@ -136,7 +136,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted, nextTick } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { Image } from 'lucide-vue-next';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CanvasManager } from '@/lib/animation/CanvasManager';
@@ -236,11 +236,12 @@ const generateDefaultAnimationData = (imagePath?: string): AnimationData => {
     height: 400,
     zindex: 1,
     initialPosition: {
-      x: 400,
-      y: 300,
+      x: 150, // 使用画布中心位置
+      y: 75,  // 使用画布中心位置
       scaleX: 1.0,
       scaleY: 1.0,
       opacity: 1.0,
+      rotation: 0
     },
     animationSequences: [
       // 轻微浮动动画
@@ -265,9 +266,9 @@ const generateDefaultAnimationData = (imagePath?: string): AnimationData => {
             startTime: 1500,
             duration: 1500,
             x: 0,
-            y: -10,
-            scaleX: 1.05,
-            scaleY: 1.05,
+            y: -5,
+            scaleX: 1.02,
+            scaleY: 1.02,
             opacity: 1.0,
             rotation: 0
           },
@@ -337,7 +338,7 @@ const initYamlPlayer = async () => {
     console.log('✅ 动画数据设置成功');
     
     // 检查播放器状态
-    if (yamlPlayer) {
+    if (yamlPlayer && yamlPlayer.isReady()) {
       console.log('🎯 播放器就绪状态:', yamlPlayer.isReady());
       console.log('⏱️ 总时长:', yamlPlayer.getDuration());
       
@@ -345,11 +346,14 @@ const initYamlPlayer = async () => {
       yamlPlayer.play();
       console.log('▶️ 开始播放动画');
     } else {
-      console.warn('⚠️ yamlPlayer 为空，无法播放动画');
+      console.warn('⚠️ yamlPlayer 未就绪，无法播放动画');
+      throw new Error('播放器未就绪');
     }
     
   } catch (error) {
     console.error('❌ YAML 播放器初始化失败:', error);
+    // 清理播放器实例
+    yamlPlayer = null;
     throw error;
   }
 };
@@ -560,21 +564,29 @@ const switchToImage = (category: string, path: string) => {
   }
 };
 
-// 监听弹窗打开状态
-watch(() => props.open, async (newOpen) => {
-  if (newOpen && props.character) {
+// 组件挂载时初始化
+onMounted(async () => {
+  if (props.open && props.character) {
     await nextTick();
     await initCanvas();
   }
 });
 
-// 监听人物变化
-watch(() => props.character, async (newCharacter) => {
-  if (newCharacter && props.open) {
-    await nextTick();
-    await initCanvas();
-  }
-});
+// // 监听弹窗打开状态
+// watch(() => props.open, async (newOpen) => {
+//   if (newOpen && props.character && !canvasManager) {
+//     await nextTick();
+//     await initCanvas();
+//   }
+// });
+
+// // 监听人物变化
+// watch(() => props.character, async (newCharacter) => {
+//   if (newCharacter && props.open && !canvasManager) {
+//     await nextTick();
+//     await initCanvas();
+//   }
+// });
 
 // 组件卸载时清理
 onUnmounted(() => {

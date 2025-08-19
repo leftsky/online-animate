@@ -246,8 +246,8 @@ const breadcrumbs = [
 
 // 标签页配置
 const tabs = [
-  { key: 'scenarios', title: '场景库', icon: Image },
   { key: 'characters', title: '人物库', icon: Users },
+  { key: 'scenarios', title: '场景库', icon: Image },
   { key: 'items', title: '物品库', icon: Package }
 ];
 
@@ -260,7 +260,7 @@ const genderOptions = [
 ];
 
 // 响应式数据
-const activeTab = ref('scenarios');
+const activeTab = ref('characters');
 const searchQuery = ref('');
 const selectedStatus = ref('');
 const selectedGender = ref('');
