@@ -72,11 +72,7 @@
 
         <!-- 中间Canvas区域 -->
         <div class="flex-1 p-6">
-          <div class="relative w-full h-full bg-muted rounded-lg overflow-hidden">
-            <canvas ref="canvasElement" class="w-full h-full"></canvas>
-
-
-          </div>
+          <canvas ref="canvasElement" class="w-full h-full rounded-lg"></canvas>
         </div>
 
         <!-- 右侧身体部位面板 -->
@@ -115,13 +111,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
+import { ref, computed, onUnmounted, nextTick, watch } from 'vue';
 import { Image } from 'lucide-vue-next';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CanvasManager } from '@/lib/animation/CanvasManager';
 import { YamlAnimationPlayer } from '@/lib/animation/YamlAnimationPlayer';
 import { type AnimationData } from '@/lib/AnimationParser';
-import { FabricImage } from 'fabric';
 import { mediaApi } from '@/utils/api';
 import { uploadApi } from '@/utils/api';
 import { type MediaCharacter } from '@/services/mediaApi';
@@ -247,8 +242,6 @@ const generateDefaultAnimationData = (imagePath?: string): AnimationData => {
           {
             startTime: 0,
             duration: 1500,
-            x: 0,
-            y: 0,
             scaleX: 1.0,
             scaleY: 1.0,
             opacity: 1.0,
@@ -257,18 +250,14 @@ const generateDefaultAnimationData = (imagePath?: string): AnimationData => {
           {
             startTime: 1500,
             duration: 1500,
-            x: 0,
-            y: -5,
-            scaleX: 1.02,
-            scaleY: 1.02,
+            scaleX: 1.4,
+            scaleY: 1.4,
             opacity: 1.0,
             rotation: 0
           },
           {
             startTime: 3000,
             duration: 0,
-            x: 0,
-            y: 0,
             scaleX: 1.0,
             scaleY: 1.0,
             opacity: 1.0,
@@ -290,8 +279,9 @@ const initCanvas = async () => {
   if (!canvasContainer) return;
 
   const rect = canvasContainer.getBoundingClientRect();
-  const width = Math.max(rect.width - 48, 400);
-  const height = Math.max(rect.height - 48, 300);
+  console.log('🎯 计算Canvas尺寸，容器尺寸:', { width: rect.width, height: rect.height });
+  const width = Math.max(rect.width, 400);
+  const height = Math.max(rect.height, 300);
 
   canvasElement.value.width = width;
   canvasElement.value.height = height;
@@ -341,7 +331,7 @@ const initYamlPlayer = async () => {
 // 开始播放动画
 const startAnimation = async () => {
   if (!yamlPlayer || !yamlPlayer.isReady()) return;
-  
+
   yamlPlayer.play();
   isPlaying.value = true;
 };
