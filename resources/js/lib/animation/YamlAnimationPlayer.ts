@@ -63,24 +63,26 @@ export class YamlAnimationPlayer extends BasePlayer {
 
     constructor(canvasManager: CanvasManager) {
         super(canvasManager);
-        // 构造函数不再需要yamlScript参数，初始化时不执行任何操作
+        // 构造函数不再需要异步初始化
     }
 
     /**
      * 设置YAML脚本
      */
-    public setYamlScript(yamlScript: string): void {
+    public async setYamlScript(yamlScript: string): Promise<void> {
         this.yamlScript = yamlScript;
-        // 设置脚本后，异步初始化动画数据
-        this.initializeAnimation().catch(error => {
-            console.error('设置YAML脚本后初始化失败:', error);
-        });
+        console.log('🎬 设置YAML脚本', yamlScript);
+        
+        // 等待初始化完成
+        await this.initializeAnimation();
+        console.log('🎬 动画初始化完成');
     }
 
     /**
      * 初始化动画数据
      */
     private async initializeAnimation(): Promise<void> {
+        console.log('🎬 初始化动画数据', this.yamlScript);
         try {
             // 解析YAML脚本
             const animationData = this.parseYamlScript(this.yamlScript);
@@ -166,20 +168,17 @@ export class YamlAnimationPlayer extends BasePlayer {
     }
 
     /**
- * 播放动画
- */
+     * 播放动画
+     */
     public play(): void {
+        // 检查是否设置了脚本
+        if (!this.yamlScript || !this.yamlScript.trim()) {
+            throw new Error('未设置YAML脚本，请先调用setYamlScript()');
+        }
+
+        // 检查是否已初始化
         if (!this.isReady()) {
-            console.warn('动画未准备就绪，等待初始化完成...');
-            // 等待初始化完成后再播放
-            setTimeout(() => {
-                if (this.isReady()) {
-                    this.play();
-                } else {
-                    console.error('动画初始化超时');
-                }
-            }, 100);
-            return;
+            throw new Error('动画数据初始化失败，请检查YAML脚本格式');
         }
 
         if (this.isCurrentlyPlaying()) {

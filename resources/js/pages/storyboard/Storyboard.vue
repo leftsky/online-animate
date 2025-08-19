@@ -40,7 +40,7 @@ const reinitializeAnimationSystem = async () => {
 // 处理动画预览
 const handlePreviewAnimation = async (item: any) => {
     console.log('Preview animation for item:', item);
-    
+
     try {
         // 检查画布引用是否存在
         if (!canvasRef.value) {

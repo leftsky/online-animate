@@ -195,19 +195,25 @@ const clearProgressInterval = () => {
 
 // 设置当前动画
 const setAnimation = async (item: StoryboardItem) => {
-  currentAnimation.value = item;
-  stopAnimation(); // 停止当前播放的动画
+  currentAnimation.value = item
+  stopAnimation() // 停止当前播放的动画
 
-  // 使用setYamlScript方法设置新的动画脚本
+  // 先创建实例（如果还没有的话）
+  if (!yamlPlayer.value && props.canvas) {
+    yamlPlayer.value = new YamlAnimationPlayer(props.canvas as any);
+    console.log('创建动画播放器实例');
+  }
+
+  // 设置动画脚本并等待初始化完成
   if (yamlPlayer.value && item.animationScript) {
     try {
-      yamlPlayer.value.setYamlScript(item.animationScript);
-      console.log("动画数据已更新");
+      await yamlPlayer.value.setYamlScript(item.animationScript);
+      console.log('动画数据已更新');
     } catch (error) {
-      console.error("更新动画数据失败:", error);
+      console.error('更新动画数据失败:', error);
     }
   }
-};
+}
 
 // 暴露方法给父组件（只保留必要的）
 defineExpose({
