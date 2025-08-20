@@ -181,6 +181,40 @@
               <h4 class="font-medium text-foreground">{{ selectedCharacter.name }}</h4>
               <p class="text-muted-foreground text-xs mt-1">3D模型预览</p>
             </div>
+            
+            <!-- 模型控制面板 -->
+            <div 
+              v-if="currentModelUrl && selectedCharacter && !isLoadingModel && showControlPanel" 
+              class="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10"
+            >
+              <ModelControlPanel
+                ref="controlPanelRef"
+                :model-name="selectedCharacter.name"
+                :model="currentModel"
+                :available-animations="availableAnimations"
+                @close="showControlPanel = false"
+                @animation-play="handleAnimationPlay"
+                @animation-pause="handleAnimationPause"
+                @animation-stop="handleAnimationStop"
+                @model-update="handleModelUpdate"
+              />
+            </div>
+            
+            <!-- 控制面板切换按钮 -->
+            <div 
+              v-if="currentModelUrl && selectedCharacter && !isLoadingModel" 
+              class="absolute bottom-4 right-4"
+            >
+              <Button 
+                @click="showControlPanel = !showControlPanel"
+                variant="outline"
+                size="sm"
+                class="bg-background/80 backdrop-blur-sm"
+              >
+                <Settings class="w-4 h-4 mr-2" />
+                {{ showControlPanel ? '隐藏控制' : '显示控制' }}
+              </Button>
+            </div>
           </div>
 
           <!-- 右侧对话框 -->
@@ -405,7 +439,8 @@ import {
   MoreVertical, 
   ChevronDown,
   Trash2,
-  Upload
+  Upload,
+  Settings
 } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -417,6 +452,7 @@ import { useToast } from '@/composables/useToast';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Pagination from '@/components/ui/pagination/Pagination.vue';
 import BatchUploadDialog from '@/components/BatchUploadDialog.vue';
+import ModelControlPanel from '@/components/ModelControlPanel.vue';
 
 import { mediaApi, uploadApi } from '@/utils/api';
 import { type MediaScenario, type MediaCharacter, type MediaItem } from '@/services/mediaApi';
@@ -471,6 +507,13 @@ const threeRenderer = ref<THREE.WebGLRenderer | null>(null);
 const threeCamera = ref<THREE.PerspectiveCamera | null>(null);
 const threeControls = ref<OrbitControls | null>(null);
 const currentModel = ref<THREE.Group | null>(null);
+
+// 模型控制面板相关状态
+const showControlPanel = ref(false);
+const controlPanelRef = ref<InstanceType<typeof ModelControlPanel> | null>(null);
+const availableAnimations = ref<Array<{ name: string; duration: number; clip?: any }>>([]);
+const animationMixer = ref<THREE.AnimationMixer | null>(null);
+const currentAnimationAction = ref<THREE.AnimationAction | null>(null);
 
 // 新资源数据
 const newResource = ref({
@@ -603,7 +646,7 @@ const initThreeJS = () => {
   threeScene.value.add(ground);
   
   // 开始渲染循环
-  animate();
+  originalAnimate();
 };
 
 // 动画循环
@@ -690,17 +733,28 @@ const loadCharacterModel = async (character: MediaCharacter) => {
         const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
         
-        // 将模型移动到原点
+        // 将模型移动到原点，但保持在地面上
         model.position.sub(center);
+        // 确保模型底部在地面上（Y=0）
+        model.position.y = size.y / 2;
         
         // 缩放模型以适应视图
         const maxDim = Math.max(size.x, size.y, size.z);
         const scale = 2 / maxDim;
         model.scale.setScalar(scale);
         
+        // 重新调整Y位置以确保缩放后仍在地面上
+        model.position.y = (size.y * scale) / 2;
+        
         // 添加到场景
         threeScene.value.add(model);
         currentModel.value = markRaw(model);
+        
+        // 解析动画
+        parseModelAnimations(gltf);
+        
+        // 显示控制面板
+        showControlPanel.value = true;
         
         console.log('模型加载成功:', modelFileUrl);
       } catch (loadError) {
@@ -725,6 +779,16 @@ const clearModelDisplay = () => {
     threeScene.value.remove(toRaw(currentModel.value));
     currentModel.value = null;
   }
+  
+  // 清理动画相关状态
+  if (animationMixer.value) {
+    animationMixer.value = null;
+  }
+  if (currentAnimationAction.value) {
+    currentAnimationAction.value = null;
+  }
+  availableAnimations.value = [];
+  showControlPanel.value = false;
   
   console.log('清空模型显示');
 };
@@ -1158,6 +1222,126 @@ const cleanup = () => {
 
 // 在组件卸载时清理
 watch(() => false, cleanup);
+
+// 模型控制面板事件处理方法
+const handleAnimationPlay = (animationIndex: number) => {
+  if (!currentModel.value || !availableAnimations.value[animationIndex]) return;
+  
+  try {
+    const animation = availableAnimations.value[animationIndex];
+    
+    // 停止当前动画
+    if (currentAnimationAction.value) {
+      currentAnimationAction.value.stop();
+    }
+    
+    // 播放新动画
+    if (animation.clip && animationMixer.value) {
+      currentAnimationAction.value = animationMixer.value.clipAction(animation.clip);
+      currentAnimationAction.value.reset();
+      currentAnimationAction.value.play();
+      
+      // 更新控制面板状态
+      controlPanelRef.value?.setAnimationState(true);
+      
+      console.log('播放动画:', animation.name);
+    }
+  } catch (error) {
+    console.error('播放动画失败:', error);
+    toast.error('播放动画失败');
+  }
+};
+
+const handleAnimationPause = () => {
+  if (currentAnimationAction.value) {
+    currentAnimationAction.value.paused = true;
+    controlPanelRef.value?.setAnimationState(false);
+    console.log('暂停动画');
+  }
+};
+
+const handleAnimationStop = () => {
+  if (currentAnimationAction.value) {
+    currentAnimationAction.value.stop();
+    currentAnimationAction.value = null;
+    controlPanelRef.value?.setAnimationState(false);
+    console.log('停止动画');
+  }
+};
+
+const handleModelUpdate = (updateData: { type: string; value: any }) => {
+  if (!currentModel.value) return;
+  
+  try {
+    const model = toRaw(currentModel.value);
+    
+    switch (updateData.type) {
+      case 'position':
+        model.position.set(updateData.value.x, updateData.value.y, updateData.value.z);
+        break;
+      case 'rotation':
+        model.rotation.set(updateData.value.x, updateData.value.y, updateData.value.z);
+        break;
+      case 'scale':
+        model.scale.setScalar(updateData.value);
+        break;
+    }
+    
+    console.log('更新模型参数:', updateData.type, updateData.value);
+  } catch (error) {
+    console.error('更新模型参数失败:', error);
+    toast.error('更新模型参数失败');
+  }
+};
+
+// 解析模型动画
+const parseModelAnimations = (gltf: any) => {
+  const animations: Array<{ name: string; duration: number; clip: any }> = [];
+  
+  if (gltf.animations && gltf.animations.length > 0) {
+    // 创建动画混合器
+    if (currentModel.value) {
+      animationMixer.value = markRaw(new THREE.AnimationMixer(toRaw(currentModel.value)));
+    }
+    
+    // 解析所有动画
+    gltf.animations.forEach((clip: any, index: number) => {
+      animations.push({
+        name: clip.name || `动画 ${index + 1}`,
+        duration: Math.round(clip.duration * 1000), // 转换为毫秒
+        clip: markRaw(clip)
+      });
+    });
+  }
+  
+  availableAnimations.value = animations;
+  console.log('解析到动画:', animations.length, '个');
+};
+
+// 动画循环更新
+const updateAnimations = () => {
+  if (animationMixer.value) {
+    animationMixer.value.update(0.016); // 假设60fps
+  }
+};
+
+// 修改animate函数以包含动画更新
+const originalAnimate = () => {
+  if (!threeRenderer.value || !threeScene.value || !threeCamera.value) return;
+  
+  requestAnimationFrame(originalAnimate);
+  
+  // 更新动画
+  updateAnimations();
+  
+  // 更新控制器
+  if (threeControls.value) {
+    toRaw(threeControls.value).update();
+  }
+  
+  // 渲染场景
+  toRaw(threeRenderer.value).render(toRaw(threeScene.value), toRaw(threeCamera.value));
+};
 
 
 </script>
