@@ -247,7 +247,7 @@ export const mediaApi = {
         gender?: number;
         age?: number;
         image_path?: string;
-        additional_resources?: string;
+        additional_resources?: any;
         personality?: string;
         occupation?: string;
         tags?: string[];

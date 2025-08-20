@@ -21,7 +21,7 @@ class UploadController extends WebApiController
         $request->validate([
             'file' => 'required|file|max:51200', // 最大50MB
             'folder' => 'nullable|string|max:100',
-            'type' => 'nullable|string|in:image,document,video,audio'
+            'type' => 'nullable|string|in:image,document,video,audio,model'
         ]);
 
         if (!$request->hasFile('file') || !$request->file('file')->isValid()) {
@@ -80,7 +80,8 @@ class UploadController extends WebApiController
             'image' => 'mimes:jpeg,jpg,png,gif,webp|max:51200', // 50MB
             'document' => 'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,txt|max:10240', // 10MB
             'video' => 'mimes:mp4,avi,mov,wmv,flv|max:51200', // 50MB
-            'audio' => 'mimes:mp3,wav,ogg,m4a|max:10240' // 10MB
+            'audio' => 'mimes:mp3,wav,ogg,m4a|max:10240', // 10MB
+            'model' => 'max:51200' // 50MB，3D模型文件不限制扩展名
         ];
 
         if (isset($rules[$type])) {
@@ -100,7 +101,8 @@ class UploadController extends WebApiController
             'image' => 'images',
             'document' => 'documents',
             'video' => 'videos',
-            'audio' => 'audios'
+            'audio' => 'audios',
+            'model' => 'models'
         ];
 
         return $folders[$type] ?? 'uploads';

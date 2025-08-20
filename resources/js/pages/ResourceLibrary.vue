@@ -86,11 +86,27 @@
                     <div class="flex items-center gap-2 mt-1">
                        <span class="text-xs text-muted-foreground">{{ getGenderText((character as MediaCharacter).gender) }}</span>
                        <span v-if="(character as MediaCharacter).age" class="text-xs text-muted-foreground">{{ (character as MediaCharacter).age }}岁</span>
+                       <!-- 模型文件状态指示器 -->
+                       <span v-if="hasModelFile(character as MediaCharacter)" class="inline-flex items-center gap-1 text-xs text-green-600">
+                         <div class="w-1.5 h-1.5 bg-green-600 rounded-full"></div>
+                         模型
+                       </span>
                      </div>
                   </div>
 
                   <!-- 操作按钮 -->
-                  <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div class="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                    <!-- 模型文件上传按钮 -->
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      class="h-6 w-6 p-0" 
+                      @click.stop="handleModelUploadClick(character as MediaCharacter)"
+                      :title="getModelFileStatus(character as MediaCharacter)"
+                    >
+                      <Package class="w-3 h-3" :class="hasModelFile(character as MediaCharacter) ? 'text-green-600' : 'text-muted-foreground'" />
+                    </Button>
+                    
                     <DropdownMenu>
                       <DropdownMenuTrigger as-child>
                         <Button variant="ghost" size="sm" class="h-6 w-6 p-0">
@@ -125,15 +141,45 @@
           </div>
 
           <!-- 中间Three.js画布 -->
-          <div class="flex-1 bg-card border border-border rounded-lg overflow-hidden">
-            <div class="w-full h-full flex items-center justify-center text-muted-foreground">
-              <div class="text-center">
+          <div class="flex-1 bg-card border border-border rounded-lg overflow-hidden relative">
+            <!-- Three.js Canvas -->
+            <canvas 
+              ref="threeCanvas" 
+              class="w-full h-full" 
+              :class="{ 'opacity-0': !currentModelUrl }"
+            ></canvas>
+            
+            <!-- 覆盖层 -->
+            <div 
+              v-if="!currentModelUrl || isLoadingModel" 
+              class="absolute inset-0 flex items-center justify-center text-muted-foreground bg-card"
+            >
+              <!-- 加载中状态 -->
+              <div v-if="isLoadingModel" class="text-center">
+                <div class="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center animate-spin">
+                  <Package class="w-8 h-8" />
+                </div>
+                <h3 class="text-lg font-medium mb-2">加载模型中...</h3>
+                <p class="text-sm">请稍候</p>
+              </div>
+              
+              <!-- 默认状态 -->
+              <div v-else class="text-center">
                 <div class="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
                   <Package class="w-8 h-8" />
                 </div>
                 <h3 class="text-lg font-medium mb-2">Three.js 画布</h3>
-                <p class="text-sm">选择左侧人物查看3D模型</p>
+                <p class="text-sm">选择左侧有模型的人物查看3D模型</p>
               </div>
+            </div>
+            
+            <!-- 模型信息显示 -->
+            <div 
+              v-if="currentModelUrl && selectedCharacter && !isLoadingModel" 
+              class="absolute top-4 left-4 bg-background/80 backdrop-blur-sm border border-border rounded-lg p-3 text-sm"
+            >
+              <h4 class="font-medium text-foreground">{{ selectedCharacter.name }}</h4>
+              <p class="text-muted-foreground text-xs mt-1">3D模型预览</p>
             </div>
           </div>
 
@@ -333,18 +379,22 @@
         @upload-complete="handleBatchUploadComplete"
       />
 
-      <!-- 人物详情弹窗 -->
-      <CharacterDetailModal
-        v-model:open="showCharacterDetail"
-        :character="selectedCharacter"
-        @character-updated="handleCharacterUpdated"
+
+      
+      <!-- 隐藏的模型文件输入 -->
+      <input 
+        ref="modelFileInput" 
+        type="file" 
+        accept=".glb,.gltf,.fbx,.obj,.dae,.3ds,.blend" 
+        class="hidden" 
+        @change="handleModelFileUpload" 
       />
     </div>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, nextTick, markRaw, toRaw } from 'vue';
 import { 
   Library, 
   Image, 
@@ -367,9 +417,12 @@ import { useToast } from '@/composables/useToast';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Pagination from '@/components/ui/pagination/Pagination.vue';
 import BatchUploadDialog from '@/components/BatchUploadDialog.vue';
-import CharacterDetailModal from './components/CharacterDetailModal.vue';
-import { mediaApi } from '@/utils/api';
+
+import { mediaApi, uploadApi } from '@/utils/api';
 import { type MediaScenario, type MediaCharacter, type MediaItem } from '@/services/mediaApi';
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 // 面包屑导航
 const breadcrumbs = [
@@ -392,6 +445,9 @@ const genderOptions = [
   { value: 3, label: '其他' }
 ];
 
+// Toast
+const { toast } = useToast();
+
 // 响应式数据
 const activeTab = ref('characters');
 const searchQuery = ref('');
@@ -401,10 +457,20 @@ const selectedItemType = ref('');
 const showAddDialog = ref(false);
 const showGenderDropdown = ref(false);
 const showBatchUploadDialog = ref(false);
-const showCharacterDetail = ref(false);
 const selectedCharacter = ref<MediaCharacter | null>(null);
 const loading = ref(false);
 const hasMore = ref(true);
+const modelFileInput = ref<HTMLInputElement>();
+const isUploadingModel = ref(false);
+const currentUploadingCharacter = ref<MediaCharacter | null>(null);
+const currentModelUrl = ref<string | null>(null);
+const isLoadingModel = ref(false);
+const threeCanvas = ref<HTMLCanvasElement>();
+const threeScene = ref<THREE.Scene | null>(null);
+const threeRenderer = ref<THREE.WebGLRenderer | null>(null);
+const threeCamera = ref<THREE.PerspectiveCamera | null>(null);
+const threeControls = ref<OrbitControls | null>(null);
+const currentModel = ref<THREE.Group | null>(null);
 
 // 新资源数据
 const newResource = ref({
@@ -453,6 +519,312 @@ const getCurrentTabTitle = () => {
   return tab ? tab.title.replace('库', '') : '';
 };
 
+// 检查人物是否有模型文件
+const hasModelFile = (character: MediaCharacter): boolean => {
+  if (!character.additional_resources) return false;
+  try {
+    const resourcesData = Array.isArray(character.additional_resources)
+      ? character.additional_resources[0]
+      : character.additional_resources;
+    
+    if (typeof resourcesData === 'string') {
+      const parsed = JSON.parse(resourcesData);
+      return !!parsed.modelFile;
+    } else if (typeof resourcesData === 'object' && resourcesData !== null) {
+      // modelFile现在是一个简单的URL字符串
+      const modelFile = (resourcesData as any).modelFile;
+      return typeof modelFile === 'string' && modelFile.trim().length > 0;
+    }
+  } catch {
+    return false;
+  }
+  return false;
+};
+
+// 获取模型文件状态文本
+const getModelFileStatus = (character: MediaCharacter): string => {
+  return hasModelFile(character) ? '已上传模型文件' : '上传模型文件';
+};
+
+// 初始化Three.js场景
+const initThreeJS = () => {
+  if (!threeCanvas.value) return;
+  
+  const canvas = threeCanvas.value;
+  const rect = canvas.getBoundingClientRect();
+  
+  // 创建场景
+  threeScene.value = markRaw(new THREE.Scene());
+  threeScene.value.background = new THREE.Color(0xf5f5f5);
+  
+  // 创建相机
+  threeCamera.value = markRaw(new THREE.PerspectiveCamera(
+    75,
+    rect.width / rect.height,
+    0.1,
+    1000
+  ));
+  threeCamera.value.position.set(0, 1, 3);
+  
+  // 创建渲染器
+  threeRenderer.value = markRaw(new THREE.WebGLRenderer({ 
+    canvas: canvas,
+    antialias: true,
+    alpha: true
+  }));
+  threeRenderer.value.setSize(rect.width, rect.height);
+  threeRenderer.value.setPixelRatio(window.devicePixelRatio);
+  threeRenderer.value.shadowMap.enabled = true;
+  threeRenderer.value.shadowMap.type = THREE.PCFSoftShadowMap;
+  
+  // 创建控制器
+  threeControls.value = markRaw(new OrbitControls(threeCamera.value, canvas));
+  threeControls.value.enableDamping = true;
+  threeControls.value.dampingFactor = 0.05;
+  threeControls.value.target.set(0, 1, 0);
+  
+  // 添加光源
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+  threeScene.value.add(ambientLight);
+  
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  directionalLight.position.set(5, 10, 5);
+  directionalLight.castShadow = true;
+  directionalLight.shadow.mapSize.width = 2048;
+  directionalLight.shadow.mapSize.height = 2048;
+  threeScene.value.add(directionalLight);
+  
+  // 添加地面
+  const groundGeometry = new THREE.PlaneGeometry(10, 10);
+  const groundMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  threeScene.value.add(ground);
+  
+  // 开始渲染循环
+  animate();
+};
+
+// 动画循环
+const animate = () => {
+  if (!threeRenderer.value || !threeScene.value || !threeCamera.value) return;
+  
+  requestAnimationFrame(animate);
+  
+  if (threeControls.value) {
+    toRaw(threeControls.value).update();
+  }
+  
+  toRaw(threeRenderer.value).render(toRaw(threeScene.value), toRaw(threeCamera.value));
+};
+
+// 处理窗口大小变化
+const handleResize = () => {
+  if (!threeCanvas.value || !threeCamera.value || !threeRenderer.value) return;
+  
+  const rect = threeCanvas.value.getBoundingClientRect();
+  const camera = toRaw(threeCamera.value);
+  const renderer = toRaw(threeRenderer.value);
+  
+  camera.aspect = rect.width / rect.height;
+  camera.updateProjectionMatrix();
+  renderer.setSize(rect.width, rect.height);
+};
+
+// 加载人物模型
+const loadCharacterModel = async (character: MediaCharacter) => {
+  if (!character.additional_resources || !threeScene.value) return;
+  
+  try {
+      const resourcesData = Array.isArray(character.additional_resources)
+        ? character.additional_resources[0]
+        : character.additional_resources;
+      
+      let modelFileUrl: string | null = null;
+      if (typeof resourcesData === 'string') {
+        const parsed = JSON.parse(resourcesData);
+        // 处理简单URL字符串格式
+        modelFileUrl = typeof parsed.modelFile === 'string' ? parsed.modelFile : parsed.modelFile?.url;
+      } else if (typeof resourcesData === 'object' && resourcesData !== null) {
+        // modelFile现在可能是简单的URL字符串或对象
+        const modelFile = (resourcesData as any).modelFile;
+        modelFileUrl = typeof modelFile === 'string' ? modelFile : modelFile?.url;
+      }
+    
+    if (modelFileUrl && typeof modelFileUrl === 'string' && modelFileUrl.trim().length > 0) {
+      isLoadingModel.value = true;
+      currentModelUrl.value = modelFileUrl;
+      
+      // 移除之前的模型
+      if (currentModel.value) {
+        threeScene.value.remove(toRaw(currentModel.value));
+        currentModel.value = null;
+      }
+      
+      // 加载新模型
+      const loader = new GLTFLoader();
+      
+      try {
+        const gltf = await new Promise<any>((resolve, reject) => {
+          loader.load(
+            modelFileUrl,
+            resolve,
+            undefined,
+            reject
+          );
+        });
+        
+        const model = gltf.scene;
+        
+        // 设置模型属性
+        model.traverse((child: any) => {
+          if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+        
+        // 计算模型边界框并居中
+        const box = new THREE.Box3().setFromObject(model);
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+        
+        // 将模型移动到原点
+        model.position.sub(center);
+        
+        // 缩放模型以适应视图
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const scale = 2 / maxDim;
+        model.scale.setScalar(scale);
+        
+        // 添加到场景
+        threeScene.value.add(model);
+        currentModel.value = markRaw(model);
+        
+        console.log('模型加载成功:', modelFileUrl);
+      } catch (loadError) {
+        console.error('模型加载失败:', loadError);
+        toast.error('模型加载失败');
+      }
+    }
+  } catch (error) {
+    console.error('解析模型文件失败:', error);
+  } finally {
+    isLoadingModel.value = false;
+  }
+};
+
+// 清空模型显示
+const clearModelDisplay = () => {
+  currentModelUrl.value = null;
+  isLoadingModel.value = false;
+  
+  // 移除当前模型
+  if (currentModel.value && threeScene.value) {
+    threeScene.value.remove(toRaw(currentModel.value));
+    currentModel.value = null;
+  }
+  
+  console.log('清空模型显示');
+};
+
+// 处理模型文件上传点击
+const handleModelUploadClick = (character: MediaCharacter) => {
+  currentUploadingCharacter.value = character;
+  modelFileInput.value?.click();
+};
+
+// 处理模型文件上传
+const handleModelFileUpload = async (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  const character = currentUploadingCharacter.value;
+
+  if (!file || !character) return;
+
+  // 验证文件类型
+  const allowedTypes = ['.glb', '.gltf', '.fbx', '.obj', '.dae', '.3ds', '.blend'];
+  const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+  if (!allowedTypes.includes(fileExtension)) {
+    toast.error('请选择支持的模型文件格式');
+    return;
+  }
+
+  // 验证文件大小 (最大100MB)
+  if (file.size > 100 * 1024 * 1024) {
+    toast.error('文件大小不能超过100MB');
+    return;
+  }
+
+  isUploadingModel.value = true;
+
+  try {
+    // 使用项目现有的上传API
+    const uploadResult = await uploadApi.uploadFile(file, { 
+      type: 'model',
+      folder: 'models'
+    });
+
+    if (uploadResult.success && uploadResult.data?.url) {
+      // 解析现有的additional_resources
+      let currentResources = {};
+      if (character.additional_resources) {
+        try {
+          const resourcesData = Array.isArray(character.additional_resources)
+            ? character.additional_resources[0]
+            : character.additional_resources;
+          if (typeof resourcesData === 'string') {
+            currentResources = JSON.parse(resourcesData);
+          }
+        } catch {
+          currentResources = {};
+        }
+      }
+
+      // 更新additional_resources字段 - 只保存URL字符串
+      const updatedResources = {
+        ...currentResources,
+        modelFile: uploadResult.data.url
+      };
+
+      // 使用项目现有的人物更新API
+      const updateResult = await mediaApi.updateCharacter(character.id, {
+        additional_resources: updatedResources
+      });
+
+      if (updateResult.success) {
+        // 更新本地数据
+        const index = resources.value.findIndex(r => r.id === character.id);
+        if (index !== -1) {
+          const updatedCharacter = {
+            ...character,
+            additional_resources: updatedResources
+          };
+          resources.value[index] = updatedCharacter;
+        }
+
+        // 显示成功消息
+        toast.success('模型文件上传成功');
+      } else {
+        throw new Error(updateResult.message || '更新失败');
+      }
+    } else {
+      throw new Error(uploadResult.message || '上传失败');
+    }
+  } catch (error) {
+    console.error('上传失败:', error);
+    toast.error('上传失败: ' + (error instanceof Error ? error.message : '未知错误'));
+  } finally {
+    isUploadingModel.value = false;
+    currentUploadingCharacter.value = null;
+    // 清空文件输入
+    if (target) {
+      target.value = '';
+    }
+  }
+};
+
 const getCurrentTabIcon = () => {
   const tab = tabs.find(t => t.key === activeTab.value);
   return tab ? tab.icon : Library;
@@ -469,12 +841,15 @@ const selectResource = (resource: any) => {
   // 如果是人物类型，设置选中的人物
   if (activeTab.value === 'characters' && 'gender' in resource) {
     selectedCharacter.value = resource as MediaCharacter;
-    // 可以在这里添加Three.js画布更新逻辑
-  } else {
-    // 其他类型资源打开详情弹窗
-    if (activeTab.value === 'characters') {
-      showCharacterDetail.value = true;
+    
+    // 如果人物有模型文件，加载并显示模型
+    if (hasModelFile(resource as MediaCharacter)) {
+      loadCharacterModel(resource as MediaCharacter);
+    } else {
+      // 清空模型显示
+      clearModelDisplay();
     }
+    // 可以在这里添加Three.js画布更新逻辑
   }
 };
 
@@ -525,21 +900,7 @@ const loadMoreCharacters = async () => {
   }
 };
 
-// 处理人物信息更新
-const handleCharacterUpdated = (updatedCharacter: MediaCharacter) => {
-  // 更新选中的角色
-  selectedCharacter.value = updatedCharacter;
-  
-  // 更新资源列表中的对应角色
-  const index = resources.value.findIndex(r => r.id === updatedCharacter.id);
-  if (index !== -1) {
-    resources.value[index] = updatedCharacter;
-  }
-  
-  // 显示成功消息
-  const { toast } = useToast();
-  toast.success('人物信息更新成功');
-};
+
 
 // 删除资源
 const deleteResource = async (resource: any) => {
@@ -769,9 +1130,34 @@ watch([selectedGender, selectedStatus, selectedItemType], () => {
 });
 
 // 生命周期
-onMounted(() => {
+onMounted(async () => {
   loadResources();
+  
+  // 等待DOM更新后初始化Three.js
+  await nextTick();
+  if (threeCanvas.value) {
+    initThreeJS();
+    
+    // 监听窗口大小变化
+    window.addEventListener('resize', handleResize);
+  }
 });
+
+// 组件卸载时清理资源
+const cleanup = () => {
+  window.removeEventListener('resize', handleResize);
+  
+  if (threeRenderer.value) {
+    toRaw(threeRenderer.value).dispose();
+  }
+  
+  if (threeControls.value) {
+    toRaw(threeControls.value).dispose();
+  }
+};
+
+// 在组件卸载时清理
+watch(() => false, cleanup);
 
 
 </script>
