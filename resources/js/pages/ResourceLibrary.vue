@@ -185,7 +185,7 @@
             <!-- 模型控制面板 -->
             <div 
               v-if="currentModelUrl && selectedCharacter && !isLoadingModel && showControlPanel" 
-              class="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10"
+              class="absolute bottom-4 right-4 z-10 max-w-sm max-h-96"
             >
               <ModelControlPanel
                 ref="controlPanelRef"
@@ -202,17 +202,17 @@
             
             <!-- 控制面板切换按钮 -->
             <div 
-              v-if="currentModelUrl && selectedCharacter && !isLoadingModel" 
+              v-if="currentModelUrl && selectedCharacter && !isLoadingModel && !showControlPanel" 
               class="absolute bottom-4 right-4"
             >
               <Button 
-                @click="showControlPanel = !showControlPanel"
+                @click="showControlPanel = true"
                 variant="outline"
                 size="sm"
                 class="bg-background/80 backdrop-blur-sm"
               >
                 <Settings class="w-4 h-4 mr-2" />
-                {{ showControlPanel ? '隐藏控制' : '显示控制' }}
+                模型控制
               </Button>
             </div>
           </div>

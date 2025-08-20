@@ -1,21 +1,25 @@
 <template>
-  <div class="bg-card border border-border rounded-lg shadow-lg p-4 min-w-[400px]">
-    <!-- 标题栏 -->    
-    <div class="flex items-center justify-between mb-4">
-      <h3 class="text-lg font-medium text-foreground">模型控制</h3>
-      <Button variant="ghost" size="sm" @click="$emit('close')">
+  <div class="bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg w-80 h-96 flex flex-col">
+    <!-- 标题栏 -->
+    <div class="flex items-center justify-between p-4 border-b border-border flex-shrink-0">
+      <div class="flex flex-col">
+        <h3 class="text-lg font-semibold text-foreground">模型控制</h3>
+        <div class="text-sm text-muted-foreground">{{ modelName }}</div>
+      </div>
+      <Button 
+        @click="$emit('close')"
+        variant="ghost"
+        size="sm"
+        class="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
+      >
         <X class="w-4 h-4" />
       </Button>
     </div>
 
-    <!-- 模型信息 -->    
-    <div v-if="modelName" class="mb-4 p-3 bg-muted/30 rounded-lg">
-      <div class="text-sm font-medium text-foreground">{{ modelName }}</div>
-      <div class="text-xs text-muted-foreground mt-1">当前加载的模型</div>
-    </div>
-
-    <!-- 动作控制 -->    
-    <div class="mb-6">
+    <!-- 可滚动内容区域 -->
+    <div class="flex-1 overflow-y-auto p-4 space-y-6">
+      <!-- 动作控制 -->
+      <div>
       <h4 class="text-sm font-medium text-foreground mb-3 flex items-center">
         <Play class="w-4 h-4 mr-2" />
         动作控制
@@ -80,121 +84,122 @@
       </div>
     </div>
 
-    <!-- 模型参数调整 -->    
-    <div>
-      <h4 class="text-sm font-medium text-foreground mb-3 flex items-center">
-        <Settings class="w-4 h-4 mr-2" />
-        模型参数
-      </h4>
-      
-      <!-- 位置控制 -->      
-      <div class="mb-4">
-        <label class="text-xs font-medium text-muted-foreground mb-2 block">位置</label>
-        <div class="grid grid-cols-3 gap-2">
-          <div>
-            <label class="text-xs text-muted-foreground">X</label>
-            <Input 
-              v-model.number="modelParams.position.x" 
-              type="number" 
-              step="0.1" 
-              class="h-8 text-xs"
-              @input="updateModelPosition"
-            />
-          </div>
-          <div>
-            <label class="text-xs text-muted-foreground">Y</label>
-            <Input 
-              v-model.number="modelParams.position.y" 
-              type="number" 
-              step="0.1" 
-              class="h-8 text-xs"
-              @input="updateModelPosition"
-            />
-          </div>
-          <div>
-            <label class="text-xs text-muted-foreground">Z</label>
-            <Input 
-              v-model.number="modelParams.position.z" 
-              type="number" 
-              step="0.1" 
-              class="h-8 text-xs"
-              @input="updateModelPosition"
-            />
-          </div>
-        </div>
-      </div>
-      
-      <!-- 旋转控制 -->      
-      <div class="mb-4">
-        <label class="text-xs font-medium text-muted-foreground mb-2 block">旋转 (度)</label>
-        <div class="grid grid-cols-3 gap-2">
-          <div>
-            <label class="text-xs text-muted-foreground">X</label>
-            <Input 
-              v-model.number="modelParams.rotation.x" 
-              type="number" 
-              step="1" 
-              class="h-8 text-xs"
-              @input="updateModelRotation"
-            />
-          </div>
-          <div>
-            <label class="text-xs text-muted-foreground">Y</label>
-            <Input 
-              v-model.number="modelParams.rotation.y" 
-              type="number" 
-              step="1" 
-              class="h-8 text-xs"
-              @input="updateModelRotation"
-            />
-          </div>
-          <div>
-            <label class="text-xs text-muted-foreground">Z</label>
-            <Input 
-              v-model.number="modelParams.rotation.z" 
-              type="number" 
-              step="1" 
-              class="h-8 text-xs"
-              @input="updateModelRotation"
-            />
+      <!-- 模型参数调整 -->    
+      <div>
+        <h4 class="text-sm font-medium text-foreground mb-3 flex items-center">
+          <Settings class="w-4 h-4 mr-2" />
+          模型参数
+        </h4>
+        
+        <!-- 位置控制 -->      
+        <div class="mb-4">
+          <label class="text-xs font-medium text-muted-foreground mb-2 block">位置</label>
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="text-xs text-muted-foreground">X</label>
+              <Input 
+                v-model.number="modelParams.position.x" 
+                type="number" 
+                step="0.1" 
+                class="h-8 text-xs"
+                @input="updateModelPosition"
+              />
+            </div>
+            <div>
+              <label class="text-xs text-muted-foreground">Y</label>
+              <Input 
+                v-model.number="modelParams.position.y" 
+                type="number" 
+                step="0.1" 
+                class="h-8 text-xs"
+                @input="updateModelPosition"
+              />
+            </div>
+            <div>
+              <label class="text-xs text-muted-foreground">Z</label>
+              <Input 
+                v-model.number="modelParams.position.z" 
+                type="number" 
+                step="0.1" 
+                class="h-8 text-xs"
+                @input="updateModelPosition"
+              />
+            </div>
           </div>
         </div>
-      </div>
-      
-      <!-- 缩放控制 -->      
-      <div class="mb-4">
-        <label class="text-xs font-medium text-muted-foreground mb-2 block">缩放</label>
-        <div class="flex items-center gap-2">
-          <Input 
-            v-model.number="modelParams.scale" 
-            type="number" 
-            step="0.1" 
-            min="0.1" 
-            max="5" 
-            class="h-8 text-xs flex-1"
-            @input="updateModelScale"
-          />
-          <Button 
-            variant="outline" 
-            size="sm" 
-            @click="resetScale"
-            class="h-8 px-2 text-xs"
-          >
-            重置
-          </Button>
+        
+        <!-- 旋转控制 -->      
+        <div class="mb-4">
+          <label class="text-xs font-medium text-muted-foreground mb-2 block">旋转 (度)</label>
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="text-xs text-muted-foreground">X</label>
+              <Input 
+                v-model.number="modelParams.rotation.x" 
+                type="number" 
+                step="1" 
+                class="h-8 text-xs"
+                @input="updateModelRotation"
+              />
+            </div>
+            <div>
+              <label class="text-xs text-muted-foreground">Y</label>
+              <Input 
+                v-model.number="modelParams.rotation.y" 
+                type="number" 
+                step="1" 
+                class="h-8 text-xs"
+                @input="updateModelRotation"
+              />
+            </div>
+            <div>
+              <label class="text-xs text-muted-foreground">Z</label>
+              <Input 
+                v-model.number="modelParams.rotation.z" 
+                type="number" 
+                step="1" 
+                class="h-8 text-xs"
+                @input="updateModelRotation"
+              />
+            </div>
+          </div>
         </div>
+        
+        <!-- 缩放控制 -->      
+        <div class="mb-4">
+          <label class="text-xs font-medium text-muted-foreground mb-2 block">缩放</label>
+          <div class="flex items-center gap-2">
+            <Input 
+              v-model.number="modelParams.scale" 
+              type="number" 
+              step="0.1" 
+              min="0.1" 
+              max="5" 
+              class="h-8 text-xs flex-1"
+              @input="updateModelScale"
+            />
+            <Button 
+              variant="outline" 
+              size="sm" 
+              @click="resetScale"
+              class="h-8 px-2 text-xs"
+            >
+              重置
+            </Button>
+          </div>
+        </div>
+        
+        <!-- 重置按钮 -->      
+        <Button 
+          variant="outline" 
+          size="sm" 
+          @click="resetAllParams"
+          class="w-full"
+        >
+          <RotateCcw class="w-3 h-3 mr-1" />
+          重置所有参数
+        </Button>
       </div>
-      
-      <!-- 重置按钮 -->      
-      <Button 
-        variant="outline" 
-        size="sm" 
-        @click="resetAllParams"
-        class="w-full"
-      >
-        <RotateCcw class="w-3 h-3 mr-1" />
-        重置所有参数
-      </Button>
     </div>
   </div>
 </template>
@@ -203,6 +208,8 @@
 import { ref, reactive, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   X, 
   Play, 
