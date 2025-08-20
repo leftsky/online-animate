@@ -11,7 +11,8 @@ import CreateContentDialog from "./CreateContentDialog.vue";
 import ConfirmDialog from "./ConfirmDialog.vue";
 import StoryboardItem from "./StoryboardItem.vue";
 import SourceCodeViewer from "./SourceCodeViewer.vue";
-import AnimationManager from "./AnimationManager.vue";
+// TODO: 使用 Three.js 动画管理器替代
+// import ThreeAnimationManager from "./ThreeAnimationManager.vue";
 import type { StoryboardItem as StoryboardItemType, ApiSceneContent } from "./types";
 
 const emit = defineEmits<{
@@ -112,7 +113,8 @@ const { confirm } = useConfirm();
 // 组件引用
 const createContentDialog = ref<InstanceType<typeof CreateContentDialog>>();
 const sourceCodeViewer = ref<InstanceType<typeof SourceCodeViewer>>();
-const animationManager = ref<InstanceType<typeof AnimationManager>>();
+// TODO: 使用 Three.js 动画管理器替代
+// const threeAnimationManager = ref<InstanceType<typeof ThreeAnimationManager>>();
 
 // 从API数据转换为StoryboardItem
 const convertApiDataToStoryboardItem = (apiData: ApiSceneContent): StoryboardItemType => {
@@ -197,8 +199,9 @@ const selectItem = (itemId: string) => {
 };
 
 // 处理选中项目的操作
-const handleSelectedItemManageAnimations = () =>
-  selectedItem.value && animationManager.value?.open(selectedItem.value);
+// TODO: 使用 Three.js 动画管理器替代
+// const handleSelectedItemManageAnimations = () =>
+//   selectedItem.value && threeAnimationManager.value?.open(selectedItem.value);
 const handleSelectedItemViewSource = () =>
   selectedItem.value && sourceCodeViewer.value?.open(selectedItem.value);
 const handleSelectedItemPreviewAnimation = () =>
@@ -248,9 +251,14 @@ const handleToggleVisibility = async (id: string) => {
 };
 
 const handleViewSource = (item: StoryboardItemType) => sourceCodeViewer.value?.open(item);
-const handleManageAnimations = (item: StoryboardItemType) =>
-  animationManager.value?.open(item);
+// TODO: 使用 Three.js 动画管理器替代
+// const handleManageAnimations = (item: StoryboardItemType) =>
+//   threeAnimationManager.value?.open(item);
 const handlePreviewAnimation = (item: StoryboardItemType) =>
+  emit("previewAnimation", item);
+
+// 处理动画管理（临时使用预览动画替代）
+const handleManageAnimations = (item: StoryboardItemType) =>
   emit("previewAnimation", item);
 
 // 处理动画保存成功后的更新
@@ -698,7 +706,7 @@ const handleChangeImage = async (item: StoryboardItemType, resource: any) => {
           @update-name="handleUpdateName"
           @toggle-visibility="handleToggleVisibility"
           @view-source="handleViewSource"
-          @manage-animations="handleManageAnimations"
+          @manage-animations="handlePreviewAnimation"
           @preview-animation="handlePreviewAnimation"
           @duplicate="handleDuplicate"
           @delete="deleteItem"
@@ -840,7 +848,8 @@ const handleChangeImage = async (item: StoryboardItemType, resource: any) => {
           <Code class="w-3 h-3 mr-1" />
           查看源码
         </Button>
-        <Button
+        <!-- TODO: 使用 Three.js 动画管理器替代 -->
+        <!-- <Button
           variant="outline"
           size="sm"
           @click="handleSelectedItemManageAnimations"
@@ -848,7 +857,7 @@ const handleChangeImage = async (item: StoryboardItemType, resource: any) => {
         >
           <Zap class="w-3 h-3 mr-1" />
           管理动画
-        </Button>
+        </Button> -->
         <Button
           variant="outline"
           size="sm"

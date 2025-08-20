@@ -114,9 +114,10 @@
 import { ref, computed, onUnmounted, nextTick, watch } from 'vue';
 import { Image } from 'lucide-vue-next';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { CanvasManager } from '@/lib/animation/CanvasManager';
-import { YamlAnimationPlayer } from '@/lib/animation/YamlAnimationPlayer';
-import { type AnimationData } from '@/lib/AnimationParser';
+// TODO: 使用Three.js替代原有的动画系统
+// import { CanvasManager } from '@/lib/animation/CanvasManager';
+// import { YamlAnimationPlayer } from '@/lib/animation/YamlAnimationPlayer';
+// import { type AnimationData } from '@/lib/AnimationParser';
 import { mediaApi } from '@/utils/api';
 import { uploadApi } from '@/utils/api';
 import { type MediaCharacter } from '@/services/mediaApi';
@@ -138,10 +139,10 @@ const emit = defineEmits<Emits>();
 // Toast
 const { toast } = useToast();
 
-// Canvas相关
+// Canvas相关 - TODO: 使用Three.js重新实现
 const canvasElement = ref<HTMLCanvasElement>();
-let canvasManager: CanvasManager | null = null;
-let yamlPlayer: YamlAnimationPlayer | null = null;
+// let canvasManager: CanvasManager | null = null;
+// let yamlPlayer: YamlAnimationPlayer | null = null;
 const selectedImage = ref<string>('main');
 const isPlaying = ref(false);
 
@@ -199,19 +200,20 @@ const getGenderText = (gender?: number) => {
   return option ? option.label : '未知';
 };
 
-// 生成默认动画数据
-const generateDefaultAnimationData = (imagePath?: string): AnimationData => {
+// 生成默认动画数据 - TODO: 使用Three.js重新实现
+const generateDefaultAnimationData = (imagePath?: string): any => {
   const media = imagePath || props.character?.image_path || '';
 
   // 获取Canvas的实际尺寸来计算中心位置
   let canvasWidth = 800;
   let canvasHeight = 600;
 
-  if (canvasManager) {
-    const dimensions = canvasManager.getDimensions();
-    canvasWidth = dimensions.width;
-    canvasHeight = dimensions.height;
-  }
+  // TODO: 使用Three.js获取画布尺寸
+  // if (canvasManager) {
+  //   const dimensions = canvasManager.getDimensions();
+  //   canvasWidth = dimensions.width;
+  //   canvasHeight = dimensions.height;
+  // }
 
   console.log('🎯 计算动画初始位置，Canvas尺寸:', { canvasWidth, canvasHeight });
 
@@ -269,7 +271,7 @@ const generateDefaultAnimationData = (imagePath?: string): AnimationData => {
   };
 };
 
-// 初始化Canvas
+// 初始化Canvas - TODO: 使用Three.js重新实现
 const initCanvas = async () => {
   if (!canvasElement.value) return;
 
@@ -286,80 +288,88 @@ const initCanvas = async () => {
   canvasElement.value.width = width;
   canvasElement.value.height = height;
 
-  canvasManager = new CanvasManager(canvasElement.value, {
-    width: width,
-    height: height
-  } as any);
+  // TODO: 使用Three.js初始化3D场景
+  // canvasManager = new CanvasManager(canvasElement.value, {
+  //   width: width,
+  //   height: height
+  // } as any);
 
-  await initYamlPlayer();
+  // await initYamlPlayer();
 };
 
-// 销毁Canvas资源
+// 销毁Canvas资源 - TODO: 使用Three.js重新实现
 const destroyCanvas = () => {
   if (isPlaying.value) {
     pauseAnimation();
   }
 
-  if (yamlPlayer) {
-    yamlPlayer.clear();
-    yamlPlayer = null;
-  }
+  // TODO: 清理Three.js资源
+  // if (yamlPlayer) {
+  //   yamlPlayer.clear();
+  //   yamlPlayer = null;
+  // }
 
-  if (canvasManager) {
-    canvasManager.dispose();
-    canvasManager = null;
-  }
+  // if (canvasManager) {
+  //   canvasManager.dispose();
+  //   canvasManager = null;
+  // }
 
   isPlaying.value = false;
   selectedImage.value = 'main';
 };
 
-// 初始化 YAML 播放器
+// 初始化 YAML 播放器 - TODO: 使用Three.js重新实现
 const initYamlPlayer = async () => {
-  if (!canvasManager) return;
+  // TODO: 初始化Three.js动画播放器
+  // if (!canvasManager) return;
 
-  if (yamlPlayer) {
-    yamlPlayer.clear();
-    yamlPlayer = null;
-  }
+  // if (yamlPlayer) {
+  //   yamlPlayer.clear();
+  //   yamlPlayer = null;
+  // }
 
-  yamlPlayer = new YamlAnimationPlayer(canvasManager);
-  const defaultAnimationData = generateDefaultAnimationData();
-  await yamlPlayer.setAnimationData(defaultAnimationData);
+  // yamlPlayer = new YamlAnimationPlayer(canvasManager);
+  // const defaultAnimationData = generateDefaultAnimationData();
+  // await yamlPlayer.setAnimationData(defaultAnimationData);
 };
 
-// 开始播放动画
+// 开始播放动画 - TODO: 使用Three.js重新实现
 const startAnimation = async () => {
-  if (!yamlPlayer || !yamlPlayer.isReady()) return;
+  // TODO: 使用Three.js播放动画
+  // if (!yamlPlayer || !yamlPlayer.isReady()) return;
 
-  yamlPlayer.play();
+  // yamlPlayer.play();
   isPlaying.value = true;
 };
 
-// 暂停动画
+// 暂停动画 - TODO: 使用Three.js重新实现
 const pauseAnimation = () => {
-  if (yamlPlayer) {
-    yamlPlayer.pause();
-    isPlaying.value = false;
-  }
+  // TODO: 使用Three.js暂停动画
+  // if (yamlPlayer) {
+  //   yamlPlayer.pause();
+  //   isPlaying.value = false;
+  // }
+  isPlaying.value = false;
 };
 
-// 加载主图
+// 加载主图 - TODO: 使用Three.js重新实现
 const loadMainImage = async () => {
-  if (!yamlPlayer || !props.character?.image_path) return;
+  // TODO: 使用Three.js加载主图
+  // if (!yamlPlayer || !props.character?.image_path) return;
 
-  const mainImageAnimationData = generateDefaultAnimationData(props.character.image_path);
-  await yamlPlayer.setAnimationData(mainImageAnimationData);
+  // const mainImageAnimationData = generateDefaultAnimationData(props.character.image_path);
+  // await yamlPlayer.setAnimationData(mainImageAnimationData);
   selectedImage.value = 'main';
 };
 
-// 加载指定图片
+// 加载指定图片 - TODO: 使用Three.js重新实现
 const loadImage = async (imageUrl: string) => {
-  if (!yamlPlayer || !imageUrl) return;
+  // TODO: 使用Three.js加载指定图片
+  // if (!yamlPlayer || !imageUrl) return;
 
-  const imageAnimationData = generateDefaultAnimationData(imageUrl);
-  await yamlPlayer.setAnimationData(imageAnimationData);
-  yamlPlayer.play();
+  // const imageAnimationData = generateDefaultAnimationData(imageUrl);
+  // await yamlPlayer.setAnimationData(imageAnimationData);
+  // yamlPlayer.play();
 };
 
 // 处理主图点击

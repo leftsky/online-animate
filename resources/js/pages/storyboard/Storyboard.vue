@@ -7,8 +7,7 @@ import StoryboardCanvas from './components/StoryboardCanvas.vue'
 import Timeline from './components/Timeline.vue'
 import StoryboardList from './components/StoryboardList.vue'
 import ToastProvider from '@/components/ui/toast/ToastProvider.vue'
-import { YamlAnimationPlayer } from '@/lib/animation/YamlAnimationPlayer'
-import { AnimationParser } from '@/lib/AnimationParser'
+// 移除了 Canvas 动画相关的导入，现在使用 Three.js 渲染
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -119,35 +118,8 @@ const handlePlayAllStoryboards = async (items: any[]) => {
         coreHandles.value.canvasManager.clear();
         console.log('画布已清空');
 
-        // 第二步：为每个分镜内容创建独立的动画播放器实例
-        const animationPlayers: any[] = [];
-
-        // 深拷贝并逆转items，避免影响原始数据
-        const reversedItems = JSON.parse(JSON.stringify(items)).reverse();
-
-        for (const item of reversedItems) {
-            try {
-                // 创建新的动画播放器实例
-                const player = new YamlAnimationPlayer(coreHandles.value.canvasManager);
-
-                // 解析YAML字符串为动画数据
-                const animationData = AnimationParser.parseYamlToJson(item.animationScript);
-                await player.setAnimationData(animationData);
-
-                // 开始播放
-                player.play();
-
-                animationPlayers.push(player);
-                console.log('开始播放分镜内容:', item.elementName);
-            } catch (error) {
-                console.error(`播放分镜内容 ${item.elementName} 失败:`, error);
-            }
-        }
-
-        console.log(`所有分镜内容开始同时播放，共 ${animationPlayers.length} 个动画`);
-
-        // 可以在这里添加停止所有动画的逻辑
-        // 比如在某个时间后自动停止，或者提供停止按钮
+        // TODO: 使用 Three.js 实现动画播放逻辑
+        console.log('动画播放功能将使用 Three.js 重新实现', items);
 
     } catch (error) {
         console.error('同时播放分镜内容失败:', error);

@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, nextTick } from "vue";
-import AnimationPlayer from "./AnimationPlayer.vue";
-import { CanvasManager } from "@/lib/animation/CanvasManager";
+// 移除了 CanvasManager 和 AnimationPlayer 导入，现在使用 Three.js 渲染
 
 const canvasContainer = ref<HTMLDivElement>();
 const canvasElement = ref<HTMLCanvasElement>();
-const canvasManager = ref<CanvasManager | null>(null);
-const animationPlayer = ref<InstanceType<typeof AnimationPlayer>>();
+// TODO: 替换为 Three.js 场景管理器
+// const sceneManager = ref<ThreeSceneManager | null>(null);
+// TODO: 替换为 Three.js 动画播放器
+// const threeAnimationPlayer = ref<ThreeAnimationPlayer | null>(null);
 const isAnimating = ref(false);
 
 const emit = defineEmits<{
@@ -18,7 +19,7 @@ const emit = defineEmits<{
 
 // 处理窗口大小变化
 const handleResize = () => {
-  if (canvasElement.value && canvasContainer.value && canvasManager.value) {
+  if (canvasElement.value && canvasContainer.value) {
     const rect = canvasContainer.value.getBoundingClientRect();
     const width = rect.width - 32;
     const height = rect.height - 32;
@@ -29,8 +30,7 @@ const handleResize = () => {
     canvasElement.value.width = width;
     canvasElement.value.height = height;
     
-    // 更新 CanvasManager 中的画布尺寸
-    canvasManager.value.setDimensions(width, height);
+    // TODO: 更新 Three.js 场景尺寸
   }
 };
 
@@ -50,29 +50,23 @@ onMounted(async () => {
     canvasElement.value.width = width;
     canvasElement.value.height = height;
     
-    // 使用 CanvasManager 来管理画布，传入尺寸信息
-    canvasManager.value = new CanvasManager(canvasElement.value, {
-      width: width,
-      height: height
-    } as any);
+    // TODO: 使用 Three.js 初始化场景
+    console.log('TODO: 初始化 Three.js 场景', { width, height });
 
     // 监听窗口大小变化
     window.addEventListener('resize', handleResize);
 
     // 初始化完成后，向父组件抛出核心句柄
     emit("canvasReady", {
-      canvasManager: canvasManager.value,
-      animationPlayer: animationPlayer.value,
+      // TODO: 传递 Three.js 相关句柄
+      // threeAnimationPlayer: threeAnimationPlayer.value,
       isAnimating: isAnimating.value,
     });
   }
 });
 
 onUnmounted(() => {
-  if (canvasManager.value) {
-    canvasManager.value.dispose();
-    canvasManager.value = null;
-  }
+  // TODO: 清理 Three.js 场景资源
   
   // 移除窗口大小变化监听器
   window.removeEventListener('resize', handleResize);
@@ -98,13 +92,10 @@ const handleAnimationProgress = (progress: number) => {
 // 重新初始化动画系统
 const reinitializeAnimationSystem = async () => {
   try {
-    // 由于AnimationPlayer已经简化，这里只需要重新创建实例
-    if (canvasManager.value && animationPlayer.value) {
-      // 重新设置动画播放器的canvas引用
-      console.log("画布动画系统重新初始化成功");
-    }
+    // TODO: 使用 Three.js 重新初始化动画系统
+    console.log("TODO: Three.js 动画系统重新初始化");
   } catch (error) {
-    console.error("画布动画系统重新初始化失败:", error);
+    console.error("Three.js 动画系统重新初始化失败:", error);
   }
 };
 
@@ -113,8 +104,8 @@ defineExpose({
   reinitializeAnimationSystem,
   // 获取核心句柄的方法
   getCoreHandles: () => ({
-    canvasManager: canvasManager.value,
-    animationPlayer: animationPlayer.value,
+    // TODO: 返回 Three.js 相关句柄
+    // threeAnimationPlayer: threeAnimationPlayer.value,
     isAnimating: isAnimating.value,
   }),
 });
@@ -124,15 +115,14 @@ defineExpose({
   <div ref="canvasContainer" class="relative h-full w-full p-4">
     <!-- 主画布 -->
     <canvas ref="canvasElement" class="block border rounded" />
-    <!-- 动画播放器组件 -->
-    <div class="absolute top-6 right-6">
-      <AnimationPlayer
-        ref="animationPlayer"
-        :canvas="canvasManager"
+    <!-- TODO: 使用 Three.js 动画播放器组件替代 -->
+    <!-- <div class="absolute top-6 right-6">
+      <ThreeAnimationPlayer
+        ref="threeAnimationPlayer"
         @animation-start="handleAnimationStart"
         @animation-end="handleAnimationEnd"
         @animation-progress="handleAnimationProgress"
       />
-    </div>
+    </div> -->
   </div>
 </template>

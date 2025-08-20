@@ -31,7 +31,140 @@
         </div>
 
         <!-- 内容区域 -->
-        <div class="space-y-6">
+        <div v-if="activeTab === 'characters'" class="h-[calc(100vh-200px)] flex gap-6">
+          <!-- 左侧人物列表 -->
+          <div class="w-80 flex flex-col">
+            <!-- 搜索和操作 -->
+            <div class="mb-4 space-y-3">
+              <Input
+                v-model="searchQuery"
+                placeholder="搜索人物..."
+              >
+                <template #prefix>
+                  <Search class="w-4 h-4 text-muted-foreground" />
+                </template>
+              </Input>
+              <div class="flex gap-2">
+                <Button @click="showAddDialog = true" class="flex-1">
+                  <Plus class="w-4 h-4 mr-2" />
+                  添加人物
+                </Button>
+                <Button @click="showBatchUploadDialog = true" variant="outline" class="flex-1">
+                  <Upload class="w-4 h-4 mr-2" />
+                  批量上传
+                </Button>
+              </div>
+            </div>
+
+            <!-- 无限滚动人物列表 -->
+            <div class="flex-1 overflow-y-auto space-y-2 pr-2" @scroll="handleScroll">
+              <div
+                v-for="character in filteredResources"
+                :key="character.id"
+                class="group relative bg-card border border-border rounded-lg p-3 hover:border-primary/50 transition-all cursor-pointer"
+                :class="{ 'border-primary bg-primary/5': selectedCharacter?.id === character.id }"
+                @click="selectResource(character)"
+              >
+                <div class="flex items-center gap-3">
+                  <!-- 人物头像 -->
+                  <div class="w-12 h-12 bg-muted rounded-full overflow-hidden flex-shrink-0">
+                    <img
+                      v-if="character.image_path"
+                      :src="character.image_path"
+                      :alt="character.name"
+                      class="w-full h-full object-cover"
+                    />
+                    <div v-else class="w-full h-full flex items-center justify-center text-muted-foreground">
+                      <Users class="w-6 h-6" />
+                    </div>
+                  </div>
+
+                  <!-- 人物信息 -->
+                  <div class="flex-1 min-w-0">
+                    <h3 class="font-medium text-sm text-foreground truncate">{{ character.name }}</h3>
+                    <p v-if="character.description" class="text-xs text-muted-foreground truncate mt-0.5">{{ character.description }}</p>
+                    <div class="flex items-center gap-2 mt-1">
+                       <span class="text-xs text-muted-foreground">{{ getGenderText((character as MediaCharacter).gender) }}</span>
+                       <span v-if="(character as MediaCharacter).age" class="text-xs text-muted-foreground">{{ (character as MediaCharacter).age }}岁</span>
+                     </div>
+                  </div>
+
+                  <!-- 操作按钮 -->
+                  <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger as-child>
+                        <Button variant="ghost" size="sm" class="h-6 w-6 p-0">
+                          <MoreVertical class="w-3 h-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem @click="deleteResource(character)">
+                          <Trash2 class="w-4 h-4 mr-2" />
+                          删除
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 加载更多指示器 -->
+              <div v-if="loading" class="text-center py-4">
+                <div class="text-sm text-muted-foreground">加载中...</div>
+              </div>
+
+              <!-- 空状态 -->
+              <div v-if="filteredResources.length === 0 && !loading" class="text-center py-8">
+                <div class="w-12 h-12 mx-auto mb-3 bg-muted rounded-full flex items-center justify-center">
+                  <Users class="w-6 h-6 text-muted-foreground" />
+                </div>
+                <h3 class="text-sm font-medium text-foreground mb-1">暂无人物</h3>
+                <p class="text-xs text-muted-foreground">点击上方按钮添加人物</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 中间Three.js画布 -->
+          <div class="flex-1 bg-card border border-border rounded-lg overflow-hidden">
+            <div class="w-full h-full flex items-center justify-center text-muted-foreground">
+              <div class="text-center">
+                <div class="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
+                  <Package class="w-8 h-8" />
+                </div>
+                <h3 class="text-lg font-medium mb-2">Three.js 画布</h3>
+                <p class="text-sm">选择左侧人物查看3D模型</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 右侧对话框 -->
+          <div class="w-80 bg-card border border-border rounded-lg p-4">
+            <div class="h-full flex flex-col">
+              <div class="mb-4">
+                <h3 class="text-lg font-medium text-foreground">对话框</h3>
+                <p class="text-sm text-muted-foreground">与人物进行对话交互</p>
+              </div>
+              
+              <!-- 对话内容区域 -->
+              <div class="flex-1 bg-muted/30 rounded-lg p-3 mb-4 overflow-y-auto">
+                <div class="text-center text-muted-foreground text-sm">
+                  选择人物开始对话
+                </div>
+              </div>
+              
+              <!-- 输入框 -->
+              <div class="flex gap-2">
+                <Input placeholder="输入消息..." class="flex-1" />
+                <Button size="sm">
+                  发送
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 其他标签页保持原有布局 -->
+        <div v-else class="space-y-6">
           <!-- 资源列表 -->
           <div>
             <!-- 搜索和筛选 -->
@@ -114,8 +247,8 @@
               <p class="text-muted-foreground mb-4">点击上方按钮添加您的第一个{{ getCurrentTabTitle() }}</p>
             </div>
 
-            <!-- 分页组件 -->
-            <div v-if="pagination.total > 0" class="mt-6">
+            <!-- 分页组件 - 只在非人物库标签页显示 -->
+            <div v-if="pagination.total > 0 && activeTab !== 'characters'" class="mt-6">
               <Pagination
                 :total="Number(pagination.total)"
                 :limit="Number(pagination.limit)"
@@ -123,7 +256,7 @@
                 @update:offset="handleOffsetChange"
                 @update:limit="handleLimitChange"
               />
-                        </div>
+            </div>
           </div>
         </div>
       </div>
@@ -271,6 +404,7 @@ const showBatchUploadDialog = ref(false);
 const showCharacterDetail = ref(false);
 const selectedCharacter = ref<MediaCharacter | null>(null);
 const loading = ref(false);
+const hasMore = ref(true);
 
 // 新资源数据
 const newResource = ref({
@@ -332,12 +466,63 @@ const getGenderText = (gender: number) => {
 const selectResource = (resource: any) => {
   console.log('选择资源:', resource);
   
-  // 如果是人物类型，打开人物详情弹窗
+  // 如果是人物类型，设置选中的人物
   if (activeTab.value === 'characters' && 'gender' in resource) {
     selectedCharacter.value = resource as MediaCharacter;
-    showCharacterDetail.value = true;
+    // 可以在这里添加Three.js画布更新逻辑
+  } else {
+    // 其他类型资源打开详情弹窗
+    if (activeTab.value === 'characters') {
+      showCharacterDetail.value = true;
+    }
   }
-  // 其他类型资源的处理逻辑可以在这里添加
+};
+
+// 处理无限滚动
+const handleScroll = async (event: Event) => {
+  const target = event.target as HTMLElement;
+  const { scrollTop, scrollHeight, clientHeight } = target;
+  
+  // 当滚动到底部附近时加载更多
+  if (scrollHeight - scrollTop <= clientHeight + 100 && !loading.value && hasMore.value) {
+    await loadMoreCharacters();
+  }
+};
+
+// 加载更多人物
+const loadMoreCharacters = async () => {
+  if (activeTab.value !== 'characters' || loading.value || !hasMore.value) {
+    return;
+  }
+  
+  loading.value = true;
+  try {
+    const params = {
+      limit: pagination.value.limit,
+      offset: resources.value.length, // 使用当前数据长度作为偏移
+      search: searchQuery.value,
+      gender: selectedGender.value ? Number(selectedGender.value) : undefined
+    };
+    
+    const response = await mediaApi.getCharacters(params);
+    
+    if (response.data && Array.isArray(response.data)) {
+      const newCharacters = response.data;
+      if (newCharacters.length > 0) {
+        resources.value = [...resources.value, ...newCharacters];
+      }
+      
+      // 检查是否还有更多数据
+      hasMore.value = newCharacters.length === pagination.value.limit;
+    } else {
+      hasMore.value = false;
+    }
+  } catch (error) {
+    console.error('加载更多人物失败:', error);
+    hasMore.value = false;
+  } finally {
+    loading.value = false;
+  }
 };
 
 // 处理人物信息更新
@@ -485,42 +670,19 @@ const resetForm = () => {
 const loadResources = async () => {
   loading.value = true;
   try {
-    const params = {
-      limit: pagination.value.limit,
-      offset: pagination.value.offset,
-      search: searchQuery.value,
-      status: selectedStatus.value ? Number(selectedStatus.value) : undefined
-    };
-
-    let response;
-    if (activeTab.value === 'scenarios') {
-      response = await mediaApi.getScenarios(params);
-      // 确保resources.value是数组
-      if (Array.isArray(response.data)) {
-        resources.value = response.data;
-      } else if (response.data && Array.isArray(response.data.data)) {
-        resources.value = response.data.data;
-      } else {
-        resources.value = [];
-      }
-      
-      // 处理分页信息
-      if (response.data && response.data.pagination) {
-        const paginationData = response.data.pagination;
-        pagination.value = {
-          total: Number(paginationData.total || 0),
-          limit: Number(paginationData.limit || 20),
-          offset: Number(paginationData.offset || 0),
-          has_more: paginationData.has_more || false
-        };
-      }
-    } else if (activeTab.value === 'characters') {
-      // 人物需要额外的性别筛选
-      const characterParams = { 
-        ...params, 
-        gender: selectedGender.value ? Number(selectedGender.value) : undefined 
+    let response: any = null;
+    
+    if (activeTab.value === 'characters') {
+      // 人物库使用无限滚动，初始加载第一页
+      const characterParams = {
+        limit: pagination.value.limit,
+        offset: 0, // 总是从0开始
+        search: searchQuery.value,
+        gender: selectedGender.value ? Number(selectedGender.value) : undefined
       };
+      
       response = await mediaApi.getCharacters(characterParams);
+      
       // 确保resources.value是数组
       if (Array.isArray(response.data)) {
         resources.value = response.data;
@@ -530,38 +692,47 @@ const loadResources = async () => {
         resources.value = [];
       }
       
-      // 处理分页信息
-      if (response.data && response.data.pagination) {
-        const paginationData = response.data.pagination;
-        pagination.value = {
-          total: Number(paginationData.total || 0),
-          limit: Number(paginationData.limit || 20),
-          offset: Number(paginationData.offset || 0),
-          has_more: paginationData.has_more || false
-        };
-      }
-    } else if (activeTab.value === 'items') {
-      // 物品需要额外的类型筛选
-      const itemParams = { ...params, type: selectedItemType.value };
-      response = await mediaApi.getItems(itemParams);
-      // 确保resources.value是数组
-      if (Array.isArray(response.data)) {
-        resources.value = response.data;
-      } else if (response.data && Array.isArray(response.data.data)) {
-        resources.value = response.data.data;
-      } else {
-        resources.value = [];
+      // 设置是否还有更多数据
+      hasMore.value = resources.value.length === pagination.value.limit;
+    } else {
+      // 其他标签页使用传统分页
+      const params = {
+        limit: pagination.value.limit,
+        offset: pagination.value.offset,
+        search: searchQuery.value,
+        status: selectedStatus.value ? Number(selectedStatus.value) : undefined
+      };
+      
+      if (activeTab.value === 'scenarios') {
+        response = await mediaApi.getScenarios(params);
+      } else if (activeTab.value === 'items') {
+        const itemParams = { ...params, type: selectedItemType.value };
+        response = await mediaApi.getItems(itemParams);
       }
       
-      // 处理分页信息
-      if (response.data && response.data.pagination) {
-        const paginationData = response.data.pagination;
-        pagination.value = {
-          total: Number(paginationData.total || 0),
-          limit: Number(paginationData.limit || 20),
-          offset: Number(paginationData.offset || 0),
-          has_more: paginationData.has_more || false
-        };
+      // 只有在response存在时才处理数据
+      if (response) {
+        // 确保resources.value是数组
+        if (Array.isArray(response.data)) {
+          resources.value = response.data;
+        } else if (response.data && Array.isArray(response.data.data)) {
+          resources.value = response.data.data;
+        } else {
+          resources.value = [];
+        }
+        
+        // 处理分页信息
+        if (response.data && response.data.pagination) {
+          const paginationData = response.data.pagination;
+          pagination.value = {
+            total: Number(paginationData.total || 0),
+            limit: Number(paginationData.limit || 20),
+            offset: Number(paginationData.offset || 0),
+            has_more: paginationData.has_more || false
+          };
+        }
+      } else {
+        resources.value = [];
       }
     }
   } catch (error) {
@@ -575,10 +746,26 @@ const loadResources = async () => {
   }
 };
 
+// 搜索处理
+const handleSearch = () => {
+  if (activeTab.value === 'characters') {
+    // 人物库重置无限滚动状态
+    hasMore.value = true;
+  } else {
+    // 其他标签页重置分页
+    pagination.value.offset = 0;
+  }
+  loadResources();
+};
+
 // 监听搜索和标签页变化
 watch([searchQuery, activeTab], () => {
-  pagination.value.offset = 0; // 重置到第一页
-  loadResources();
+  handleSearch();
+});
+
+// 监听筛选条件变化
+watch([selectedGender, selectedStatus, selectedItemType], () => {
+  handleSearch();
 });
 
 // 生命周期
