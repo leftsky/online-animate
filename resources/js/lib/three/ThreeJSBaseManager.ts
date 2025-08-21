@@ -158,6 +158,26 @@ export function useThreeJSManager() {
         console.log('清理所有动画混合器');
     };
 
+    const destroyThreeJS = () => {
+        if (threeRenderer.value) {
+            threeRenderer.value.dispose();
+        }
+        if (threeScene.value) {
+        }
+        if (threeControls.value) {
+            threeControls.value.dispose();
+        }
+    };
+
+    // const resetThreeJS = () => {
+    //     if (threeRenderer.value) {
+    //         threeRenderer.value.dispose();
+    //     }
+    //     if (threeScene.value) {
+    //         threeScene.value.dispose();
+    //     }
+    // };
+
     return {
         // threeCanvas,
         threeScene,
@@ -174,5 +194,6 @@ export function useThreeJSManager() {
         // 暴露内部mixer信息（只读）
         getMixersCount: () => internalMixers.size,
         hasMixer: (key: string | THREE.Group) => internalMixers.has(key),
+        destroyThreeJS,
     };
 }

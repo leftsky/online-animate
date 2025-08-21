@@ -69,15 +69,12 @@
                     </div>
 
                     <div class="relative flex-1 overflow-hidden rounded-lg border border-border bg-card">
-                        <canvas ref="threeCanvas" class="h-full w-full" :class="{ 'opacity-0': !currentModelUrl }"></canvas>
+                        <canvas ref="threeCanvas" class="h-full w-full" :class="{ 'opacity-0': modelStatus !== 'loaded' }"></canvas>
 
                         <!-- 覆盖层 -->
-                        <div
-                            v-if="!currentModelUrl || isLoadingModel"
-                            class="absolute inset-0 flex items-center justify-center bg-card text-muted-foreground"
-                        >
+                        <div v-if="modelStatus !== 'loaded'" class="absolute inset-0 flex items-center justify-center bg-card text-muted-foreground">
                             <!-- 加载中状态 -->
-                            <div v-if="isLoadingModel" class="text-center">
+                            <div v-if="modelStatus === 'loading'" class="text-center">
                                 <div class="mx-auto mb-4 flex h-16 w-16 animate-spin items-center justify-center rounded-full bg-muted">
                                     <Package class="h-8 w-8" />
                                 </div>
@@ -97,18 +94,18 @@
 
                         <!-- 模型信息显示 -->
                         <div
-                            v-if="currentModelUrl && selectedCharacter && !isLoadingModel"
+                            v-if="modelStatus === 'loaded' && selectedCharacter"
                             class="absolute left-4 top-4 rounded-lg border border-border bg-background/80 p-3 text-sm backdrop-blur-sm"
                         >
                             <h4 class="font-medium text-foreground">{{ selectedCharacter.name }}</h4>
-                            <p class="mt-1 text-xs text-muted-foreground">3D模型预览</p>
+                            <p class="text-xs text-muted-foreground">3D模型预览</p>
                         </div>
                     </div>
 
                     <!-- 右侧区域 -->
                     <div class="flex h-[calc(100vh-200px)] w-80 flex-col rounded-lg border border-border bg-card">
                         <!-- 模型控制面板 -->
-                        <div v-if="currentModelUrl && selectedCharacter && !isLoadingModel" class="border-b border-border">
+                        <div v-if="modelStatus === 'loaded' && selectedCharacter" class="border-b border-border">
                             <ModelControlPanel
                                 ref="controlPanelRef"
                                 :model-name="selectedCharacter.name"
@@ -161,7 +158,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/composables/useToast';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Package, Plus, Search, Users } from 'lucide-vue-next';
-import { computed, markRaw, onMounted, ref, toRaw, watch } from 'vue';
+import { computed, onMounted, ref, toRaw, watch } from 'vue';
 import AddCharacterDialog from './components/AddCharacterDialog.vue';
 import CharacterCard from './components/CharacterCard.vue';
 
@@ -172,16 +169,18 @@ import { mediaApi, uploadApi } from '@/utils/api';
 import * as THREE from 'three';
 import { usePagination } from 'vue3-help';
 
-const { threeScene, threeRenderer, threeControls, initThreeJS, handleResize, addMixer } = useThreeJSManager();
+const threeManager = useThreeJSManager();
+const { destroyThreeJS, initThreeJS, handleResize } = threeManager;
 const {
-    loadCharacterModel,
-    availableAnimations,
-    init: initModelController,
-    isLoadingModel,
-    currentModelUrl,
-    currentModel,
-    modelMixer,
-} = useModelController();
+    load,
+    animations: availableAnimations,
+    status: modelStatus,
+    model: currentModel,
+    mixer: modelMixer,
+    clear: clearModelDisplay,
+    toggleBoundingBox: handleToggleBoundingBox,
+    toggleSkeleton: handleToggleSkeleton,
+} = useModelController(threeManager);
 
 // 面包屑导航
 const breadcrumbs = [
@@ -206,10 +205,6 @@ const currentUploadingCharacter = ref<MediaCharacter | null>(null);
 // 模型控制面板相关状态
 const controlPanelRef = ref<InstanceType<typeof ModelControlPanel> | null>(null);
 const currentAnimationAction = ref<THREE.AnimationAction | null>(null);
-
-// 显示控制相关状态
-const boundingBoxHelper = ref<THREE.BoxHelper | null>(null);
-const skeletonHelper = ref<THREE.SkeletonHelper | null>(null);
 
 // 使用usePagination管理分页
 const { fullList, nextPage, loadStatus, totalNum } = usePagination({
@@ -248,31 +243,6 @@ const filteredResources = computed(() => {
 
     return filtered;
 });
-
-// 清空模型显示
-const clearModelDisplay = () => {
-    currentModelUrl.value = null;
-    isLoadingModel.value = false;
-
-    if (currentModel.value && threeScene.value) {
-        threeScene.value.remove(toRaw(currentModel.value));
-        currentModel.value = null;
-    }
-
-    if (boundingBoxHelper.value && threeScene.value) {
-        threeScene.value.remove(toRaw(boundingBoxHelper.value));
-        boundingBoxHelper.value = null;
-    }
-    if (skeletonHelper.value && threeScene.value) {
-        threeScene.value.remove(toRaw(skeletonHelper.value));
-        skeletonHelper.value = null;
-    }
-
-    if (currentAnimationAction.value) {
-        currentAnimationAction.value = null;
-    }
-    availableAnimations.value = [];
-};
 
 // 处理模型文件上传点击
 const handleModelUploadClick = (character: MediaCharacter) => {
@@ -359,9 +329,7 @@ const selectResource = async (resource: MediaCharacter) => {
     selectedCharacter.value = resource;
 
     if (resource.additional_resources) {
-        initModelController(threeScene.value as THREE.Scene, threeControls.value as any);
-        await loadCharacterModel(resource);
-        addMixer('model', modelMixer.value as THREE.AnimationMixer);
+        await load(resource);
     } else {
         clearModelDisplay();
     }
@@ -453,13 +421,7 @@ onMounted(async () => {
 const cleanup = () => {
     window.removeEventListener('resize', handleResize);
 
-    if (threeRenderer.value) {
-        toRaw(threeRenderer.value).dispose();
-    }
-
-    if (threeControls.value) {
-        toRaw(threeControls.value).dispose();
-    }
+    destroyThreeJS();
 };
 
 watch(() => false, cleanup);
@@ -523,60 +485,6 @@ const handleModelUpdate = (updateData: { type: string; value: any }) => {
     } catch (error) {
         console.error('更新模型参数失败:', error);
         toast.error('更新模型参数失败');
-    }
-};
-
-// 处理边界框显示切换
-const handleToggleBoundingBox = (show: boolean) => {
-    if (!currentModel.value || !threeScene.value) return;
-
-    try {
-        if (show) {
-            if (!boundingBoxHelper.value) {
-                boundingBoxHelper.value = markRaw(new THREE.BoxHelper(toRaw(currentModel.value), 0x00ff00));
-                threeScene.value.add(toRaw(boundingBoxHelper.value));
-            }
-        } else {
-            if (boundingBoxHelper.value) {
-                threeScene.value.remove(toRaw(boundingBoxHelper.value));
-                boundingBoxHelper.value = null;
-            }
-        }
-    } catch (error) {
-        console.error('切换边界框显示失败:', error);
-        toast.error('切换边界框显示失败');
-    }
-};
-
-// 处理骨骼显示切换
-const handleToggleSkeleton = (show: boolean) => {
-    if (!currentModel.value || !threeScene.value) return;
-
-    try {
-        if (show) {
-            let skeleton: THREE.Skeleton | null = null;
-            currentModel.value.traverse((child: any) => {
-                if (child.isSkinnedMesh && child.skeleton) {
-                    skeleton = child.skeleton;
-                }
-            });
-
-            if (skeleton && !skeletonHelper.value) {
-                skeletonHelper.value = markRaw(new THREE.SkeletonHelper(toRaw(currentModel.value)));
-                threeScene.value.add(toRaw(skeletonHelper.value));
-            } else if (!skeleton) {
-                console.warn('模型中未找到骨骼数据');
-                toast.warning('该模型没有骨骼数据');
-            }
-        } else {
-            if (skeletonHelper.value) {
-                threeScene.value.remove(toRaw(skeletonHelper.value));
-                skeletonHelper.value = null;
-            }
-        }
-    } catch (error) {
-        console.error('切换骨骼显示失败:', error);
-        toast.error('切换骨骼显示失败');
     }
 };
 </script>

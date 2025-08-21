@@ -1,27 +1,58 @@
 import { type MediaCharacter } from '@/services/mediaApi';
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+// import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { v4 as uuid } from 'uuid';
 import { markRaw, ref, toRaw } from 'vue';
+import { useThreeJSManager } from './ThreeJSBaseManager';
 
-export function useModelController() {
-    const threeScene = ref<THREE.Scene>();
-    const isLoadingModel = ref(false);
-    const currentModelUrl = ref<string | null>(null);
-    const currentModel = ref<THREE.Group | null>(null);
-    const animationMixer = ref<THREE.AnimationMixer | null>(null);
-    const availableAnimations = ref<Array<{ name: string; duration: number; clip: any }>>([]);
-    const threeControls = ref<OrbitControls>();
+// 模型状态枚举
+enum ModelStatus {
+    CREATED = 'created', // 已创建
+    INITED = 'inited', // 已初始化
+    LOADING = 'loading', // 加载中
+    LOADED = 'loaded', // 已加载
+    PLAYING = 'playing', // 播放中
+    PAUSED = 'paused', // 已暂停
+    DESTROYED = 'destroyed', // 已销毁
+}
 
-    const init = (scene: THREE.Scene, controls: OrbitControls) => {
-        threeScene.value = scene;
-        // animationMixer.value = mixer;
-        threeControls.value = controls;
+export function useModelController(threeManager: ReturnType<typeof useThreeJSManager>) {
+    const { threeScene: scene, threeControls: controls, addMixer } = threeManager;
+    // const scene = ref<THREE.Scene>();
+    const loading = ref(false);
+    const url = ref<string | null>(null);
+    const model = ref<THREE.Group | null>(null);
+    const mixer = ref<THREE.AnimationMixer | null>(null);
+    const animations = ref<Array<{ name: string; duration: number; clip: any }>>([]);
+    // const controls = ref<OrbitControls>();
+    const inited = ref(false);
+    const modelId = ref<string>('');
+
+    // 模型状态
+    const status = ref<ModelStatus>(ModelStatus.CREATED);
+
+    // 显示控制相关状态
+    const boundingBox = ref<THREE.BoxHelper | null>(null);
+    const skeleton = ref<THREE.SkeletonHelper | null>(null);
+
+    const init = () => {
+        // scene.value = sceneParam;
+        // controls.value = controlsParam;
+        modelId.value = uuid();
+        status.value = ModelStatus.INITED;
+        inited.value = true;
+        // addMixer('default', mixer.value as THREE.AnimationMixer);
     };
 
     // 加载人物模型
-    const loadCharacterModel = async (character: MediaCharacter) => {
-        if (!character.additional_resources || !threeScene.value) return;
+    const load = async (character: MediaCharacter) => {
+        if (!inited.value) {
+            // init();
+            // throw new Error('模型未初始化');
+        }
+
+        if (!character.additional_resources || !scene.value) return;
 
         try {
             const resourcesData = Array.isArray(character.additional_resources) ? character.additional_resources[0] : character.additional_resources;
@@ -38,13 +69,14 @@ export function useModelController() {
             }
 
             if (modelFileUrl && typeof modelFileUrl === 'string' && modelFileUrl.trim().length > 0) {
-                isLoadingModel.value = true;
-                currentModelUrl.value = modelFileUrl;
+                loading.value = true;
+                status.value = ModelStatus.LOADING;
+                url.value = modelFileUrl;
 
                 // 移除之前的模型
-                if (currentModel.value) {
-                    threeScene.value.remove(toRaw(currentModel.value));
-                    currentModel.value = null;
+                if (model.value) {
+                    scene.value.remove(toRaw(model.value));
+                    model.value = null;
                 }
 
                 // 加载新模型
@@ -55,10 +87,10 @@ export function useModelController() {
                         loader.load(modelFileUrl, resolve, undefined, reject);
                     });
 
-                    const model = gltf.scene;
+                    const _model = gltf.scene;
 
                     // 设置模型属性
-                    model.traverse((child: any) => {
+                    _model.traverse((child: any) => {
                         if (child.isMesh) {
                             child.castShadow = true;
                             child.receiveShadow = true;
@@ -66,7 +98,7 @@ export function useModelController() {
                     });
 
                     // 计算模型的边界框和中心点
-                    const box = new THREE.Box3().setFromObject(model);
+                    const box = new THREE.Box3().setFromObject(_model);
                     const center = box.getCenter(new THREE.Vector3());
                     const size = box.getSize(new THREE.Vector3());
 
@@ -80,10 +112,10 @@ export function useModelController() {
                     // 缩放模型以适应视图
                     const maxDim = Math.max(size.x, size.y, size.z);
                     const scale = 2 / maxDim;
-                    model.scale.setScalar(scale);
+                    _model.scale.setScalar(scale);
 
                     // 重新计算缩放后的边界框
-                    const scaledBox = new THREE.Box3().setFromObject(model);
+                    const scaledBox = new THREE.Box3().setFromObject(_model);
                     const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
                     const scaledSize = scaledBox.getSize(new THREE.Vector3());
 
@@ -96,35 +128,36 @@ export function useModelController() {
                     });
 
                     // 将模型中心移动到原点，然后确保底部贴在地面上
-                    model.position.set(
+                    _model.position.set(
                         -scaledCenter.x, // X轴居中
                         -scaledBox.min.y, // Y轴底部贴地面（Y=0）
                         -scaledCenter.z, // Z轴居中
                     );
 
-                    console.log('最终模型位置:', model.position);
+                    console.log('最终模型位置:', _model.position);
 
                     // 设置模型朝向（面向摄像机）
                     // 大多数人物模型默认面向-Z方向，我们让它面向摄像机（+Z方向）
-                    model.rotation.y = Math.PI; // 旋转180度面向摄像机
+                    _model.rotation.y = Math.PI; // 旋转180度面向摄像机
 
                     // 添加到场景
-                    threeScene.value.add(model);
-                    currentModel.value = markRaw(model);
+                    scene.value.add(_model);
+                    model.value = markRaw(_model);
 
                     // 动态调整摄像机目标点，使其对准模型的中心高度
                     const modelHeight = scaledSize.y;
                     const targetY = modelHeight * 0.4; // 目标点设置在模型高度的40%处，通常是胸部位置
-                    if (threeControls.value) {
-                        threeControls.value.target.set(0, targetY, 0);
-                        threeControls.value.update();
+                    if (controls.value) {
+                        controls.value.target.set(0, targetY, 0);
+                        controls.value.update();
                         console.log('摄像机目标点已调整至:', { x: 0, y: targetY, z: 0 });
                     }
 
                     // 解析动画
-                    parseModelAnimations(gltf);
+                    parseAnimations(gltf);
 
                     console.log('模型加载成功:', modelFileUrl);
+                    status.value = ModelStatus.LOADED;
                 } catch (loadError) {
                     console.error('模型加载失败:', loadError);
                 }
@@ -132,23 +165,27 @@ export function useModelController() {
         } catch (error) {
             console.error('解析模型文件失败:', error);
         } finally {
-            isLoadingModel.value = false;
+            loading.value = false;
+            if (status.value === ModelStatus.LOADING) {
+                status.value = ModelStatus.INITED; // 加载失败时回到初始化状态
+            }
         }
     };
 
     // 解析模型动画
-    const parseModelAnimations = (gltf: any) => {
-        const animations: Array<{ name: string; duration: number; clip: any }> = [];
+    const parseAnimations = (gltf: any) => {
+        const animationList: Array<{ name: string; duration: number; clip: any }> = [];
 
         if (gltf.animations && gltf.animations.length > 0) {
             // 创建动画混合器
-            if (currentModel.value) {
-                animationMixer.value = markRaw(new THREE.AnimationMixer(toRaw(currentModel.value)));
+            if (model.value) {
+                mixer.value = markRaw(new THREE.AnimationMixer(toRaw(model.value)));
+                addMixer(modelId.value, mixer.value as THREE.AnimationMixer);
             }
 
             // 解析所有动画
             gltf.animations.forEach((clip: any, index: number) => {
-                animations.push({
+                animationList.push({
                     name: clip.name || `动画 ${index + 1}`,
                     duration: Math.round(clip.duration * 1000), // 转换为毫秒
                     clip: markRaw(clip),
@@ -156,17 +193,130 @@ export function useModelController() {
             });
         }
 
-        console.log('解析到动画:', animations.length, '个');
-        availableAnimations.value = animations;
+        console.log('解析到动画:', animationList.length, '个', mixer.value, model.value);
+        animations.value = animationList;
+    };
+
+    // 播放动画
+    const play = () => {
+        if (mixer.value && status.value === ModelStatus.LOADED) {
+            status.value = ModelStatus.PLAYING;
+        }
+    };
+
+    // 暂停动画
+    const pause = () => {
+        if (status.value === ModelStatus.PLAYING) {
+            status.value = ModelStatus.PAUSED;
+        }
+    };
+
+    // 停止动画
+    const stop = () => {
+        if (mixer.value && (status.value === ModelStatus.PLAYING || status.value === ModelStatus.PAUSED)) {
+            status.value = ModelStatus.LOADED;
+        }
+    };
+
+    // 销毁模型
+    const destroy = () => {
+        clear();
+        status.value = ModelStatus.DESTROYED;
+    };
+
+    // 清空模型显示
+    const clear = () => {
+        console.log('清空模型显示');
+        url.value = null;
+        loading.value = false;
+        status.value = ModelStatus.INITED;
+
+        if (model.value && scene.value) {
+            scene.value.remove(toRaw(model.value));
+            model.value = null;
+        }
+
+        if (boundingBox.value && scene.value) {
+            scene.value.remove(toRaw(boundingBox.value));
+            boundingBox.value = null;
+        }
+        if (skeleton.value && scene.value) {
+            scene.value.remove(toRaw(skeleton.value));
+            skeleton.value = null;
+        }
+
+        if (mixer.value) {
+            mixer.value = null;
+        }
+        animations.value = [];
+    };
+
+    // 处理边界框显示切换
+    const toggleBoundingBox = (show: boolean) => {
+        if (!model.value || !scene.value) return;
+
+        try {
+            if (show) {
+                if (!boundingBox.value) {
+                    boundingBox.value = markRaw(new THREE.BoxHelper(toRaw(model.value), 0x00ff00));
+                    scene.value.add(toRaw(boundingBox.value));
+                }
+            } else {
+                if (boundingBox.value) {
+                    scene.value.remove(toRaw(boundingBox.value));
+                    boundingBox.value = null;
+                }
+            }
+        } catch (error) {
+            console.error('切换边界框显示失败:', error);
+        }
+    };
+
+    // 处理骨骼显示切换
+    const toggleSkeleton = (show: boolean) => {
+        if (!model.value || !scene.value) return;
+
+        try {
+            if (show) {
+                let skeletonData: THREE.Skeleton | null = null;
+                model.value.traverse((child: any) => {
+                    if (child.isSkinnedMesh && child.skeleton) {
+                        skeletonData = child.skeleton;
+                    }
+                });
+
+                if (skeletonData && !skeleton.value) {
+                    skeleton.value = markRaw(new THREE.SkeletonHelper(toRaw(model.value)));
+                    scene.value.add(toRaw(skeleton.value));
+                } else if (!skeletonData) {
+                    console.warn('模型中未找到骨骼数据');
+                }
+            } else {
+                if (skeleton.value) {
+                    scene.value.remove(toRaw(skeleton.value));
+                    skeleton.value = null;
+                }
+            }
+        } catch (error) {
+            console.error('切换骨骼显示失败:', error);
+        }
     };
 
     return {
-        availableAnimations,
-        isLoadingModel,
-        currentModelUrl,
-        currentModel,
-        modelMixer: animationMixer,
+        animations,
+        loading,
+        url,
+        model,
+        mixer,
+        status,
         init,
-        loadCharacterModel,
+        load,
+        clear,
+        play,
+        pause,
+        stop,
+        destroy,
+        toggleBoundingBox,
+        toggleSkeleton,
     };
 }
