@@ -5,7 +5,7 @@ import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { BookOpen, Clapperboard, Folder, LayoutGrid, Library } from 'lucide-vue-next';
+import { BookOpen, Clapperboard, Folder, LayoutGrid, Library, Users } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 
 const mainNavItems: NavItem[] = [
@@ -23,6 +23,11 @@ const mainNavItems: NavItem[] = [
         title: '资源库',
         href: '/resource-library',
         icon: Library,
+    },
+    {
+        title: '人物库',
+        href: '/character-library',
+        icon: Users,
     },
 ];
 

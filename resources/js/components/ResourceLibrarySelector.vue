@@ -176,7 +176,6 @@ const resources = ref<any[]>([]);
 // 分类配置
 const categories = [
     { key: 'scenarios', name: '背景', icon: Mountain },
-    { key: 'characters', name: '人物', icon: User },
     { key: 'items', name: '物品', icon: Package },
 ];
 
@@ -256,9 +255,8 @@ const loadResources = async () => {
         // 根据选中的分类加载对应类型的资源
         if (!selectedCategory.value) {
             // 加载所有类型的资源
-            const [scenariosRes, charactersRes, itemsRes] = await Promise.all([
+            const [scenariosRes, itemsRes] = await Promise.all([
                 mediaApi.getScenarios(params),
-                mediaApi.getCharacters(params),
                 mediaApi.getItems(params),
             ]);
 
@@ -266,10 +264,6 @@ const loadResources = async () => {
                 ...scenariosRes.data.map((item: MediaScenario) => ({
                     ...item,
                     type: 'scenarios',
-                })),
-                ...charactersRes.data.map((item: MediaCharacter) => ({
-                    ...item,
-                    type: 'characters',
                 })),
                 ...itemsRes.data.map((item: MediaItem) => ({
                     ...item,
@@ -284,12 +278,6 @@ const loadResources = async () => {
                 allResources = response.data.map((item: MediaScenario) => ({
                     ...item,
                     type: 'scenarios',
-                }));
-            } else if (selectedCategory.value === 'characters') {
-                response = await mediaApi.getCharacters(params);
-                allResources = response.data.map((item: MediaCharacter) => ({
-                    ...item,
-                    type: 'characters',
                 }));
             } else if (selectedCategory.value === 'items') {
                 response = await mediaApi.getItems(params);

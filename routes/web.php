@@ -19,6 +19,10 @@ Route::get('resource-library', function () {
     return Inertia::render('storyboard/resourcesctl/ResourceLibrary');
 })->middleware(['auth', 'verified'])->name('resource-library');
 
+Route::get('character-library', function () {
+    return Inertia::render('storyboard/resourcesctl/CharacterLibrary');
+})->middleware(['auth', 'verified'])->name('character-library');
+
 
 
 // 包含 API 路由
