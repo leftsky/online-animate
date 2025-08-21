@@ -7,6 +7,7 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 export interface AnimationInfo {
   name: string;
   duration: number;
+  clip?: THREE.AnimationClip; // 添加 clip 字段以保持与旧版一致
 }
 
 // 模型参数接口
@@ -82,6 +83,9 @@ export class ModelController {
       }
       
       if (this.currentModel && this.scene) {
+        // 应用模型定位和缩放逻辑（与旧版保持一致）
+        this.positionAndScaleModel();
+        
         // 应用模型参数
         this.applyModelParams();
         
@@ -108,12 +112,14 @@ export class ModelController {
           this.currentModel = gltf.scene;
           this.animations = gltf.animations;
           this.setupAnimationMixer();
+          console.log('GLTF模型加载成功:', url);
           resolve();
         },
         (progress) => {
           console.log('加载进度:', (progress.loaded / progress.total * 100) + '%');
         },
         (error) => {
+          console.error('GLTF模型加载失败:', error);
           reject(error);
         }
       );
@@ -131,12 +137,14 @@ export class ModelController {
           this.currentModel = fbx;
           this.animations = fbx.animations;
           this.setupAnimationMixer();
+          console.log('FBX模型加载成功:', url);
           resolve();
         },
         (progress) => {
           console.log('加载进度:', (progress.loaded / progress.total * 100) + '%');
         },
         (error) => {
+          console.error('FBX模型加载失败:', error);
           reject(error);
         }
       );
@@ -253,8 +261,9 @@ export class ModelController {
    */
   getAnimationInfos(): AnimationInfo[] {
     return this.animations.map(clip => ({
-      name: clip.name,
-      duration: clip.duration
+      name: clip.name || `动画 ${clip.name ? clip.name : '未命名'}`,
+      duration: Math.round(clip.duration * 1000), // 转换为毫秒，与旧版保持一致
+      clip: clip // 保留 clip 引用，与旧版保持一致
     }));
   }
 
@@ -317,12 +326,16 @@ export class ModelController {
     
     if (visible) {
       if (!this.boundingBoxHelper) {
-        this.boundingBoxHelper = new THREE.BoxHelper(this.currentModel, 0xffff00);
+        // 与旧版保持一致：使用绿色边界框
+        this.boundingBoxHelper = new THREE.BoxHelper(this.currentModel, 0x00ff00);
         this.scene.add(this.boundingBoxHelper);
+        console.log('显示模型边界框');
+      } else {
+        this.boundingBoxHelper.visible = true;
       }
-      this.boundingBoxHelper.visible = true;
     } else if (this.boundingBoxHelper) {
       this.boundingBoxHelper.visible = false;
+      console.log('隐藏模型边界框');
     }
   }
 
@@ -345,13 +358,17 @@ export class ModelController {
         if (skeleton) {
           this.skeletonHelper = new THREE.SkeletonHelper(this.currentModel);
           this.scene.add(this.skeletonHelper);
+          console.log('显示模型骨骼');
+        } else {
+          console.warn('模型中未找到骨骼数据');
         }
-      }
-      if (this.skeletonHelper) {
+      } else {
         this.skeletonHelper.visible = true;
+        console.log('显示模型骨骼');
       }
     } else if (this.skeletonHelper) {
       this.skeletonHelper.visible = false;
+      console.log('隐藏模型骨骼');
     }
   }
 
@@ -454,5 +471,61 @@ export class ModelController {
   dispose(): void {
     this.clearModel();
     this.scene = null;
+  }
+
+  /**
+   * 模型定位和缩放（与旧版实现保持一致）
+   */
+  private positionAndScaleModel(): void {
+    if (!this.currentModel) return;
+    
+    // 计算模型的边界框和中心点
+    const box = new THREE.Box3().setFromObject(this.currentModel);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    
+    console.log('原始模型边界框:', {
+      min: box.min,
+      max: box.max,
+      center: center,
+      size: size
+    });
+    
+    // 缩放模型以适应视图（与旧版保持一致）
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const scale = 2 / maxDim;
+    this.currentModel.scale.setScalar(scale);
+    
+    // 重新计算缩放后的边界框
+    const scaledBox = new THREE.Box3().setFromObject(this.currentModel);
+    const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
+    const scaledSize = scaledBox.getSize(new THREE.Vector3());
+    
+    console.log('缩放后模型边界框:', {
+      min: scaledBox.min,
+      max: scaledBox.max,
+      center: scaledCenter,
+      size: scaledSize,
+      scale: scale
+    });
+    
+    // 将模型中心移动到原点，然后确保底部贴在地面上（与旧版保持一致）
+    this.currentModel.position.set(
+      -scaledCenter.x,  // X轴居中
+      -scaledBox.min.y, // Y轴底部贴地面（Y=0）
+      -scaledCenter.z   // Z轴居中
+    );
+    
+    console.log('最终模型位置:', this.currentModel.position);
+    
+    // 设置模型朝向（面向摄像机，与旧版保持一致）
+    // 大多数人物模型默认面向-Z方向，我们让它面向摄像机（+Z方向）
+    this.currentModel.rotation.y = Math.PI; // 旋转180度面向摄像机
+    
+    // 更新模型参数以反映实际位置
+    this.modelParams.positionX = this.currentModel.position.x;
+    this.modelParams.positionY = this.currentModel.position.y;
+    this.modelParams.positionZ = this.currentModel.position.z;
+    this.modelParams.scale = scale;
   }
 }

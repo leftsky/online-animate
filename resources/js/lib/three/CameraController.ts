@@ -143,24 +143,37 @@ export class CameraController {
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
     
-    // 计算合适的距离
+    // 与旧版保持一致：目标点设置在模型高度的40%处，通常是胸部位置
+    const modelHeight = size.y;
+    const targetY = modelHeight * 0.4;
+    const targetPoint = new THREE.Vector3(center.x, targetY, center.z);
+    
+    // 计算合适的摄像机距离
     const maxDim = Math.max(size.x, size.y, size.z);
     const fov = this.camera.fov * (Math.PI / 180);
-    const cameraDistance = Math.abs(maxDim / Math.sin(fov / 2)) * distance;
+    const cameraDistance = Math.abs(maxDim / Math.sin(fov / 2)) * (distance / 5);
+    
+    // 重要：模型面向+Z方向，所以摄像机应该在-Z方向（模型前方）
+    // 这样用户就能看到模型正面
+    const cameraPosition = new THREE.Vector3(
+      targetPoint.x,                    // X轴居中
+      targetPoint.y + cameraDistance * 0.3, // Y轴稍微偏上
+      targetPoint.z - cameraDistance        // Z轴在模型前方（-Z方向）
+    );
     
     // 设置摄像机位置
-    const direction = new THREE.Vector3()
-      .subVectors(this.camera.position, center)
-      .normalize()
-      .multiplyScalar(cameraDistance);
+    this.camera.position.copy(cameraPosition);
     
-    this.camera.position.copy(center).add(direction);
-    
+    // 设置摄像机目标点
     if (this.controls) {
-      this.controls.target.copy(center);
+      this.controls.target.copy(targetPoint);
       this.controls.update();
+      console.log('摄像机位置已调整至:', { x: cameraPosition.x, y: cameraPosition.y, z: cameraPosition.z });
+      console.log('摄像机目标点已调整至:', { x: targetPoint.x, y: targetPoint.y, z: targetPoint.z });
+      console.log('摄像机距离:', cameraDistance);
+      console.log('模型朝向：面向+Z方向，摄像机在-Z方向（模型前方）');
     } else {
-      this.camera.lookAt(center);
+      this.camera.lookAt(targetPoint);
     }
   }
 

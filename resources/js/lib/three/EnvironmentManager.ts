@@ -13,6 +13,8 @@ export class EnvironmentManager {
 
   constructor() {
     this.scene = new THREE.Scene();
+    // 与旧版保持一致：设置默认背景色
+    // this.scene.background = new THREE.Color(0xf5f5f5);
     this.initEnvironment();
   }
 

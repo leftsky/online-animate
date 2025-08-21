@@ -356,7 +356,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, nextTick, markRaw, toRaw } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch, nextTick, toRaw } from 'vue';
 import {
   Library,
   Image,
@@ -367,8 +367,7 @@ import {
   MoreVertical,
   ChevronDown,
   Trash2,
-  Upload,
-  Settings
+  Upload
 } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -555,11 +554,6 @@ const initThreeJS = () => {
   baseManager.value.startRenderLoop();
 };
 
-// 动画循环（现在由baseManager管理）
-const animate = () => {
-  // 动画循环现在由baseManager自动处理
-};
-
 // 处理窗口大小变化
 const handleResize = () => {
   if (!threeCanvas.value || !baseManager.value || !cameraController.value) return;
@@ -600,9 +594,21 @@ const loadCharacterModel = async (character: MediaCharacter) => {
         // 获取动画信息
         availableAnimations.value = modelController.value.getAnimationInfos();
 
-        // 聚焦到模型
+        // 聚焦到模型（与旧版保持一致）
         if (cameraController.value && modelController.value.getCurrentModel()) {
-          cameraController.value.focusOnObject(toRaw(modelController.value.getCurrentModel()!), 5);
+          // 等待一帧确保模型已添加到场景
+          await nextTick();
+          
+          const model = modelController.value.getCurrentModel();
+          console.log('准备聚焦到模型:', model);
+          console.log('模型位置:', model?.position);
+          console.log('模型边界框:', modelController.value.getModelBoundingBox());
+          
+          cameraController.value.focusOnObject(toRaw(model)!, 5);
+          
+          console.log('聚焦调用完成');
+        } else {
+          console.warn('无法聚焦：缺少摄像机控制器或模型');
         }
 
         // 显示控制面板
@@ -1172,33 +1178,6 @@ const handleToggleSkeleton = (show: boolean) => {
     console.error('切换骨骼显示失败:', error);
     toast.error('切换骨骼显示失败');
   }
-};
-
-// 解析模型动画（已由ModelController处理）
-const parseModelAnimations = () => {
-  if (!modelController.value) return;
-
-  const animationInfos = modelController.value.getAnimationInfos();
-  availableAnimations.value = animationInfos.map((info, index) => ({
-    name: info.name || `动画 ${index + 1}`,
-    duration: Math.round(info.duration * 1000), // 转换为毫秒
-    clip: null // 不再需要直接访问clip
-  }));
-
-  console.log('解析到动画:', availableAnimations.value.length, '个');
-};
-
-// 动画循环更新（已由管理类处理）
-const updateAnimations = () => {
-  if (modelController.value) {
-    modelController.value.update();
-  }
-};
-
-// 修改animate函数以包含动画更新（已由baseManager处理）
-const originalAnimate = () => {
-  // 动画循环已由baseManager.startRenderLoop()处理
-  console.log('原始动画函数已被新的管理类替代');
 };
 
 
