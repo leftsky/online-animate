@@ -26,8 +26,8 @@
                             </div>
                         </div>
 
-                        <!-- 无限滚动人物列表 -->
-                        <div class="flex-1 space-y-2 overflow-y-auto pr-2" @scroll="handleScroll">
+                        <!-- 人物列表 -->
+                        <div class="flex-1 space-y-2 overflow-y-auto pr-2">
                             <CharacterCard
                                 v-for="character in filteredResources"
                                 :key="character.id"
@@ -38,16 +38,32 @@
                                 @delete="deleteResource"
                             />
 
-                            <div v-if="loading" class="py-4 text-center">
+                            <div v-if="loadStatus === 'loading'" class="py-4 text-center">
                                 <div class="text-sm text-muted-foreground">加载中...</div>
                             </div>
 
-                            <div v-if="filteredResources.length === 0 && !loading" class="py-8 text-center">
+                            <div v-if="filteredResources.length === 0 && loadStatus !== 'loading'" class="py-8 text-center">
                                 <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
                                     <Users class="h-6 w-6 text-muted-foreground" />
                                 </div>
                                 <h3 class="mb-1 text-sm font-medium text-foreground">暂无人物</h3>
                                 <p class="text-xs text-muted-foreground">点击上方按钮添加人物</p>
+                            </div>
+                        </div>
+
+                        <!-- 分页控制 -->
+                        <div v-if="totalNum > 0" class="mt-4 flex items-center justify-between">
+                            <div class="text-sm text-muted-foreground">共 {{ totalNum }} 个人物</div>
+                            <div class="flex items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    :disabled="loadStatus === 'no-more' || loadStatus === 'loading'"
+                                    @click="nextPage"
+                                >
+                                    加载更多
+                                </Button>
+                                <span v-if="loadStatus === 'no-more'" class="text-xs text-muted-foreground"> 已加载全部 </span>
                             </div>
                         </div>
                     </div>
@@ -130,7 +146,7 @@
             </div>
 
             <!-- 添加人物对话框 -->
-            <AddCharacterDialog v-model:open="showAddDialog" :loading="loading" @submit="handleAddResource" />
+            <AddCharacterDialog v-model:open="showAddDialog" :loading="loadStatus === 'loading'" @submit="handleAddResource" />
 
             <!-- 隐藏的模型文件输入 -->
             <input ref="modelFileInput" type="file" accept=".glb,.gltf,.fbx,.obj,.dae,.3ds,.blend" class="hidden" @change="handleModelFileUpload" />
@@ -154,6 +170,7 @@ import { useThreeJSManager } from '@/lib/three/ThreeJSBaseManager';
 import { type MediaCharacter } from '@/services/mediaApi';
 import { mediaApi, uploadApi } from '@/utils/api';
 import * as THREE from 'three';
+import { usePagination } from 'vue3-help';
 
 const { threeScene, threeRenderer, threeControls, initThreeJS, handleResize, addMixer } = useThreeJSManager();
 const {
@@ -182,8 +199,6 @@ const selectedGender = ref('');
 const showAddDialog = ref(false);
 
 const selectedCharacter = ref<MediaCharacter | null>(null);
-const loading = ref(false);
-const hasMore = ref(true);
 const modelFileInput = ref<HTMLInputElement>();
 const isUploadingModel = ref(false);
 const currentUploadingCharacter = ref<MediaCharacter | null>(null);
@@ -196,8 +211,20 @@ const currentAnimationAction = ref<THREE.AnimationAction | null>(null);
 const boundingBoxHelper = ref<THREE.BoxHelper | null>(null);
 const skeletonHelper = ref<THREE.SkeletonHelper | null>(null);
 
+// 使用usePagination管理分页
+const { fullList, nextPage, loadStatus, totalNum } = usePagination({
+    api: (params: any) => mediaApi.getCharacters(params),
+    pageSize: 20,
+    initParams: {
+        search: searchQuery.value,
+        gender: selectedGender.value ? Number(selectedGender.value) : undefined,
+    },
+    cacheNextPageAtFirst: false,
+    autoCacheNextPage: false,
+});
+
 // 真实数据
-const resources = ref<MediaCharacter[]>([]);
+const resources = computed(() => fullList.value);
 
 // 计算属性
 const filteredResources = computed(() => {
@@ -221,25 +248,6 @@ const filteredResources = computed(() => {
 
     return filtered;
 });
-
-// 检查人物是否有模型文件
-const hasModelFile = (character: MediaCharacter): boolean => {
-    if (!character.additional_resources) return false;
-    try {
-        const resourcesData = Array.isArray(character.additional_resources) ? character.additional_resources[0] : character.additional_resources;
-
-        if (typeof resourcesData === 'string') {
-            const parsed = JSON.parse(resourcesData);
-            return !!parsed.modelFile;
-        } else if (typeof resourcesData === 'object' && resourcesData !== null) {
-            const modelFile = (resourcesData as any).modelFile;
-            return typeof modelFile === 'string' && modelFile.trim().length > 0;
-        }
-    } catch {
-        return false;
-    }
-    return false;
-};
 
 // 清空模型显示
 const clearModelDisplay = () => {
@@ -325,14 +333,8 @@ const handleModelFileUpload = async (event: Event) => {
             });
 
             if (updateResult.success) {
-                const index = resources.value.findIndex((r) => r.id === character.id);
-                if (index !== -1) {
-                    const updatedCharacter = {
-                        ...character,
-                        additional_resources: [updatedResources],
-                    };
-                    resources.value[index] = updatedCharacter;
-                }
+                // 重新加载数据以获取最新状态
+                await loadResources();
 
                 toast.success('模型文件上传成功');
             } else {
@@ -356,57 +358,12 @@ const handleModelFileUpload = async (event: Event) => {
 const selectResource = async (resource: MediaCharacter) => {
     selectedCharacter.value = resource;
 
-    if (hasModelFile(resource)) {
+    if (resource.additional_resources) {
         initModelController(threeScene.value as THREE.Scene, threeControls.value as any);
         await loadCharacterModel(resource);
         addMixer('model', modelMixer.value as THREE.AnimationMixer);
     } else {
         clearModelDisplay();
-    }
-};
-
-// 处理无限滚动
-const handleScroll = async (event: Event) => {
-    const target = event.target as HTMLElement;
-    const { scrollTop, scrollHeight, clientHeight } = target;
-
-    if (scrollHeight - scrollTop <= clientHeight + 100 && !loading.value && hasMore.value) {
-        await loadMoreCharacters();
-    }
-};
-
-// 加载更多人物
-const loadMoreCharacters = async () => {
-    if (loading.value || !hasMore.value) {
-        return;
-    }
-
-    loading.value = true;
-    try {
-        const params = {
-            limit: 20,
-            offset: resources.value.length,
-            search: searchQuery.value,
-            gender: selectedGender.value ? Number(selectedGender.value) : undefined,
-        };
-
-        const response = await mediaApi.getCharacters(params);
-
-        if (response.data && Array.isArray(response.data)) {
-            const newCharacters = response.data;
-            if (newCharacters.length > 0) {
-                resources.value = [...resources.value, ...newCharacters];
-            }
-
-            hasMore.value = newCharacters.length === 20;
-        } else {
-            hasMore.value = false;
-        }
-    } catch (error) {
-        console.error('加载更多人物失败:', error);
-        hasMore.value = false;
-    } finally {
-        loading.value = false;
     }
 };
 
@@ -432,7 +389,6 @@ const deleteResource = async (resource: MediaCharacter) => {
 };
 
 const handleAddResource = async (data: { name: string; description: string; gender: number; age?: number }) => {
-    loading.value = true;
     try {
         const response = await mediaApi.createCharacter({
             name: data.name,
@@ -451,53 +407,30 @@ const handleAddResource = async (data: { name: string; description: string; gend
     } catch (error) {
         console.error('添加人物失败:', error);
         toast.error('添加人物失败，请重试');
-    } finally {
-        loading.value = false;
     }
 };
 
 // 加载资源数据
 const loadResources = async () => {
-    loading.value = true;
     try {
-        const characterParams = {
-            limit: 20,
-            offset: 0,
-            search: searchQuery.value,
-            gender: selectedGender.value ? Number(selectedGender.value) : undefined,
-        };
-
-        const response = await mediaApi.getCharacters(characterParams);
-
-        if (Array.isArray(response.data)) {
-            resources.value = response.data;
-        } else if (response.data && Array.isArray(response.data.data)) {
-            resources.value = response.data.data;
-        } else {
-            resources.value = [];
-        }
-
-        hasMore.value = resources.value.length === 20;
-    } catch (error) {
-        console.error('加载人物失败:', error);
-        toast.error('加载人物失败');
-        resources.value = [];
-    } finally {
-        loading.value = false;
+        // 使用usePagination的nextPage方法重新加载数据
+        await nextPage(true);
 
         if (!selectedCharacter.value && resources.value.length > 0) {
-            const firstCharacterWithModel = resources.value.find((resource) => hasModelFile(resource));
+            const firstCharacterWithModel = resources.value.find((resource: MediaCharacter) => resource.additional_resources);
 
             if (firstCharacterWithModel) {
                 selectResource(firstCharacterWithModel);
             }
         }
+    } catch (error) {
+        console.error('加载人物失败:', error);
+        toast.error('加载人物失败');
     }
 };
 
 // 搜索处理
 const handleSearch = () => {
-    hasMore.value = true;
     loadResources();
 };
 
