@@ -28,10 +28,13 @@ export class ThreeJSBaseManager {
     this.renderer.setSize(canvas.clientWidth, canvas.clientHeight);
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;  
+    // 渲染器颜色空间
+    // this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    // 渲染器色调映射
+    // this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    // 渲染器色调映射曝光度
+    // this.renderer.toneMappingExposure = 1;
     
     // 监听窗口大小变化
     this.setupResizeHandler();

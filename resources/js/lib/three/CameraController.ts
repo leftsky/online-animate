@@ -11,8 +11,8 @@ export class CameraController {
   private canvas: HTMLCanvasElement | null = null;
   
   // 默认摄像机参数
-  private readonly defaultPosition = { x: 5, y: 5, z: 5 };
-  private readonly defaultTarget = { x: 0, y: 1, z: 0 };
+  private readonly defaultPosition = { x: 0, y: 1, z: 3 };
+  private readonly defaultTarget = { x: 0, y: 0.5, z: 0 };
   private readonly defaultFov = 75;
   private readonly defaultNear = 0.1;
   private readonly defaultFar = 1000;
@@ -54,11 +54,11 @@ export class CameraController {
     this.controls.screenSpacePanning = false;
     
     // 缩放限制
-    this.controls.minDistance = 1;
-    this.controls.maxDistance = 50;
+    this.controls.minDistance = 1.5;
+    this.controls.maxDistance = 20;
     
     // 垂直旋转限制
-    this.controls.maxPolarAngle = Math.PI / 2;
+    this.controls.maxPolarAngle = Math.PI * 0.48;
     
     // 设置目标点
     this.controls.target.set(
@@ -168,29 +168,29 @@ export class CameraController {
    * 设置预设视角
    */
   setPresetView(preset: 'front' | 'back' | 'left' | 'right' | 'top' | 'bottom' | 'isometric'): void {
-    const distance = 5;
-    const target = new THREE.Vector3(0, 1, 0);
+    const distance = 3;
+    const target = new THREE.Vector3(0, 0.5, 0);
     
     let position: THREE.Vector3;
     
     switch (preset) {
       case 'front':
-        position = new THREE.Vector3(0, 1, distance);
+        position = new THREE.Vector3(0, 0.5, distance);
         break;
       case 'back':
-        position = new THREE.Vector3(0, 1, -distance);
+        position = new THREE.Vector3(0, 0.5, -distance);
         break;
       case 'left':
-        position = new THREE.Vector3(-distance, 1, 0);
+        position = new THREE.Vector3(-distance, 0.5, 0);
         break;
       case 'right':
-        position = new THREE.Vector3(distance, 1, 0);
+        position = new THREE.Vector3(distance, 0.5, 0);
         break;
       case 'top':
-        position = new THREE.Vector3(0, distance, 0);
+        position = new THREE.Vector3(0, distance + 0.5, 0);
         break;
       case 'bottom':
-        position = new THREE.Vector3(0, -distance, 0);
+        position = new THREE.Vector3(0, -distance + 0.5, 0);
         break;
       case 'isometric':
       default:

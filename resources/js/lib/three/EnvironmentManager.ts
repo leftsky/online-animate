@@ -30,12 +30,12 @@ export class EnvironmentManager {
    */
   private setupLighting(): void {
     // 环境光 - 提供基础照明
-    this.ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     this.scene.add(this.ambientLight);
 
     // 方向光 - 主光源，模拟太阳光
-    this.directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-    this.directionalLight.position.set(10, 10, 5);
+    this.directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    this.directionalLight.position.set(5, 10, 5);
     this.directionalLight.castShadow = true;
     
     // 配置阴影
@@ -55,11 +55,11 @@ export class EnvironmentManager {
    * 设置地面
    */
   private setupGround(): void {
-    const groundGeometry = new THREE.PlaneGeometry(20, 20);
+    const groundGeometry = new THREE.PlaneGeometry(10, 10);
     const groundMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x999999,
+      color: 0xcccccc,
       transparent: true,
-      opacity: 0.8
+      opacity: 0.4
     });
     
     this.ground = new THREE.Mesh(groundGeometry, groundMaterial);
@@ -78,8 +78,8 @@ export class EnvironmentManager {
     const skyGeometry = new THREE.SphereGeometry(100, 32, 32);
     const skyMaterial = new THREE.ShaderMaterial({
       uniforms: {
-        topColor: { value: new THREE.Color(0x0077ff) },
-        bottomColor: { value: new THREE.Color(0xffffff) },
+        topColor: { value: new THREE.Color(0x87ceeb) },
+        bottomColor: { value: new THREE.Color(0xf0f8ff) },
         offset: { value: 33 },
         exponent: { value: 0.6 }
       },
