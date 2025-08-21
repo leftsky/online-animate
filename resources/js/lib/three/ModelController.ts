@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { v4 as uuid } from 'uuid';
-import { markRaw, ref, toRaw } from 'vue';
+import { markRaw, ref } from 'vue';
 import { useThreeJSManager } from './ThreeJSBaseManager';
 
 // 模型状态枚举
@@ -20,17 +20,20 @@ enum ModelStatus {
  */
 export function useModelController(threeManager: ReturnType<typeof useThreeJSManager>) {
     const { threeScene: scene, threeControls: controls, addAnimationCallback, removeAnimationCallback } = threeManager;
-    const model = ref<THREE.Group | null>(null);
-    const mixer = ref<THREE.AnimationMixer | null>(null);
+    let model: THREE.Group | null = null;
+    let mixer: THREE.AnimationMixer | null = null;
+    // 动画播放状态管理
+    const modelId = uuid();
+    let currentAnimationAction: THREE.AnimationAction | null = null;
     const animations = ref<Array<{ name: string; duration: number; clip: any }>>([]);
-    const modelId = ref<string>(uuid());
+    // 显示控制相关状态
+    let boundingBox: THREE.BoxHelper | null = null;
+    let skeleton: THREE.SkeletonHelper | null = null;
+
+    const isPlaying = ref(false);
 
     // 模型状态
     const status = ref<ModelStatus>(ModelStatus.CREATED);
-
-    // 显示控制相关状态
-    const boundingBox = ref<THREE.BoxHelper | null>(null);
-    const skeleton = ref<THREE.SkeletonHelper | null>(null);
 
     status.value = ModelStatus.INITED;
 
@@ -46,9 +49,9 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
                 status.value = ModelStatus.LOADING;
 
                 // 移除之前的模型
-                if (model.value) {
-                    scene.value.remove(toRaw(model.value));
-                    model.value = null;
+                if (model) {
+                    scene.value.remove(model);
+                    model = null;
                 }
 
                 // 加载新模型
@@ -114,7 +117,7 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
 
                     // 添加到场景
                     scene.value.add(_model);
-                    model.value = markRaw(_model);
+                    model = _model;
 
                     // 动态调整摄像机目标点，使其对准模型的中心高度
                     const modelHeight = scaledSize.y;
@@ -149,8 +152,8 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
 
         if (gltf.animations && gltf.animations.length > 0) {
             // 创建动画混合器
-            if (model.value) {
-                mixer.value = markRaw(new THREE.AnimationMixer(toRaw(model.value)));
+            if (model) {
+                mixer = new THREE.AnimationMixer(model);
             }
 
             // 解析所有动画
@@ -163,24 +166,21 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
             });
         }
 
-        console.log('解析到动画:', animationList.length, '个', mixer.value, model.value);
+        console.log('解析到动画:', animationList.length, '个', mixer, model);
+        console.log('动画详情', animationList);
         animations.value = animationList;
     };
 
-    // 动画播放状态管理
-    const currentAnimationAction = ref<THREE.AnimationAction | null>(null);
-    const isPlaying = ref(false);
-
     // 播放动画
     const play = (animationIndex: number = 0) => {
-        if (!mixer.value || status.value !== ModelStatus.LOADED || !animations.value[animationIndex]) {
+        if (!mixer || status.value !== ModelStatus.LOADED || !animations.value[animationIndex]) {
             console.warn('无法播放动画：模型未加载或动画不存在');
             return false;
         }
         try {
             // 停止当前播放的动画
-            if (currentAnimationAction.value) {
-                currentAnimationAction.value.stop();
+            if (currentAnimationAction) {
+                currentAnimationAction.stop();
             }
 
             // 获取指定的动画
@@ -191,10 +191,10 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
             }
 
             // 创建并播放动画
-            currentAnimationAction.value = mixer.value.clipAction(animation.clip);
-            currentAnimationAction.value.reset();
-            currentAnimationAction.value.setLoop(THREE.LoopRepeat, Infinity); // 循环播放
-            currentAnimationAction.value.play();
+            currentAnimationAction = mixer.clipAction(animation.clip);
+            currentAnimationAction.reset();
+            currentAnimationAction.setLoop(THREE.LoopRepeat, Infinity); // 循环播放
+            currentAnimationAction.play();
 
             isPlaying.value = true;
 
@@ -208,9 +208,9 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
 
     // 暂停动画
     const pause = () => {
-        if (currentAnimationAction.value && isPlaying.value) {
+        if (currentAnimationAction && isPlaying.value) {
             try {
-                currentAnimationAction.value.paused = true;
+                currentAnimationAction.paused = true;
                 isPlaying.value = false;
                 console.log('动画已暂停');
                 return true;
@@ -224,10 +224,10 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
 
     // 停止动画
     const stop = () => {
-        if (currentAnimationAction.value && (isPlaying.value || currentAnimationAction.value.paused)) {
+        if (currentAnimationAction && (isPlaying.value || currentAnimationAction.paused)) {
             try {
-                currentAnimationAction.value.stop();
-                currentAnimationAction.value = null;
+                currentAnimationAction.stop();
+                currentAnimationAction = null;
                 isPlaying.value = false;
                 console.log('动画已停止');
                 return true;
@@ -241,9 +241,9 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
 
     // 恢复播放动画
     const resume = () => {
-        if (currentAnimationAction.value && currentAnimationAction.value.paused) {
+        if (currentAnimationAction && currentAnimationAction.paused) {
             try {
-                currentAnimationAction.value.paused = false;
+                currentAnimationAction.paused = false;
                 isPlaying.value = true;
                 console.log('动画已恢复播放');
                 return true;
@@ -257,9 +257,9 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
 
     // 更新动画（需要在渲染循环中调用）
     const updateAnimation = (deltaTime: number) => {
-        if (mixer.value && (isPlaying.value || (currentAnimationAction.value && currentAnimationAction.value.paused))) {
+        if (mixer && (isPlaying.value || (currentAnimationAction && currentAnimationAction.paused))) {
             try {
-                mixer.value.update(deltaTime);
+                mixer.update(deltaTime);
             } catch (error) {
                 console.error('更新动画失败:', error);
             }
@@ -277,50 +277,50 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
         console.log('清空模型显示');
         status.value = ModelStatus.INITED;
 
-        if (model.value && scene.value) {
-            scene.value.remove(toRaw(model.value));
-            model.value = null;
+        if (model && scene.value) {
+            scene.value.remove(model);
+            model = null;
         }
 
-        if (boundingBox.value && scene.value) {
-            scene.value.remove(toRaw(boundingBox.value));
-            boundingBox.value = null;
+        if (boundingBox && scene.value) {
+            scene.value.remove(boundingBox);
+            boundingBox = null;
         }
-        if (skeleton.value && scene.value) {
-            scene.value.remove(toRaw(skeleton.value));
-            skeleton.value = null;
+        if (skeleton && scene.value) {
+            scene.value.remove(skeleton);
+            skeleton = null;
         }
 
-        if (mixer.value) {
-            mixer.value = null;
+        if (mixer) {
+            mixer = null;
         }
-        if (currentAnimationAction.value) {
-            currentAnimationAction.value.stop();
-            currentAnimationAction.value = null;
+        if (currentAnimationAction) {
+            currentAnimationAction.stop();
+            currentAnimationAction = null;
         }
         isPlaying.value = false;
         animations.value = [];
 
         // 移除动画更新回调
-        if (modelId.value) {
-            removeAnimationCallback(modelId.value);
+        if (modelId) {
+            removeAnimationCallback(modelId);
         }
     };
 
     // 处理边界框显示切换
     const toggleBoundingBox = (show: boolean) => {
-        if (!model.value || !scene.value) return;
+        if (!model || !scene.value) return;
 
         try {
             if (show) {
-                if (!boundingBox.value) {
-                    boundingBox.value = markRaw(new THREE.BoxHelper(toRaw(model.value), 0x00ff00));
-                    scene.value.add(toRaw(boundingBox.value));
+                if (!boundingBox) {
+                    boundingBox = new THREE.BoxHelper(model, 0x00ff00);
+                    scene.value.add(boundingBox);
                 }
             } else {
-                if (boundingBox.value) {
-                    scene.value.remove(toRaw(boundingBox.value));
-                    boundingBox.value = null;
+                if (boundingBox) {
+                    scene.value.remove(boundingBox);
+                    boundingBox = null;
                 }
             }
         } catch (error) {
@@ -330,27 +330,27 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
 
     // 处理骨骼显示切换
     const toggleSkeleton = (show: boolean) => {
-        if (!model.value || !scene.value) return;
+        if (!model || !scene.value) return;
 
         try {
             if (show) {
                 let skeletonData: THREE.Skeleton | null = null;
-                model.value.traverse((child: any) => {
+                model.traverse((child: any) => {
                     if (child.isSkinnedMesh && child.skeleton) {
                         skeletonData = child.skeleton;
                     }
                 });
 
-                if (skeletonData && !skeleton.value) {
-                    skeleton.value = markRaw(new THREE.SkeletonHelper(toRaw(model.value)));
-                    scene.value.add(toRaw(skeleton.value));
+                if (skeletonData && !skeleton) {
+                    skeleton = new THREE.SkeletonHelper(model);
+                    scene.value.add(skeleton);
                 } else if (!skeletonData) {
                     console.warn('模型中未找到骨骼数据');
                 }
             } else {
-                if (skeleton.value) {
-                    scene.value.remove(toRaw(skeleton.value));
-                    skeleton.value = null;
+                if (skeleton) {
+                    scene.value.remove(skeleton);
+                    skeleton = null;
                 }
             }
         } catch (error) {
@@ -360,20 +360,18 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
 
     // 处理模型参数更新
     const updateParams = (updateData: { type: string; value: any }) => {
-        if (!model.value) return;
+        if (!model) return;
 
         try {
-            const modelObj = toRaw(model.value);
-
             switch (updateData.type) {
                 case 'position':
-                    modelObj.position.set(updateData.value.x, updateData.value.y, updateData.value.z);
+                    model.position.set(updateData.value.x, updateData.value.y, updateData.value.z);
                     break;
                 case 'rotation':
-                    modelObj.rotation.set(updateData.value.x, updateData.value.y, updateData.value.z);
+                    model.rotation.set(updateData.value.x, updateData.value.y, updateData.value.z);
                     break;
                 case 'scale':
-                    modelObj.scale.setScalar(updateData.value);
+                    model.scale.setScalar(updateData.value);
                     break;
             }
         } catch (error) {
@@ -382,14 +380,14 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
     };
 
     const getModelParams = () => {
-        if (!model.value) return null;
+        if (!model) return null;
         return {
-            position: model.value.position,
-            rotation: model.value.rotation,
-            scale: model.value.scale,
+            position: model.position,
+            rotation: model.rotation,
+            scale: model.scale,
         };
     };
-    addAnimationCallback(modelId.value, updateAnimation);
+    addAnimationCallback(modelId, updateAnimation);
 
     return {
         animations,

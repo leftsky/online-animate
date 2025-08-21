@@ -4,7 +4,6 @@ import { markRaw, ref, toRaw } from 'vue';
 
 export function useThreeJSManager() {
     const canvas = ref<HTMLCanvasElement>();
-    // const threeCanvas = ref<HTMLCanvasElement>();
     const threeScene = ref<THREE.Scene | null>(null);
     const threeRenderer = ref<THREE.WebGLRenderer | null>(null);
     const threeCamera = ref<THREE.PerspectiveCamera | null>(null);
@@ -140,11 +139,6 @@ export function useThreeJSManager() {
         }
     };
 
-    // 根据key获取动画更新回调
-    const getAnimationCallback = (key: string | THREE.Group) => {
-        return animationCallbacks.get(key);
-    };
-
     // 清理所有动画更新回调
     const clearAllAnimationCallbacks = () => {
         animationCallbacks.clear();
@@ -162,31 +156,15 @@ export function useThreeJSManager() {
         }
     };
 
-    // const resetThreeJS = () => {
-    //     if (threeRenderer.value) {
-    //         threeRenderer.value.dispose();
-    //     }
-    //     if (threeScene.value) {
-    //         threeScene.value.dispose();
-    //     }
-    // };
-
     return {
-        // threeCanvas,
         threeScene,
         threeRenderer,
-        // threeCamera,
         threeControls,
         initThreeJS,
         handleResize,
-        // 新增的动画回调管理方法
         addAnimationCallback,
         removeAnimationCallback,
-        getAnimationCallback,
         clearAllAnimationCallbacks,
-        // 暴露内部回调信息（只读）
-        getAnimationCallbacksCount: () => animationCallbacks.size,
-        hasAnimationCallback: (key: string | THREE.Group) => animationCallbacks.has(key),
         destroyThreeJS,
     };
 }
