@@ -188,7 +188,8 @@ import { Eye, EyeOff, Pause, Play, RotateCcw, Settings } from 'lucide-vue-next';
 // Props
 interface Props {
     modelName?: string;
-    model?: any; // Three.js模型对象
+    // model?: any; // Three.js模型对象
+    modelInitParams: any;
     availableAnimations?: Array<{
         name: string;
         duration: number;
@@ -234,7 +235,7 @@ const initialParams = reactive({
 
 // 监听模型变化，更新参数
 watch(
-    () => props.model,
+    () => props.modelInitParams,
     (newModel) => {
         if (newModel) {
             // 更新当前参数
@@ -288,11 +289,6 @@ const selectAnimation = (index: number) => {
     playCurrentAnimation();
 };
 
-const playAnimation = (index: number) => {
-    currentAnimation.value = index;
-    playCurrentAnimation();
-};
-
 const playCurrentAnimation = () => {
     if (currentAnimation.value !== null) {
         isPlaying.value = true;
@@ -303,11 +299,6 @@ const playCurrentAnimation = () => {
 const pauseAnimation = () => {
     isPlaying.value = false;
     emit('animationPause');
-};
-
-const stopAnimation = () => {
-    isPlaying.value = false;
-    emit('animationStop');
 };
 
 // 参数更新方法

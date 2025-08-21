@@ -69,10 +69,13 @@
                     </div>
 
                     <div class="relative flex-1 overflow-hidden rounded-lg border border-border bg-card">
-                        <canvas ref="threeCanvas" class="h-full w-full" :class="{ 'opacity-0': modelStatus !== 'loaded' }"></canvas>
+                        <canvas ref="threeCanvas" class="h-full w-full" :class="{ 'opacity-0': modelStatus === 'loading' }"></canvas>
 
                         <!-- 覆盖层 -->
-                        <div v-if="modelStatus !== 'loaded'" class="absolute inset-0 flex items-center justify-center bg-card text-muted-foreground">
+                        <div
+                            v-if="modelStatus === 'loading' || modelStatus === 'created' || modelStatus === 'inited'"
+                            class="absolute inset-0 flex items-center justify-center bg-card text-muted-foreground"
+                        >
                             <!-- 加载中状态 -->
                             <div v-if="modelStatus === 'loading'" class="text-center">
                                 <div class="mx-auto mb-4 flex h-16 w-16 animate-spin items-center justify-center rounded-full bg-muted">
@@ -109,12 +112,12 @@
                             <ModelControlPanel
                                 ref="controlPanelRef"
                                 :model-name="selectedCharacter.name"
-                                :model="currentModel"
+                                :model-init-params="modelInitParams"
                                 :available-animations="availableAnimations"
                                 @animation-play="handleAnimationPlay"
                                 @animation-pause="handleAnimationPause"
                                 @animation-stop="handleAnimationStop"
-                                @model-update="handleModelUpdate"
+                                @model-update="modelController.updateParams"
                                 @toggle-bounding-box="handleToggleBoundingBox"
                                 @toggle-skeleton="handleToggleSkeleton"
                             />
@@ -158,7 +161,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/composables/useToast';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Package, Plus, Search, Users } from 'lucide-vue-next';
-import { computed, onMounted, ref, toRaw, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import AddCharacterDialog from './components/AddCharacterDialog.vue';
 import CharacterCard from './components/CharacterCard.vue';
 
@@ -166,21 +169,25 @@ import { useModelController } from '@/lib/three/ModelController';
 import { useThreeJSManager } from '@/lib/three/ThreeJSBaseManager';
 import { type MediaCharacter } from '@/services/mediaApi';
 import { mediaApi, uploadApi } from '@/utils/api';
-import * as THREE from 'three';
 import { usePagination } from 'vue3-help';
 
 const threeManager = useThreeJSManager();
 const { destroyThreeJS, initThreeJS, handleResize } = threeManager;
+const modelController = useModelController(threeManager);
 const {
     load,
     animations: availableAnimations,
     status: modelStatus,
-    model: currentModel,
-    mixer: modelMixer,
+    // model: currentModel,
     clear: clearModelDisplay,
     toggleBoundingBox: handleToggleBoundingBox,
     toggleSkeleton: handleToggleSkeleton,
-} = useModelController(threeManager);
+} = modelController;
+const modelInitParams = ref<any>({
+    position: { x: 0, y: 0, z: 0 },
+    rotation: { x: 0, y: 0, z: 0 },
+    scale: 1,
+});
 
 // 面包屑导航
 const breadcrumbs = [
@@ -204,7 +211,6 @@ const currentUploadingCharacter = ref<MediaCharacter | null>(null);
 
 // 模型控制面板相关状态
 const controlPanelRef = ref<InstanceType<typeof ModelControlPanel> | null>(null);
-const currentAnimationAction = ref<THREE.AnimationAction | null>(null);
 
 // 使用usePagination管理分页
 const { fullList, nextPage, loadStatus, totalNum } = usePagination({
@@ -330,6 +336,7 @@ const selectResource = async (resource: MediaCharacter) => {
 
     if (resource.additional_resources) {
         await load(resource);
+        modelInitParams.value = modelController.getModelParams();
     } else {
         clearModelDisplay();
     }
@@ -428,63 +435,26 @@ watch(() => false, cleanup);
 
 // 模型控制面板事件处理方法
 const handleAnimationPlay = (animationIndex: number) => {
-    if (!currentModel.value || !availableAnimations.value[animationIndex]) return;
-
-    try {
-        const animation = availableAnimations.value[animationIndex];
-
-        if (currentAnimationAction.value) {
-            currentAnimationAction.value.stop();
-        }
-
-        if (animation.clip && modelMixer.value) {
-            currentAnimationAction.value = modelMixer.value.clipAction(animation.clip);
-            currentAnimationAction.value.reset();
-            currentAnimationAction.value.play();
-
-            controlPanelRef.value?.setAnimationState(true);
-        }
-    } catch (error) {
-        console.error('播放动画失败:', error);
+    const success = modelController.play(animationIndex);
+    if (success) {
+        controlPanelRef.value?.setAnimationState(true);
+        console.log('播放动画成功');
+    } else {
         toast.error('播放动画失败');
     }
 };
 
 const handleAnimationPause = () => {
-    if (currentAnimationAction.value) {
-        currentAnimationAction.value.paused = true;
+    const success = modelController.pause();
+    if (success) {
         controlPanelRef.value?.setAnimationState(false);
     }
 };
 
 const handleAnimationStop = () => {
-    if (currentAnimationAction.value) {
-        currentAnimationAction.value.stop();
-        currentAnimationAction.value = null;
+    const success = modelController.stop();
+    if (success) {
         controlPanelRef.value?.setAnimationState(false);
-    }
-};
-
-const handleModelUpdate = (updateData: { type: string; value: any }) => {
-    if (!currentModel.value) return;
-
-    try {
-        const model = toRaw(currentModel.value);
-
-        switch (updateData.type) {
-            case 'position':
-                model.position.set(updateData.value.x, updateData.value.y, updateData.value.z);
-                break;
-            case 'rotation':
-                model.rotation.set(updateData.value.x, updateData.value.y, updateData.value.z);
-                break;
-            case 'scale':
-                model.scale.setScalar(updateData.value);
-                break;
-        }
-    } catch (error) {
-        console.error('更新模型参数失败:', error);
-        toast.error('更新模型参数失败');
     }
 };
 </script>

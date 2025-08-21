@@ -12,13 +12,11 @@ enum ModelStatus {
     INITED = 'inited', // 已初始化
     LOADING = 'loading', // 加载中
     LOADED = 'loaded', // 已加载
-    PLAYING = 'playing', // 播放中
-    PAUSED = 'paused', // 已暂停
     DESTROYED = 'destroyed', // 已销毁
 }
 
 export function useModelController(threeManager: ReturnType<typeof useThreeJSManager>) {
-    const { threeScene: scene, threeControls: controls, addMixer } = threeManager;
+    const { threeScene: scene, threeControls: controls, addAnimationCallback, removeAnimationCallback } = threeManager;
     // const scene = ref<THREE.Scene>();
     const loading = ref(false);
     const url = ref<string | null>(null);
@@ -42,14 +40,15 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
         modelId.value = uuid();
         status.value = ModelStatus.INITED;
         inited.value = true;
-        // addMixer('default', mixer.value as THREE.AnimationMixer);
+
+        // 注册动画更新回调
+        addAnimationCallback(modelId.value, updateAnimation);
     };
 
     // 加载人物模型
     const load = async (character: MediaCharacter) => {
         if (!inited.value) {
-            // init();
-            // throw new Error('模型未初始化');
+            init();
         }
 
         if (!character.additional_resources || !scene.value) return;
@@ -180,7 +179,6 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
             // 创建动画混合器
             if (model.value) {
                 mixer.value = markRaw(new THREE.AnimationMixer(toRaw(model.value)));
-                addMixer(modelId.value, mixer.value as THREE.AnimationMixer);
             }
 
             // 解析所有动画
@@ -197,24 +195,102 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
         animations.value = animationList;
     };
 
+    // 动画播放状态管理
+    const currentAnimationAction = ref<THREE.AnimationAction | null>(null);
+    const isPlaying = ref(false);
+
     // 播放动画
-    const play = () => {
-        if (mixer.value && status.value === ModelStatus.LOADED) {
-            status.value = ModelStatus.PLAYING;
+    const play = (animationIndex: number = 0) => {
+        if (!mixer.value || status.value !== ModelStatus.LOADED || !animations.value[animationIndex]) {
+            console.warn('无法播放动画：模型未加载或动画不存在');
+            return false;
+        }
+        try {
+            // 停止当前播放的动画
+            if (currentAnimationAction.value) {
+                currentAnimationAction.value.stop();
+            }
+
+            // 获取指定的动画
+            const animation = animations.value[animationIndex];
+            if (!animation.clip) {
+                console.warn('动画片段不存在');
+                return false;
+            }
+
+            // 创建并播放动画
+            currentAnimationAction.value = mixer.value.clipAction(animation.clip);
+            currentAnimationAction.value.reset();
+            currentAnimationAction.value.setLoop(THREE.LoopRepeat, Infinity); // 循环播放
+            currentAnimationAction.value.play();
+
+            isPlaying.value = true;
+
+            console.log(`开始播放动画: ${animation.name}`);
+            return true;
+        } catch (error) {
+            console.error('播放动画失败:', error);
+            return false;
         }
     };
 
     // 暂停动画
     const pause = () => {
-        if (status.value === ModelStatus.PLAYING) {
-            status.value = ModelStatus.PAUSED;
+        if (currentAnimationAction.value && isPlaying.value) {
+            try {
+                currentAnimationAction.value.paused = true;
+                isPlaying.value = false;
+                console.log('动画已暂停');
+                return true;
+            } catch (error) {
+                console.error('暂停动画失败:', error);
+                return false;
+            }
         }
+        return false;
     };
 
     // 停止动画
     const stop = () => {
-        if (mixer.value && (status.value === ModelStatus.PLAYING || status.value === ModelStatus.PAUSED)) {
-            status.value = ModelStatus.LOADED;
+        if (currentAnimationAction.value && (isPlaying.value || currentAnimationAction.value.paused)) {
+            try {
+                currentAnimationAction.value.stop();
+                currentAnimationAction.value = null;
+                isPlaying.value = false;
+                console.log('动画已停止');
+                return true;
+            } catch (error) {
+                console.error('停止动画失败:', error);
+                return false;
+            }
+        }
+        return false;
+    };
+
+    // 恢复播放动画
+    const resume = () => {
+        if (currentAnimationAction.value && currentAnimationAction.value.paused) {
+            try {
+                currentAnimationAction.value.paused = false;
+                isPlaying.value = true;
+                console.log('动画已恢复播放');
+                return true;
+            } catch (error) {
+                console.error('恢复动画失败:', error);
+                return false;
+            }
+        }
+        return false;
+    };
+
+    // 更新动画（需要在渲染循环中调用）
+    const updateAnimation = (deltaTime: number) => {
+        if (mixer.value && (isPlaying.value || (currentAnimationAction.value && currentAnimationAction.value.paused))) {
+            try {
+                mixer.value.update(deltaTime);
+            } catch (error) {
+                console.error('更新动画失败:', error);
+            }
         }
     };
 
@@ -248,7 +324,17 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
         if (mixer.value) {
             mixer.value = null;
         }
+        if (currentAnimationAction.value) {
+            currentAnimationAction.value.stop();
+            currentAnimationAction.value = null;
+        }
+        isPlaying.value = false;
         animations.value = [];
+
+        // 移除动画更新回调
+        if (inited.value && modelId.value) {
+            removeAnimationCallback(modelId.value);
+        }
     };
 
     // 处理边界框显示切换
@@ -302,21 +388,59 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
         }
     };
 
+    // 处理模型参数更新
+    const updateParams = (updateData: { type: string; value: any }) => {
+        if (!model.value) return;
+
+        try {
+            const modelObj = toRaw(model.value);
+
+            switch (updateData.type) {
+                case 'position':
+                    modelObj.position.set(updateData.value.x, updateData.value.y, updateData.value.z);
+                    break;
+                case 'rotation':
+                    modelObj.rotation.set(updateData.value.x, updateData.value.y, updateData.value.z);
+                    break;
+                case 'scale':
+                    modelObj.scale.setScalar(updateData.value);
+                    break;
+            }
+        } catch (error) {
+            console.error('更新模型参数失败:', error);
+        }
+    };
+
+    const getModelParams = () => {
+        if (!model.value) return null;
+        return {
+            position: model.value.position,
+            rotation: model.value.rotation,
+            scale: model.value.scale,
+        };
+    };
+
     return {
         animations,
-        loading,
-        url,
-        model,
-        mixer,
+        // loading,
+        // url,
+        // model,
+        // mixer,
         status,
+        isPlaying,
+        // currentAnimationAction,
         init,
         load,
         clear,
         play,
         pause,
         stop,
+        resume,
+        // updateAnimation,
         destroy,
         toggleBoundingBox,
         toggleSkeleton,
+        updateParams,
+        getModelParams,
     };
 }

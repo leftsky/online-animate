@@ -10,8 +10,8 @@ export function useThreeJSManager() {
     const threeCamera = ref<THREE.PerspectiveCamera | null>(null);
     const threeControls = ref<OrbitControls | null>(null);
 
-    // 使用Map来管理mixer，key可以是模型ID或模型对象引用
-    const internalMixers = new Map<string | THREE.Group, THREE.AnimationMixer>();
+    // 使用Map来管理动画更新回调，key可以是模型ID或模型对象引用
+    const animationCallbacks = new Map<string | THREE.Group, (deltaTime: number) => void>();
 
     // 初始化Three.js场景
     const initThreeJS = (threeCanvas: HTMLCanvasElement) => {
@@ -96,10 +96,12 @@ export function useThreeJSManager() {
 
     // 动画循环更新
     const updateAnimations = () => {
-        // 更新所有内部mixer
-        internalMixers.forEach((mixer) => {
-            if (mixer) {
-                mixer.update(0.016); // 假设60fps
+        // 调用所有注册的动画更新回调
+        animationCallbacks.forEach((callback) => {
+            try {
+                callback(0.016); // 假设60fps
+            } catch (error) {
+                console.error('动画更新回调执行失败:', error);
             }
         });
     };
@@ -117,45 +119,36 @@ export function useThreeJSManager() {
         renderer.setSize(rect.width, rect.height);
     };
 
-    // 添加mixer到内部Map
-    const addMixer = (key: string | THREE.Group, mixer: THREE.AnimationMixer) => {
-        if (!mixer) {
-            console.error('mixer is not defined');
+    // 添加动画更新回调到内部Map
+    const addAnimationCallback = (key: string | THREE.Group, callback: (deltaTime: number) => void) => {
+        if (!callback) {
+            console.error('animation callback is not defined');
             return;
         }
-        if (internalMixers.has(key)) {
-            removeMixer(key);
+        if (animationCallbacks.has(key)) {
+            removeAnimationCallback(key);
         }
-        internalMixers.set(key, mixer);
-        console.log('添加动画混合器，当前总数:', internalMixers.size);
+        animationCallbacks.set(key, callback);
+        console.log('添加动画更新回调，当前总数:', animationCallbacks.size);
     };
 
-    // 从内部Map移除mixer
-    const removeMixer = (key: string | THREE.Group) => {
-        const mixer = internalMixers.get(key);
-        if (mixer) {
-            // 停止所有动画动作
-            mixer.stopAllAction();
-            // 从Map中移除
-            internalMixers.delete(key);
-            console.log('移除动画混合器，当前总数:', internalMixers.size);
+    // 从内部Map移除动画更新回调
+    const removeAnimationCallback = (key: string | THREE.Group) => {
+        if (animationCallbacks.has(key)) {
+            animationCallbacks.delete(key);
+            console.log('移除动画更新回调，当前总数:', animationCallbacks.size);
         }
     };
 
-    // 根据key获取mixer
-    const getMixer = (key: string | THREE.Group) => {
-        return internalMixers.get(key);
+    // 根据key获取动画更新回调
+    const getAnimationCallback = (key: string | THREE.Group) => {
+        return animationCallbacks.get(key);
     };
 
-    // 清理所有mixer
-    const clearAllMixers = () => {
-        internalMixers.forEach((mixer) => {
-            if (mixer) {
-                mixer.stopAllAction();
-            }
-        });
-        internalMixers.clear();
-        console.log('清理所有动画混合器');
+    // 清理所有动画更新回调
+    const clearAllAnimationCallbacks = () => {
+        animationCallbacks.clear();
+        console.log('清理所有动画更新回调');
     };
 
     const destroyThreeJS = () => {
@@ -186,14 +179,14 @@ export function useThreeJSManager() {
         threeControls,
         initThreeJS,
         handleResize,
-        // 新增的mixer管理方法
-        addMixer,
-        removeMixer,
-        getMixer,
-        clearAllMixers,
-        // 暴露内部mixer信息（只读）
-        getMixersCount: () => internalMixers.size,
-        hasMixer: (key: string | THREE.Group) => internalMixers.has(key),
+        // 新增的动画回调管理方法
+        addAnimationCallback,
+        removeAnimationCallback,
+        getAnimationCallback,
+        clearAllAnimationCallbacks,
+        // 暴露内部回调信息（只读）
+        getAnimationCallbacksCount: () => animationCallbacks.size,
+        hasAnimationCallback: (key: string | THREE.Group) => animationCallbacks.has(key),
         destroyThreeJS,
     };
 }
