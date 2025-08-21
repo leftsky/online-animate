@@ -22,18 +22,8 @@ defineProps<Props>();
             <animate attributeName="r" values="3;8;3" dur="2s" repeatCount="indefinite" />
             <animate attributeName="opacity" values="0.3;0;0.3" dur="2s" repeatCount="indefinite" />
         </circle>
-        <path
-            fill="currentColor"
-            d="M12 8l-4 4h3v4h2v-4h3l-4-4z"
-            opacity="0.7"
-        >
-            <animateTransform
-                attributeName="transform"
-                type="rotate"
-                values="0 12 12;360 12 12"
-                dur="3s"
-                repeatCount="indefinite"
-            />
+        <path fill="currentColor" d="M12 8l-4 4h3v4h2v-4h3l-4-4z" opacity="0.7">
+            <animateTransform attributeName="transform" type="rotate" values="0 12 12;360 12 12" dur="3s" repeatCount="indefinite" />
         </path>
     </svg>
 </template>

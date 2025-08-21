@@ -3,8 +3,8 @@
  * 统一管理前端 AJAX 调用 - 基于 Axios
  */
 
-import axios, { type AxiosResponse, type AxiosRequestConfig } from 'axios';
 import { AnimationParser } from '@/lib/AnimationParser';
+import axios, { type AxiosRequestConfig, type AxiosResponse } from 'axios';
 
 export interface ApiResponse<T = any> {
     success: boolean;
@@ -28,7 +28,7 @@ const apiClient = axios.create({
     baseURL: '/web/api',
     timeout: 30000,
     headers: {
-        'Accept': 'application/json',
+        Accept: 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
     },
 });
@@ -41,7 +41,7 @@ apiClient.interceptors.request.use(
     },
     (error) => {
         return Promise.reject(error);
-    }
+    },
 );
 
 // 响应拦截器 - 统一处理响应
@@ -61,7 +61,7 @@ apiClient.interceptors.response.use(
         }
 
         return Promise.resolve(response);
-    }
+    },
 );
 
 /**
@@ -74,36 +74,23 @@ export async function apiGet<T = any>(url: string, config?: AxiosRequestConfig):
 /**
  * POST 请求
  */
-export async function apiPost<T = any>(
-    url: string,
-    data?: any,
-    config?: AxiosRequestConfig
-): Promise<ApiResponse<T>> {
+export async function apiPost<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
     return apiClient.post(url, data, config);
 }
 
 /**
  * PUT 请求
  */
-export async function apiPut<T = any>(
-    url: string,
-    data?: any,
-    config?: AxiosRequestConfig
-): Promise<ApiResponse<T>> {
+export async function apiPut<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
     return apiClient.put(url, data, config);
 }
 
 /**
  * DELETE 请求
  */
-export async function apiDelete<T = any>(
-    url: string,
-    config?: AxiosRequestConfig
-): Promise<ApiResponse<T>> {
+export async function apiDelete<T = any>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
     return apiClient.delete(url, config);
 }
-
-
 
 /**
  * 配置相关 API
@@ -145,13 +132,15 @@ export const mediaApi = {
     /**
      * 获取场景列表
      */
-    getScenarios(params: {
-        limit?: number;
-        offset?: number;
-        search?: string;
-        category?: string;
-        status?: number;
-    } = {}): Promise<ApiResponse> {
+    getScenarios(
+        params: {
+            limit?: number;
+            offset?: number;
+            search?: string;
+            category?: string;
+            status?: number;
+        } = {},
+    ): Promise<ApiResponse> {
         const queryParams = new URLSearchParams();
         if (params.limit) queryParams.append('limit', String(params.limit));
         if (params.offset) queryParams.append('offset', String(params.offset));
@@ -180,14 +169,17 @@ export const mediaApi = {
     /**
      * 更新场景
      */
-    updateScenario(id: string | number, data: {
-        name?: string;
-        description?: string;
-        image_path?: string;
-        generation_prompt?: string;
-        category?: string;
-        tags?: string[];
-    }): Promise<ApiResponse> {
+    updateScenario(
+        id: string | number,
+        data: {
+            name?: string;
+            description?: string;
+            image_path?: string;
+            generation_prompt?: string;
+            category?: string;
+            tags?: string[];
+        },
+    ): Promise<ApiResponse> {
         return apiPut(`/media_scenarios/${id}`, data);
     },
 
@@ -201,14 +193,16 @@ export const mediaApi = {
     /**
      * 获取人物列表
      */
-    getCharacters(params: {
-        limit?: number;
-        offset?: number;
-        search?: string;
-        category?: string;
-        status?: number;
-        gender?: number;
-    } = {}): Promise<ApiResponse> {
+    getCharacters(
+        params: {
+            limit?: number;
+            offset?: number;
+            search?: string;
+            category?: string;
+            status?: number;
+            gender?: number;
+        } = {},
+    ): Promise<ApiResponse> {
         const queryParams = new URLSearchParams();
         if (params.limit) queryParams.append('limit', String(params.limit));
         if (params.offset) queryParams.append('offset', String(params.offset));
@@ -241,17 +235,20 @@ export const mediaApi = {
     /**
      * 更新人物
      */
-    updateCharacter(id: string | number, data: {
-        name?: string;
-        description?: string;
-        gender?: number;
-        age?: number;
-        image_path?: string;
-        additional_resources?: any;
-        personality?: string;
-        occupation?: string;
-        tags?: string[];
-    }): Promise<ApiResponse> {
+    updateCharacter(
+        id: string | number,
+        data: {
+            name?: string;
+            description?: string;
+            gender?: number;
+            age?: number;
+            image_path?: string;
+            additional_resources?: any;
+            personality?: string;
+            occupation?: string;
+            tags?: string[];
+        },
+    ): Promise<ApiResponse> {
         return apiPut(`/media_characters/${id}`, data);
     },
 
@@ -265,14 +262,16 @@ export const mediaApi = {
     /**
      * 获取物品列表
      */
-    getItems(params: {
-        limit?: number;
-        offset?: number;
-        search?: string;
-        category?: string;
-        status?: number;
-        type?: string;
-    } = {}): Promise<ApiResponse> {
+    getItems(
+        params: {
+            limit?: number;
+            offset?: number;
+            search?: string;
+            category?: string;
+            status?: number;
+            type?: string;
+        } = {},
+    ): Promise<ApiResponse> {
         const queryParams = new URLSearchParams();
         if (params.limit) queryParams.append('limit', String(params.limit));
         if (params.offset) queryParams.append('offset', String(params.offset));
@@ -304,16 +303,19 @@ export const mediaApi = {
     /**
      * 更新物品
      */
-    updateItem(id: string | number, data: {
-        name?: string;
-        description?: string;
-        image_path?: string;
-        generation_prompt?: string;
-        category?: string;
-        type?: string;
-        properties?: any[];
-        tags?: string[];
-    }): Promise<ApiResponse> {
+    updateItem(
+        id: string | number,
+        data: {
+            name?: string;
+            description?: string;
+            image_path?: string;
+            generation_prompt?: string;
+            category?: string;
+            type?: string;
+            properties?: any[];
+            tags?: string[];
+        },
+    ): Promise<ApiResponse> {
         return apiPut(`/media_items/${id}`, data);
     },
 
@@ -322,7 +324,7 @@ export const mediaApi = {
      */
     deleteItem(id: string | number): Promise<ApiResponse> {
         return apiDelete(`/media_items/${id}`);
-    }
+    },
 };
 
 /**
@@ -332,13 +334,15 @@ export const sceneContentApi = {
     /**
      * 获取分镜内容列表
      */
-    getList(params: {
-        scene_id?: number | null;
-        element_type?: string;
-        status?: number;
-        limit?: number;
-        offset?: number;
-    } = {}): Promise<ApiResponse> {
+    getList(
+        params: {
+            scene_id?: number | null;
+            element_type?: string;
+            status?: number;
+            limit?: number;
+            offset?: number;
+        } = {},
+    ): Promise<ApiResponse> {
         const queryParams = new URLSearchParams();
 
         if (params.scene_id !== undefined) {
@@ -350,27 +354,27 @@ export const sceneContentApi = {
         if (params.offset) queryParams.append('offset', String(params.offset));
 
         const url = `/scene_contents${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-        
-        return apiGet(url).then(response => {
+
+        return apiGet(url).then((response) => {
             // 如果请求成功且有数据，处理 YAML 脚本
             if (response.success && response.data && Array.isArray(response.data)) {
-                const processedData = response.data.map(item => {
+                const processedData = response.data.map((item) => {
                     if (item.animation_script) {
                         try {
                             // 使用 AnimationParser 解析 YAML 脚本
                             const parsed = AnimationParser.parseYamlToJson(item.animation_script);
-                            
+
                             // 添加 media 和 zindex 字段
                             if (parsed) {
                                 parsed.media = item.element_source || '';
                                 parsed.zindex = item.layer_order || 0;
-                                
+
                                 // 转换回 YAML
                                 const updatedScript = AnimationParser.parseJsonToYaml(parsed);
-                                
+
                                 return {
                                     ...item,
-                                    animation_script: updatedScript
+                                    animation_script: updatedScript,
                                 };
                             }
                         } catch (error) {
@@ -379,13 +383,13 @@ export const sceneContentApi = {
                     }
                     return item;
                 });
-                
+
                 return {
                     ...response,
-                    data: processedData
+                    data: processedData,
                 };
             }
-            
+
             return response;
         });
     },
@@ -415,14 +419,17 @@ export const sceneContentApi = {
     /**
      * 更新分镜内容
      */
-    update(id: number, data: {
-        element_name?: string;
-        element_type?: string;
-        element_source?: string;
-        animation_script?: string;
-        layer_order?: number;
-        status?: number;
-    }): Promise<ApiResponse> {
+    update(
+        id: number,
+        data: {
+            element_name?: string;
+            element_type?: string;
+            element_source?: string;
+            animation_script?: string;
+            layer_order?: number;
+            status?: number;
+        },
+    ): Promise<ApiResponse> {
         return apiPut(`/scene_contents/${id}`, data);
     },
 
@@ -436,13 +443,9 @@ export const sceneContentApi = {
     /**
      * 重新排序分镜内容
      */
-    reorder(data: {
-        scene_id: number;
-        dragged_id: number;
-        target_id?: number | null;
-    }): Promise<ApiResponse> {
+    reorder(data: { scene_id: number; dragged_id: number; target_id?: number | null }): Promise<ApiResponse> {
         return apiPost('/scene_contents/reorder', data);
-    }
+    },
 };
 
 /**
@@ -488,13 +491,9 @@ export const apiUtils = {
             successMessage?: string;
             showSuccessToast?: boolean;
             showErrorToast?: boolean;
-        } = {}
+        } = {},
     ): Promise<T | null> {
-        const {
-            successMessage,
-            showSuccessToast = false,
-            showErrorToast = true
-        } = options;
+        const { successMessage, showSuccessToast = false, showErrorToast = true } = options;
 
         try {
             const response = await responsePromise;
@@ -517,7 +516,7 @@ export const apiUtils = {
             }
             return null;
         }
-    }
+    },
 };
 
 /**

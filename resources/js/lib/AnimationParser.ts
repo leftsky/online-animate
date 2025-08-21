@@ -96,12 +96,12 @@ export class AnimationParser {
                 const content = line.trim().substring(2); // 移除 "- "
 
                 // 解析内联属性
-                const properties = content.split(',').map(prop => prop.trim());
+                const properties = content.split(',').map((prop) => prop.trim());
 
                 // 转换为标准YAML格式
                 processedLines.push(indent + '-');
                 for (const prop of properties) {
-                    const [key, value] = prop.split(':').map(s => s.trim());
+                    const [key, value] = prop.split(':').map((s) => s.trim());
                     if (key && value) {
                         processedLines.push(indent + '  ' + key + ': ' + value);
                     }
@@ -147,7 +147,7 @@ export class AnimationParser {
                 // 为每个动画添加ID
                 parsed.animations = parsed.animations.map((anim: any) => ({
                     ...anim,
-                    id: anim.id || this.generateId()
+                    id: anim.id || this.generateId(),
                 }));
             }
 
@@ -174,7 +174,7 @@ export class AnimationParser {
                 indent: 2,
                 lineWidth: -1,
                 noRefs: true,
-                sortKeys: false
+                sortKeys: false,
             });
         } catch (error) {
             console.error('JSON转YAML失败:', error);

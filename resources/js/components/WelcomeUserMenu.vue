@@ -1,11 +1,19 @@
 <script setup lang="ts">
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useAppearance } from '@/composables/useAppearance';
 import { getInitials } from '@/composables/useInitials';
 import { Link, usePage } from '@inertiajs/vue3';
-import { LogOut, Monitor, Moon, Settings, Sun, User } from 'lucide-vue-next';
+import { LogOut, Monitor, Moon, Sun, User } from 'lucide-vue-next';
 import { computed } from 'vue';
 
 const page = usePage();
@@ -22,11 +30,7 @@ const themeOptions = [
 <template>
     <DropdownMenu>
         <DropdownMenuTrigger :as-child="true">
-            <Button
-                variant="ghost"
-                size="icon"
-                class="relative size-10 w-auto rounded-full p-1 focus-within:ring-2 focus-within:ring-primary"
-            >
+            <Button variant="ghost" size="icon" class="relative size-10 w-auto rounded-full p-1 focus-within:ring-2 focus-within:ring-primary">
                 <Avatar class="size-8 overflow-hidden rounded-full">
                     <AvatarImage v-if="auth.user?.avatar" :src="auth.user.avatar" :alt="auth.user.name" />
                     <AvatarFallback class="rounded-lg bg-neutral-200 font-semibold text-black dark:bg-neutral-700 dark:text-white">
@@ -59,19 +63,17 @@ const themeOptions = [
                     </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem class="p-2">
-                    <div class="flex items-center justify-between w-full">
+                    <div class="flex w-full items-center justify-between">
                         <span class="text-sm font-medium">主题设置</span>
                     </div>
-                    <div class="flex items-center gap-1 mt-2">
+                    <div class="mt-2 flex items-center gap-1">
                         <button
                             v-for="theme in themeOptions"
                             :key="theme.value"
                             @click="updateAppearance(theme.value)"
                             :class="[
-                                'flex items-center justify-center p-1.5 rounded-md transition-colors text-xs',
-                                appearance === theme.value
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'hover:bg-accent hover:text-accent-foreground'
+                                'flex items-center justify-center rounded-md p-1.5 text-xs transition-colors',
+                                appearance === theme.value ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground',
                             ]"
                             :title="theme.label"
                         >

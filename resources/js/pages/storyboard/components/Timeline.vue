@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { Play, Pause, Square, SkipBack, SkipForward, Plus } from 'lucide-vue-next';
+import { Pause, Play, SkipBack, SkipForward, Square } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 
 interface Keyframe {
     id: string;
@@ -87,7 +87,7 @@ const handleTimelineClick = (event: MouseEvent) => {
 
 // 删除关键帧
 const removeKeyframe = (keyframeId: string) => {
-    const index = keyframes.value.findIndex(kf => kf.id === keyframeId);
+    const index = keyframes.value.findIndex((kf) => kf.id === keyframeId);
     if (index > -1) {
         keyframes.value.splice(index, 1);
         emit('removeKeyframe', keyframeId);
@@ -135,37 +135,35 @@ const getKeyframePosition = (time: number) => {
         <div class="flex items-center justify-between border-b px-4 py-2">
             <!-- 播放控制 -->
             <div class="flex items-center space-x-2">
-                <button @click="skipToStart"
+                <button
+                    @click="skipToStart"
                     class="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                    title="跳到开始">
+                    title="跳到开始"
+                >
                     <SkipBack class="h-4 w-4" />
                 </button>
 
-                <button @click="togglePlay"
+                <button
+                    @click="togglePlay"
                     class="rounded-md bg-primary p-2 text-primary-foreground hover:bg-primary/90"
-                    :title="isPlaying ? '暂停' : '播放'">
+                    :title="isPlaying ? '暂停' : '播放'"
+                >
                     <Play v-if="!isPlaying" class="h-4 w-4" />
                     <Pause v-else class="h-4 w-4" />
                 </button>
 
-                <button @click="stop"
-                    class="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                    title="停止">
+                <button @click="stop" class="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground" title="停止">
                     <Square class="h-4 w-4" />
                 </button>
 
-                <button @click="skipToEnd"
-                    class="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                    title="跳到结束">
+                <button @click="skipToEnd" class="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground" title="跳到结束">
                     <SkipForward class="h-4 w-4" />
                 </button>
             </div>
 
             <!-- 时间显示 -->
             <div class="flex items-center space-x-4">
-                <span class="text-sm font-mono text-muted-foreground">
-                    {{ formatTime(currentTime) }} / {{ formatTime(duration) }}
-                </span>
+                <span class="font-mono text-sm text-muted-foreground"> {{ formatTime(currentTime) }} / {{ formatTime(duration) }} </span>
 
                 <!-- 移除关键帧按钮 -->
                 <!-- <button
@@ -190,8 +188,12 @@ const getKeyframePosition = (time: number) => {
             <div class="relative h-full min-w-full" :style="{ width: timelineWidth + 'px' }">
                 <!-- 时间刻度 -->
                 <div class="relative h-8 border-b bg-muted/30">
-                    <div v-for="marker in timeMarkers" :key="marker.time" class="absolute flex flex-col items-center"
-                        :style="{ left: marker.position + '%' }">
+                    <div
+                        v-for="marker in timeMarkers"
+                        :key="marker.time"
+                        class="absolute flex flex-col items-center"
+                        :style="{ left: marker.position + '%' }"
+                    >
                         <div class="h-2 w-px bg-border"></div>
                         <span class="mt-1 text-xs text-muted-foreground">{{ marker.label }}</span>
                     </div>
@@ -200,10 +202,14 @@ const getKeyframePosition = (time: number) => {
                 <!-- 时间轴主体 -->
                 <div class="relative h-20 cursor-pointer bg-muted/20" @click="handleTimelineClick">
                     <!-- 关键帧 -->
-                    <div v-for="keyframe in keyframes" :key="keyframe.id"
+                    <div
+                        v-for="keyframe in keyframes"
+                        :key="keyframe.id"
                         class="absolute top-2 h-4 w-4 cursor-pointer rounded-full bg-primary shadow-sm hover:bg-primary/90"
                         :style="{ left: getKeyframePosition(keyframe.time) + '%', transform: 'translateX(-50%)' }"
-                        :title="`关键帧 - ${formatTime(keyframe.time)}`" @click.stop="removeKeyframe(keyframe.id)">
+                        :title="`关键帧 - ${formatTime(keyframe.time)}`"
+                        @click.stop="removeKeyframe(keyframe.id)"
+                    >
                         <div class="absolute -bottom-1 left-1/2 h-2 w-px -translate-x-1/2 bg-primary"></div>
                     </div>
 

@@ -30,7 +30,16 @@ const submit = () => {
             <div class="grid gap-6">
                 <div class="grid gap-2">
                     <Label for="name">用户名</Label>
-                    <Input id="name" type="text" required autofocus tabindex="1" autocomplete="username" v-model="form.name" placeholder="请输入用户名" />
+                    <Input
+                        id="name"
+                        type="text"
+                        required
+                        autofocus
+                        tabindex="1"
+                        autocomplete="username"
+                        v-model="form.name"
+                        placeholder="请输入用户名"
+                    />
                     <InputError :message="form.errors.name" />
                 </div>
 

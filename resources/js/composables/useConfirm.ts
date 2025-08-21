@@ -1,4 +1,4 @@
-import { ref, readonly } from 'vue';
+import { readonly, ref } from 'vue';
 
 export interface ConfirmOptions {
     title: string;
@@ -14,7 +14,7 @@ const options = ref<ConfirmOptions>({
     message: '',
     confirmText: '确认',
     cancelText: '取消',
-    variant: 'default'
+    variant: 'default',
 });
 
 let resolvePromise: ((value: boolean) => void) | null = null;
@@ -26,14 +26,14 @@ export function useConfirm() {
                 confirmText: '确认',
                 cancelText: '取消',
                 variant: 'default',
-                ...opts
+                ...opts,
             };
-            
+
             resolvePromise = resolve;
             isOpen.value = true;
         });
     };
-    
+
     const handleConfirm = () => {
         isOpen.value = false;
         if (resolvePromise) {
@@ -41,7 +41,7 @@ export function useConfirm() {
             resolvePromise = null;
         }
     };
-    
+
     const handleCancel = () => {
         isOpen.value = false;
         if (resolvePromise) {
@@ -49,12 +49,12 @@ export function useConfirm() {
             resolvePromise = null;
         }
     };
-    
+
     return {
         confirm,
         isOpen: readonly(isOpen),
         options: readonly(options),
         handleConfirm,
-        handleCancel
+        handleCancel,
     };
 }

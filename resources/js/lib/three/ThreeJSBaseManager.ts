@@ -1,10 +1,8 @@
-import { ref, markRaw, toRaw } from 'vue';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { markRaw, ref, toRaw } from 'vue';
 
-
-export function useThreeJSManager(
-) {
+export function useThreeJSManager() {
     const canvas = ref<HTMLCanvasElement>();
     // const threeCanvas = ref<HTMLCanvasElement>();
     const threeScene = ref<THREE.Scene | null>(null);
@@ -16,9 +14,7 @@ export function useThreeJSManager(
     const internalMixers = new Map<string | THREE.Group, THREE.AnimationMixer>();
 
     // 初始化Three.js场景
-    const initThreeJS = (
-        threeCanvas: HTMLCanvasElement
-    ) => {
+    const initThreeJS = (threeCanvas: HTMLCanvasElement) => {
         if (!threeCanvas) {
             console.error('threeCanvas is not defined');
             return;
@@ -32,20 +28,17 @@ export function useThreeJSManager(
         threeScene.value.background = new THREE.Color(0xf5f5f5);
 
         // 创建相机
-        threeCamera.value = markRaw(new THREE.PerspectiveCamera(
-            75,
-            rect.width / rect.height,
-            0.1,
-            1000
-        ));
+        threeCamera.value = markRaw(new THREE.PerspectiveCamera(75, rect.width / rect.height, 0.1, 1000));
         threeCamera.value.position.set(0, 1, 3);
 
         // 创建渲染器
-        threeRenderer.value = markRaw(new THREE.WebGLRenderer({
-            canvas: canvas.value,
-            antialias: true,
-            alpha: true
-        }));
+        threeRenderer.value = markRaw(
+            new THREE.WebGLRenderer({
+                canvas: canvas.value,
+                antialias: true,
+                alpha: true,
+            }),
+        );
         threeRenderer.value.setSize(rect.width, rect.height);
         threeRenderer.value.setPixelRatio(window.devicePixelRatio);
         threeRenderer.value.shadowMap.enabled = true;
@@ -104,7 +97,7 @@ export function useThreeJSManager(
     // 动画循环更新
     const updateAnimations = () => {
         // 更新所有内部mixer
-        internalMixers.forEach(mixer => {
+        internalMixers.forEach((mixer) => {
             if (mixer) {
                 mixer.update(0.016); // 假设60fps
             }
@@ -156,7 +149,7 @@ export function useThreeJSManager(
 
     // 清理所有mixer
     const clearAllMixers = () => {
-        internalMixers.forEach(mixer => {
+        internalMixers.forEach((mixer) => {
             if (mixer) {
                 mixer.stopAllAction();
             }
@@ -180,6 +173,6 @@ export function useThreeJSManager(
         clearAllMixers,
         // 暴露内部mixer信息（只读）
         getMixersCount: () => internalMixers.size,
-        hasMixer: (key: string | THREE.Group) => internalMixers.has(key)
-    }
+        hasMixer: (key: string | THREE.Group) => internalMixers.has(key),
+    };
 }

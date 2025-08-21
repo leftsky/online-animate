@@ -1,12 +1,10 @@
-import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { toRaw, markRaw, ref } from 'vue';
 import { type MediaCharacter } from '@/services/mediaApi';
+import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { markRaw, ref, toRaw } from 'vue';
 
 export function useModelController() {
-
     const threeScene = ref<THREE.Scene>();
     const isLoadingModel = ref(false);
     const currentModelUrl = ref<string | null>(null);
@@ -19,16 +17,14 @@ export function useModelController() {
         threeScene.value = scene;
         // animationMixer.value = mixer;
         threeControls.value = controls;
-    }
+    };
 
     // 加载人物模型
     const loadCharacterModel = async (character: MediaCharacter) => {
         if (!character.additional_resources || !threeScene.value) return;
 
         try {
-            const resourcesData = Array.isArray(character.additional_resources)
-                ? character.additional_resources[0]
-                : character.additional_resources;
+            const resourcesData = Array.isArray(character.additional_resources) ? character.additional_resources[0] : character.additional_resources;
 
             let modelFileUrl: string | null = null;
             if (typeof resourcesData === 'string') {
@@ -56,12 +52,7 @@ export function useModelController() {
 
                 try {
                     const gltf = await new Promise<any>((resolve, reject) => {
-                        loader.load(
-                            modelFileUrl,
-                            resolve,
-                            undefined,
-                            reject
-                        );
+                        loader.load(modelFileUrl, resolve, undefined, reject);
                     });
 
                     const model = gltf.scene;
@@ -83,7 +74,7 @@ export function useModelController() {
                         min: box.min,
                         max: box.max,
                         center: center,
-                        size: size
+                        size: size,
                     });
 
                     // 缩放模型以适应视图
@@ -101,14 +92,14 @@ export function useModelController() {
                         max: scaledBox.max,
                         center: scaledCenter,
                         size: scaledSize,
-                        scale: scale
+                        scale: scale,
                     });
 
                     // 将模型中心移动到原点，然后确保底部贴在地面上
                     model.position.set(
-                        -scaledCenter.x,  // X轴居中
+                        -scaledCenter.x, // X轴居中
                         -scaledBox.min.y, // Y轴底部贴地面（Y=0）
-                        -scaledCenter.z   // Z轴居中
+                        -scaledCenter.z, // Z轴居中
                     );
 
                     console.log('最终模型位置:', model.position);
@@ -145,7 +136,6 @@ export function useModelController() {
         }
     };
 
-
     // 解析模型动画
     const parseModelAnimations = (gltf: any) => {
         const animations: Array<{ name: string; duration: number; clip: any }> = [];
@@ -161,7 +151,7 @@ export function useModelController() {
                 animations.push({
                     name: clip.name || `动画 ${index + 1}`,
                     duration: Math.round(clip.duration * 1000), // 转换为毫秒
-                    clip: markRaw(clip)
+                    clip: markRaw(clip),
                 });
             });
         }
@@ -178,5 +168,5 @@ export function useModelController() {
         modelMixer: animationMixer,
         init,
         loadCharacterModel,
-    }
+    };
 }

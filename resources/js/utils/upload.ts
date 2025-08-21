@@ -35,10 +35,7 @@ export const uploadFile = uploadApi.uploadFile;
  */
 export function selectFiles(options: UploadOptions = {}): Promise<File[]> {
     return new Promise((resolve, reject) => {
-        const {
-            accept = 'image/*',
-            multiple = false
-        } = options;
+        const { accept = 'image/*', multiple = false } = options;
 
         const input = document.createElement('input');
         input.type = 'file';
@@ -70,23 +67,21 @@ export async function uploadImage(options: Omit<UploadOptions, 'type'> = {}): Pr
         const files = await selectFiles({
             ...options,
             accept: 'image/*',
-            multiple: false
+            multiple: false,
         });
 
         return await uploadApi.uploadFile(files[0], {
             ...options,
-            type: 'image'
+            type: 'image',
         });
     } catch (error) {
         return {
             success: false,
             code: 500,
-            message: error instanceof Error ? error.message : '图片上传失败'
+            message: error instanceof Error ? error.message : '图片上传失败',
         };
     }
 }
-
-
 
 /**
  * 文件大小格式化
@@ -105,7 +100,7 @@ export function formatFileSize(bytes: number): string {
  * 验证文件类型
  */
 export function validateFileType(file: File, allowedTypes: string[]): boolean {
-    return allowedTypes.some(type => {
+    return allowedTypes.some((type) => {
         if (type.includes('*')) {
             const baseType = type.split('/')[0];
             return file.type.startsWith(baseType + '/');

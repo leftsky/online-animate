@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue';
+import { computed, ref } from 'vue';
 import { sceneContentApi, uploadApi } from '../utils/api';
 import { selectFiles } from '../utils/upload';
 
@@ -23,7 +23,7 @@ export function useSceneContent() {
 
     // 计算属性
     const selectedContent = computed(() => {
-        return contents.value.find(c => c.id === selectedContentId.value) || null;
+        return contents.value.find((c) => c.id === selectedContentId.value) || null;
     });
 
     const contentCount = computed(() => contents.value.length);
@@ -35,7 +35,7 @@ export function useSceneContent() {
         loading.value = true;
         try {
             const response = await sceneContentApi.getList({ scene_id: sceneId });
-            
+
             if (response.success && response.data) {
                 contents.value = response.data.data || response.data;
             } else {
@@ -54,7 +54,7 @@ export function useSceneContent() {
      * 生成元素名称
      */
     const generateElementName = (): string => {
-        const imageContents = contents.value.filter(c => c.element_type === 'image');
+        const imageContents = contents.value.filter((c) => c.element_type === 'image');
         const nextNumber = imageContents.length + 1;
         return `image_${String(nextNumber).padStart(3, '0')}`;
     };
@@ -64,7 +64,7 @@ export function useSceneContent() {
      */
     const getNextLayerOrder = (): number => {
         if (contents.value.length === 0) return 1;
-        const maxOrder = Math.max(...contents.value.map(c => c.layer_order));
+        const maxOrder = Math.max(...contents.value.map((c) => c.layer_order));
         return maxOrder + 1;
     };
 
@@ -84,7 +84,7 @@ keyframes:
      */
     const parseDuration = (animationScript: string): number => {
         if (!animationScript) return 3;
-        
+
         const durationMatch = animationScript.match(/duration:\s*(\d+(?:\.\d+)?)s/);
         return durationMatch ? parseFloat(durationMatch[1]) : 3;
     };
@@ -95,11 +95,11 @@ keyframes:
     const addImageContent = async (sceneId: number | null = null): Promise<boolean> => {
         try {
             // 1. 选择图片文件
-            const files = await selectFiles({ 
-                accept: 'image/*', 
-                multiple: false 
+            const files = await selectFiles({
+                accept: 'image/*',
+                multiple: false,
             });
-            
+
             if (!files || files.length === 0) {
                 return false;
             }
@@ -107,11 +107,11 @@ keyframes:
             loading.value = true;
 
             // 2. 上传图片
-            const uploadResult = await uploadApi.uploadFile(files[0], { 
-                type: 'image', 
-                folder: 'scene-images' 
+            const uploadResult = await uploadApi.uploadFile(files[0], {
+                type: 'image',
+                folder: 'scene-images',
             });
-            
+
             if (!uploadResult.success || !uploadResult.data) {
                 console.error('图片上传失败:', uploadResult.message);
                 return false;
@@ -125,11 +125,11 @@ keyframes:
                 element_source: uploadResult.data.url,
                 animation_script: getDefaultAnimationScript(),
                 layer_order: getNextLayerOrder(),
-                status: 1
+                status: 1,
             };
 
             const createResult = await sceneContentApi.create(contentData);
-            
+
             if (createResult.success && createResult.data) {
                 // 4. 添加到本地列表
                 contents.value.push(createResult.data);
@@ -155,10 +155,10 @@ keyframes:
         try {
             loading.value = true;
             const response = await sceneContentApi.update(id, data);
-            
+
             if (response.success && response.data) {
                 // 更新本地数据
-                const index = contents.value.findIndex(c => c.id === id);
+                const index = contents.value.findIndex((c) => c.id === id);
                 if (index !== -1) {
                     contents.value[index] = { ...contents.value[index], ...response.data };
                 }
@@ -182,10 +182,10 @@ keyframes:
         try {
             loading.value = true;
             const response = await sceneContentApi.delete(id);
-            
+
             if (response.success) {
                 // 从本地列表移除
-                contents.value = contents.value.filter(c => c.id !== id);
+                contents.value = contents.value.filter((c) => c.id !== id);
                 // 如果删除的是选中的内容，清除选中状态
                 if (selectedContentId.value === id) {
                     selectedContentId.value = null;
@@ -215,17 +215,17 @@ keyframes:
         contents,
         loading,
         selectedContentId,
-        
+
         // 计算属性
         selectedContent,
         contentCount,
-        
+
         // 方法
         loadContents,
         addImageContent,
         updateContent,
         deleteContent,
         selectContent,
-        parseDuration
+        parseDuration,
     };
 }
