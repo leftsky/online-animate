@@ -83,17 +83,32 @@ export class ModelController {
       }
       
       if (this.currentModel && this.scene) {
+        // 重要：等待模型完全加载后再进行缩放计算
+        await this.waitForModelReady();
+        
         // 应用模型定位和缩放逻辑（与旧版保持一致）
         this.positionAndScaleModel();
         
-        // 应用模型参数
-        this.applyModelParams();
+        // 注意：不调用 applyModelParams()，因为它会覆盖正确的缩放值
         
         // 添加到场景
         this.scene.add(this.currentModel);
         
         // 设置阴影
         this.setupShadows(this.currentModel);
+        
+        // 验证模型加载状态
+        if (this.currentModel) {
+          const finalBox = new THREE.Box3().setFromObject(this.currentModel);
+          const finalSize = finalBox.getSize(new THREE.Vector3());
+          console.log('最终模型状态验证:', {
+            position: this.currentModel.position,
+            rotation: this.currentModel.rotation,
+            scale: this.currentModel.scale,
+            finalSize: finalSize,
+            modelParams: this.modelParams
+          });
+        }
       }
     } catch (error) {
       console.error('模型加载失败:', error);
@@ -304,11 +319,36 @@ export class ModelController {
    * 更新模型参数
    */
   updateModelParams(params: Partial<ModelParams>): void {
-    this.modelParams = { ...this.modelParams, ...params };
+    // 保护关键参数：不允许覆盖已设置的缩放和位置
+    const protectedParams = { ...this.modelParams, ...params };
+    
+    // 如果模型已经加载并定位，保护这些关键值
+    if (this.currentModel) {
+      // 保护缩放值
+      if (this.modelParams.scale !== 1) {
+        protectedParams.scale = this.modelParams.scale;
+      }
+      
+      // 保护位置值（如果已经设置过）
+      if (this.modelParams.positionX !== 0 || this.modelParams.positionY !== 0 || this.modelParams.positionZ !== 0) {
+        protectedParams.positionX = this.modelParams.positionX;
+        protectedParams.positionY = this.modelParams.positionY;
+        protectedParams.positionZ = this.modelParams.positionZ;
+      }
+      
+      // 保护旋转值（如果已经设置过）
+      if (this.modelParams.rotationY !== 0) {
+        protectedParams.rotationY = this.modelParams.rotationY;
+      }
+    }
+    
+    this.modelParams = protectedParams;
     this.applyModelParams();
     
     // 更新辅助器
     this.updateHelpers();
+    
+    console.log('模型参数更新完成（受保护）:', this.modelParams);
   }
 
   /**
@@ -479,10 +519,29 @@ export class ModelController {
   private positionAndScaleModel(): void {
     if (!this.currentModel) return;
     
+    // 验证模型状态
+    let validGeometry = false;
+    this.currentModel.traverse((child) => {
+      if (child instanceof THREE.Mesh && child.geometry) {
+        validGeometry = true;
+      }
+    });
+    
+    if (!validGeometry) {
+      console.warn('模型几何体未完全加载，跳过缩放计算');
+      return;
+    }
+    
     // 计算模型的边界框和中心点
     const box = new THREE.Box3().setFromObject(this.currentModel);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
+    
+    // 验证边界框计算结果
+    if (size.x <= 0 || size.y <= 0 || size.z <= 0) {
+      console.warn('边界框计算异常，使用默认缩放:', size);
+      return;
+    }
     
     console.log('原始模型边界框:', {
       min: box.min,
@@ -494,6 +553,13 @@ export class ModelController {
     // 缩放模型以适应视图（与旧版保持一致）
     const maxDim = Math.max(size.x, size.y, size.z);
     const scale = 2 / maxDim;
+    
+    // 验证缩放值
+    if (scale <= 0 || scale > 10) {
+      console.warn('缩放值异常，使用默认值:', scale);
+      return;
+    }
+    
     this.currentModel.scale.setScalar(scale);
     
     // 重新计算缩放后的边界框
@@ -527,5 +593,45 @@ export class ModelController {
     this.modelParams.positionY = this.currentModel.position.y;
     this.modelParams.positionZ = this.currentModel.position.z;
     this.modelParams.scale = scale;
+    
+    // 更新旋转参数以反映实际朝向
+    this.modelParams.rotationX = this.currentModel.rotation.x;
+    this.modelParams.rotationY = this.currentModel.rotation.y;
+    this.modelParams.rotationZ = this.currentModel.rotation.z;
+    
+    console.log('模型参数已更新:', this.modelParams);
+  }
+
+  /**
+   * 等待模型完全加载
+   */
+  private async waitForModelReady(): Promise<void> {
+    if (!this.currentModel) return;
+    
+    // 等待几帧确保模型完全加载
+    await new Promise(resolve => {
+      const checkModel = () => {
+        if (this.currentModel) {
+          // 检查模型是否有有效的几何体
+          let hasValidGeometry = false;
+          this.currentModel.traverse((child) => {
+            if (child instanceof THREE.Mesh && child.geometry) {
+              hasValidGeometry = true;
+            }
+          });
+          
+          if (hasValidGeometry) {
+            resolve(undefined);
+          } else {
+            requestAnimationFrame(checkModel);
+          }
+        } else {
+          resolve(undefined);
+        }
+      };
+      requestAnimationFrame(checkModel);
+    });
+    
+    console.log('模型加载完成，准备进行缩放计算');
   }
 }
