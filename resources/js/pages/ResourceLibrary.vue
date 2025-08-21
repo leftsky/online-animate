@@ -182,64 +182,52 @@
               <p class="text-muted-foreground text-xs mt-1">3D模型预览</p>
             </div>
             
+
+          </div>
+
+          <!-- 右侧区域 -->
+          <div class="w-80 h-[calc(100vh-200px)] bg-card border border-border rounded-lg flex flex-col">
             <!-- 模型控制面板 -->
             <div 
-              v-if="currentModelUrl && selectedCharacter && !isLoadingModel && showControlPanel" 
-              class="absolute bottom-4 right-4 z-10 max-w-sm max-h-96"
+              v-if="currentModelUrl && selectedCharacter && !isLoadingModel" 
+              class="border-b border-border"
             >
               <ModelControlPanel
                 ref="controlPanelRef"
                 :model-name="selectedCharacter.name"
                 :model="currentModel"
                 :available-animations="availableAnimations"
-                @close="showControlPanel = false"
                 @animation-play="handleAnimationPlay"
                 @animation-pause="handleAnimationPause"
                 @animation-stop="handleAnimationStop"
                 @model-update="handleModelUpdate"
+                @toggle-bounding-box="handleToggleBoundingBox"
+                @toggle-skeleton="handleToggleSkeleton"
               />
             </div>
             
-            <!-- 控制面板切换按钮 -->
-            <div 
-              v-if="currentModelUrl && selectedCharacter && !isLoadingModel && !showControlPanel" 
-              class="absolute bottom-4 right-4"
-            >
-              <Button 
-                @click="showControlPanel = true"
-                variant="outline"
-                size="sm"
-                class="bg-background/80 backdrop-blur-sm"
-              >
-                <Settings class="w-4 h-4 mr-2" />
-                模型控制
-              </Button>
-            </div>
-          </div>
-
-          <!-- 右侧对话框 -->
-          <div class="w-80 bg-card border border-border rounded-lg p-4">
-            <div class="h-full flex flex-col">
-              <div class="mb-4">
-                <h3 class="text-lg font-medium text-foreground">对话框</h3>
-                <p class="text-sm text-muted-foreground">与人物进行对话交互</p>
+            <!-- 对话框 -->
+            <div class="flex-1 p-4 flex flex-col min-h-0">
+              <div class="mb-3">
+                <h3 class="text-base font-medium text-foreground">对话框</h3>
+                <p class="text-xs text-muted-foreground">与人物进行对话交互</p>
               </div>
               
               <!-- 对话内容区域 -->
-              <div class="flex-1 bg-muted/30 rounded-lg p-3 mb-4 overflow-y-auto">
-                <div class="text-center text-muted-foreground text-sm">
-                  选择人物开始对话
-                </div>
-              </div>
-              
-              <!-- 输入框 -->
-              <div class="flex gap-2">
-                <Input placeholder="输入消息..." class="flex-1" />
-                <Button size="sm">
-                  发送
-                </Button>
-              </div>
-            </div>
+               <div class="flex-1 bg-muted/30 rounded-lg p-3 mb-3 overflow-y-auto">
+                 <div class="text-center text-muted-foreground text-sm">
+                   选择人物开始对话
+                 </div>
+               </div>
+               
+               <!-- 输入框 -->
+               <div class="flex gap-2">
+                 <Input placeholder="输入消息..." class="flex-1" />
+                 <Button size="sm">
+                   发送
+                 </Button>
+               </div>
+             </div>
           </div>
         </div>
 
@@ -515,6 +503,10 @@ const availableAnimations = ref<Array<{ name: string; duration: number; clip?: a
 const animationMixer = ref<THREE.AnimationMixer | null>(null);
 const currentAnimationAction = ref<THREE.AnimationAction | null>(null);
 
+// 显示控制相关状态
+const boundingBoxHelper = ref<THREE.BoxHelper | null>(null);
+const skeletonHelper = ref<THREE.SkeletonHelper | null>(null);
+
 // 新资源数据
 const newResource = ref({
   name: '',
@@ -624,7 +616,7 @@ const initThreeJS = () => {
   threeControls.value = markRaw(new OrbitControls(threeCamera.value, canvas));
   threeControls.value.enableDamping = true;
   threeControls.value.dampingFactor = 0.05;
-  threeControls.value.target.set(0, 1, 0);
+  threeControls.value.target.set(0, 0.5, 0); // 初始目标点，将在模型加载后动态调整
   
   // 添加光源
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -642,8 +634,11 @@ const initThreeJS = () => {
   const groundMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
   const ground = new THREE.Mesh(groundGeometry, groundMaterial);
   ground.rotation.x = -Math.PI / 2;
+  ground.position.y = 0; // 明确设置地面在Y=0位置
   ground.receiveShadow = true;
   threeScene.value.add(ground);
+  
+  console.log('地面平面已设置在Y=0位置');
   
   // 开始渲染循环
   originalAnimate();
@@ -728,27 +723,61 @@ const loadCharacterModel = async (character: MediaCharacter) => {
           }
         });
         
-        // 计算模型边界框并居中
+        // 计算模型的边界框和中心点
         const box = new THREE.Box3().setFromObject(model);
         const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
         
-        // 将模型移动到原点，但保持在地面上
-        model.position.sub(center);
-        // 确保模型底部在地面上（Y=0）
-        model.position.y = size.y / 2;
+        console.log('原始模型边界框:', {
+          min: box.min,
+          max: box.max,
+          center: center,
+          size: size
+        });
         
         // 缩放模型以适应视图
         const maxDim = Math.max(size.x, size.y, size.z);
         const scale = 2 / maxDim;
         model.scale.setScalar(scale);
         
-        // 重新调整Y位置以确保缩放后仍在地面上
-        model.position.y = (size.y * scale) / 2;
+        // 重新计算缩放后的边界框
+        const scaledBox = new THREE.Box3().setFromObject(model);
+        const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
+        const scaledSize = scaledBox.getSize(new THREE.Vector3());
+        
+        console.log('缩放后模型边界框:', {
+          min: scaledBox.min,
+          max: scaledBox.max,
+          center: scaledCenter,
+          size: scaledSize,
+          scale: scale
+        });
+        
+        // 将模型中心移动到原点，然后确保底部贴在地面上
+        model.position.set(
+          -scaledCenter.x,  // X轴居中
+          -scaledBox.min.y, // Y轴底部贴地面（Y=0）
+          -scaledCenter.z   // Z轴居中
+        );
+        
+        console.log('最终模型位置:', model.position);
+        
+        // 设置模型朝向（面向摄像机）
+        // 大多数人物模型默认面向-Z方向，我们让它面向摄像机（+Z方向）
+        model.rotation.y = Math.PI; // 旋转180度面向摄像机
         
         // 添加到场景
         threeScene.value.add(model);
         currentModel.value = markRaw(model);
+        
+        // 动态调整摄像机目标点，使其对准模型的中心高度
+        const modelHeight = scaledSize.y;
+        const targetY = modelHeight * 0.4; // 目标点设置在模型高度的40%处，通常是胸部位置
+        if (threeControls.value) {
+          threeControls.value.target.set(0, targetY, 0);
+          threeControls.value.update();
+          console.log('摄像机目标点已调整至:', { x: 0, y: targetY, z: 0 });
+        }
         
         // 解析动画
         parseModelAnimations(gltf);
@@ -778,6 +807,16 @@ const clearModelDisplay = () => {
   if (currentModel.value && threeScene.value) {
     threeScene.value.remove(toRaw(currentModel.value));
     currentModel.value = null;
+  }
+  
+  // 清理显示辅助器
+  if (boundingBoxHelper.value && threeScene.value) {
+    threeScene.value.remove(toRaw(boundingBoxHelper.value));
+    boundingBoxHelper.value = null;
+  }
+  if (skeletonHelper.value && threeScene.value) {
+    threeScene.value.remove(toRaw(skeletonHelper.value));
+    skeletonHelper.value = null;
   }
   
   // 清理动画相关状态
@@ -1168,6 +1207,17 @@ const loadResources = async () => {
     resources.value = [];
   } finally {
     loading.value = false;
+    
+    // 自动选择第一个有模型文件的人物（仅在人物标签页且没有已选中人物时）
+    if (activeTab.value === 'characters' && !selectedCharacter.value && resources.value.length > 0) {
+      const firstCharacterWithModel = resources.value.find(resource => 
+        'gender' in resource && hasModelFile(resource as MediaCharacter)
+      ) as MediaCharacter | undefined;
+      
+      if (firstCharacterWithModel) {
+        selectResource(firstCharacterWithModel);
+      }
+    }
   }
 };
 
@@ -1291,6 +1341,68 @@ const handleModelUpdate = (updateData: { type: string; value: any }) => {
   } catch (error) {
     console.error('更新模型参数失败:', error);
     toast.error('更新模型参数失败');
+  }
+};
+
+// 处理边界框显示切换
+const handleToggleBoundingBox = (show: boolean) => {
+  if (!currentModel.value || !threeScene.value) return;
+  
+  try {
+    if (show) {
+      // 创建边界框辅助器
+      if (!boundingBoxHelper.value) {
+        boundingBoxHelper.value = markRaw(new THREE.BoxHelper(toRaw(currentModel.value), 0x00ff00));
+        threeScene.value.add(toRaw(boundingBoxHelper.value));
+        console.log('显示模型边界框');
+      }
+    } else {
+      // 移除边界框辅助器
+      if (boundingBoxHelper.value) {
+        threeScene.value.remove(toRaw(boundingBoxHelper.value));
+        boundingBoxHelper.value = null;
+        console.log('隐藏模型边界框');
+      }
+    }
+  } catch (error) {
+    console.error('切换边界框显示失败:', error);
+    toast.error('切换边界框显示失败');
+  }
+};
+
+// 处理骨骼显示切换
+const handleToggleSkeleton = (show: boolean) => {
+  if (!currentModel.value || !threeScene.value) return;
+  
+  try {
+    if (show) {
+      // 查找模型中的骨骼
+      let skeleton: THREE.Skeleton | null = null;
+      currentModel.value.traverse((child: any) => {
+        if (child.isSkinnedMesh && child.skeleton) {
+          skeleton = child.skeleton;
+        }
+      });
+      
+      if (skeleton && !skeletonHelper.value) {
+        skeletonHelper.value = markRaw(new THREE.SkeletonHelper(toRaw(currentModel.value)));
+        threeScene.value.add(toRaw(skeletonHelper.value));
+        console.log('显示模型骨骼');
+      } else if (!skeleton) {
+        console.warn('模型中未找到骨骼数据');
+        toast.warning('该模型没有骨骼数据');
+      }
+    } else {
+      // 移除骨骼辅助器
+      if (skeletonHelper.value) {
+        threeScene.value.remove(toRaw(skeletonHelper.value));
+        skeletonHelper.value = null;
+        console.log('隐藏模型骨骼');
+      }
+    }
+  } catch (error) {
+    console.error('切换骨骼显示失败:', error);
+    toast.error('切换骨骼显示失败');
   }
 };
 

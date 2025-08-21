@@ -1,107 +1,115 @@
 <template>
-  <div class="bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg w-80 h-96 flex flex-col">
+  <div class="bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg w-full flex flex-col max-h-80">
     <!-- 标题栏 -->
-    <div class="flex items-center justify-between p-4 border-b border-border flex-shrink-0">
+    <div class="flex items-center p-2 border-b border-border flex-shrink-0 sticky top-0 bg-background/95 z-10">
       <div class="flex flex-col">
-        <h3 class="text-lg font-semibold text-foreground">模型控制</h3>
-        <div class="text-sm text-muted-foreground">{{ modelName }}</div>
+        <h3 class="text-sm font-medium text-foreground">模型控制</h3>
+        <div class="text-xs text-muted-foreground">{{ modelName }}</div>
       </div>
-      <Button 
-        @click="$emit('close')"
-        variant="ghost"
-        size="sm"
-        class="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
-      >
-        <X class="w-4 h-4" />
-      </Button>
     </div>
 
     <!-- 可滚动内容区域 -->
-    <div class="flex-1 overflow-y-auto p-4 space-y-6">
+    <div class="flex-1 overflow-y-auto p-3 space-y-3">
       <!-- 动作控制 -->
       <div>
-      <h4 class="text-sm font-medium text-foreground mb-3 flex items-center">
-        <Play class="w-4 h-4 mr-2" />
-        动作控制
-      </h4>
-      
-      <!-- 动作列表 -->      
-      <div class="space-y-2 mb-3">
-        <div 
-          v-for="(animation, index) in availableAnimations" 
-          :key="index"
-          class="flex items-center justify-between p-2 bg-background border border-border rounded-md hover:border-primary/50 transition-colors cursor-pointer"
-          :class="{ 'border-primary bg-primary/5': currentAnimation === index }"
-          @click="selectAnimation(index)"
-        >
-          <div class="flex-1">
-            <div class="text-sm font-medium text-foreground">{{ animation.name }}</div>
-            <div class="text-xs text-muted-foreground">{{ animation.duration }}ms</div>
-          </div>
+        <div class="flex items-center justify-between mb-2">
+          <h4 class="text-sm font-medium text-foreground flex items-center">
+            <Play class="w-4 h-4 mr-2" />
+            动作控制
+          </h4>
+          
+          <!-- 播放/暂停按钮 -->
           <Button 
-            variant="ghost" 
+            variant="outline" 
             size="sm" 
-            @click.stop="playAnimation(index)"
-            :disabled="isPlaying"
+            @click="togglePlayPause"
+            :disabled="currentAnimation === null || availableAnimations.length === 0"
+            class="h-7 px-2 text-xs"
           >
-            <Play class="w-3 h-3" />
+            <Play v-if="!isPlaying" class="w-3 h-3 mr-1" />
+            <Pause v-else class="w-3 h-3 mr-1" />
+            {{ isPlaying ? '暂停' : '播放' }}
           </Button>
         </div>
+        
+        <!-- 动作选择下拉框 -->
+        <select 
+          :value="currentAnimation?.toString() || ''"
+          @change="selectAnimation(parseInt(($event.target as HTMLSelectElement).value))"
+          class="h-7 w-full px-2 text-xs bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-colors"
+          :disabled="availableAnimations.length === 0"
+        >
+          <option value="" disabled>选择动作</option>
+          <option 
+            v-for="(animation, index) in availableAnimations" 
+            :key="index"
+            :value="index.toString()"
+          >
+            {{ animation.name }} ({{ animation.duration }}ms)
+          </option>
+        </select>
       </div>
-      
-      <!-- 动画控制按钮 -->      
-      <div class="flex gap-2">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          @click="playCurrentAnimation"
-          :disabled="isPlaying || currentAnimation === null"
-          class="flex-1"
-        >
-          <Play class="w-3 h-3 mr-1" />
-          播放
-        </Button>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          @click="pauseAnimation"
-          :disabled="!isPlaying"
-          class="flex-1"
-        >
-          <Pause class="w-3 h-3 mr-1" />
-          暂停
-        </Button>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          @click="stopAnimation"
-          :disabled="!isPlaying"
-          class="flex-1"
-        >
-          <Square class="w-3 h-3 mr-1" />
-          停止
-        </Button>
+
+      <!-- 显示控制 -->
+      <div>
+        <h4 class="text-sm font-medium text-foreground mb-2 flex items-center">
+          <Eye class="w-4 h-4 mr-2" />
+          显示控制
+        </h4>
+        
+        <div class="flex items-center gap-4">
+          <!-- 边界框显示 -->
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-foreground">边界框</label>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              @click="toggleBoundingBox"
+              :class="{ 'text-primary': showBoundingBox, 'text-muted-foreground': !showBoundingBox }"
+              class="h-6 w-6 p-0 hover:bg-accent"
+              :title="showBoundingBox ? '隐藏边界框' : '显示边界框'"
+            >
+              <Eye v-if="showBoundingBox" class="w-3 h-3" />
+              <EyeOff v-else class="w-3 h-3" />
+            </Button>
+          </div>
+          
+          <!-- 骨骼显示 -->
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-foreground">骨骼</label>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              @click="toggleSkeleton"
+              :class="{ 'text-primary': showSkeleton, 'text-muted-foreground': !showSkeleton }"
+              class="h-6 w-6 p-0 hover:bg-accent"
+              :title="showSkeleton ? '隐藏骨骼' : '显示骨骼'"
+            >
+              <Eye v-if="showSkeleton" class="w-3 h-3" />
+              <EyeOff v-else class="w-3 h-3" />
+            </Button>
+          </div>
+        </div>
       </div>
-    </div>
 
       <!-- 模型参数调整 -->    
       <div>
-        <h4 class="text-sm font-medium text-foreground mb-3 flex items-center">
-          <Settings class="w-4 h-4 mr-2" />
-          模型参数
-        </h4>
+        <h4 class="text-sm font-medium text-foreground mb-2 flex items-center">
+        <Settings class="w-4 h-4 mr-2" />
+        模型参数
+      </h4>
         
         <!-- 位置控制 -->      
-        <div class="mb-4">
-          <label class="text-xs font-medium text-muted-foreground mb-2 block">位置</label>
-          <div class="grid grid-cols-3 gap-2">
+        <div class="mb-3">
+          <label class="text-xs font-medium text-muted-foreground mb-1 block">位置</label>
+          <div class="grid grid-cols-3 gap-1">
             <div>
               <label class="text-xs text-muted-foreground">X</label>
               <Input 
                 v-model.number="modelParams.position.x" 
                 type="number" 
                 step="0.1" 
-                class="h-8 text-xs"
+                class="h-7 text-xs"
                 @input="updateModelPosition"
               />
             </div>
@@ -111,7 +119,7 @@
                 v-model.number="modelParams.position.y" 
                 type="number" 
                 step="0.1" 
-                class="h-8 text-xs"
+                class="h-7 text-xs"
                 @input="updateModelPosition"
               />
             </div>
@@ -121,7 +129,7 @@
                 v-model.number="modelParams.position.z" 
                 type="number" 
                 step="0.1" 
-                class="h-8 text-xs"
+                class="h-7 text-xs"
                 @input="updateModelPosition"
               />
             </div>
@@ -129,16 +137,16 @@
         </div>
         
         <!-- 旋转控制 -->      
-        <div class="mb-4">
-          <label class="text-xs font-medium text-muted-foreground mb-2 block">旋转 (度)</label>
-          <div class="grid grid-cols-3 gap-2">
+        <div class="mb-3">
+          <label class="text-xs font-medium text-muted-foreground mb-1 block">旋转 (度)</label>
+          <div class="grid grid-cols-3 gap-1">
             <div>
               <label class="text-xs text-muted-foreground">X</label>
               <Input 
                 v-model.number="modelParams.rotation.x" 
                 type="number" 
                 step="1" 
-                class="h-8 text-xs"
+                class="h-7 text-xs"
                 @input="updateModelRotation"
               />
             </div>
@@ -148,7 +156,7 @@
                 v-model.number="modelParams.rotation.y" 
                 type="number" 
                 step="1" 
-                class="h-8 text-xs"
+                class="h-7 text-xs"
                 @input="updateModelRotation"
               />
             </div>
@@ -158,7 +166,7 @@
                 v-model.number="modelParams.rotation.z" 
                 type="number" 
                 step="1" 
-                class="h-8 text-xs"
+                class="h-7 text-xs"
                 @input="updateModelRotation"
               />
             </div>
@@ -166,8 +174,8 @@
         </div>
         
         <!-- 缩放控制 -->      
-        <div class="mb-4">
-          <label class="text-xs font-medium text-muted-foreground mb-2 block">缩放</label>
+        <div class="mb-3">
+          <label class="text-xs font-medium text-muted-foreground mb-1 block">缩放</label>
           <div class="flex items-center gap-2">
             <Input 
               v-model.number="modelParams.scale" 
@@ -175,14 +183,14 @@
               step="0.1" 
               min="0.1" 
               max="5" 
-              class="h-8 text-xs flex-1"
+              class="h-7 text-xs flex-1"
               @input="updateModelScale"
             />
             <Button 
               variant="outline" 
               size="sm" 
               @click="resetScale"
-              class="h-8 px-2 text-xs"
+              class="h-7 px-2 text-xs"
             >
               重置
             </Button>
@@ -205,18 +213,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue';
+import { ref, reactive, computed, watch, nextTick } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+// 移除了Select组件导入，改用原生select元素
 import { 
   X, 
   Play, 
   Pause, 
   Square, 
   Settings, 
-  RotateCcw 
+  RotateCcw,
+  Eye,
+  EyeOff 
 } from 'lucide-vue-next';
 
 // Props
@@ -242,11 +252,15 @@ const emit = defineEmits<{
   animationPause: [];
   animationStop: [];
   modelUpdate: [params: any];
+  toggleBoundingBox: [show: boolean];
+  toggleSkeleton: [show: boolean];
 }>();
 
 // 状态
 const currentAnimation = ref<number | null>(null);
 const isPlaying = ref(false);
+const showBoundingBox = ref(false);
+const showSkeleton = ref(false);
 
 // 模型参数
 const modelParams = reactive({
@@ -283,9 +297,31 @@ watch(() => props.model, (newModel) => {
   }
 }, { immediate: true });
 
+// 监听动画列表变化，自动选择并播放第一个动作
+watch(() => props.availableAnimations, (animations) => {
+  if (animations && animations.length > 0 && currentAnimation.value === null) {
+    currentAnimation.value = 0;
+    // 延迟一下确保模型已加载完成
+    nextTick(() => {
+      playCurrentAnimation();
+    });
+  }
+}, { immediate: true });
+
+// 播放/暂停切换方法
+const togglePlayPause = () => {
+  if (isPlaying.value) {
+    pauseAnimation();
+  } else {
+    playCurrentAnimation();
+  }
+};
+
 // 动作控制方法
 const selectAnimation = (index: number) => {
   currentAnimation.value = index;
+  // 自动播放新选择的动作
+  playCurrentAnimation();
 };
 
 const playAnimation = (index: number) => {
@@ -349,6 +385,17 @@ const resetAllParams = () => {
   updateModelPosition();
   updateModelRotation();
   updateModelScale();
+};
+
+// 显示控制方法
+const toggleBoundingBox = () => {
+  showBoundingBox.value = !showBoundingBox.value;
+  emit('toggleBoundingBox', showBoundingBox.value);
+};
+
+const toggleSkeleton = () => {
+  showSkeleton.value = !showSkeleton.value;
+  emit('toggleSkeleton', showSkeleton.value);
 };
 
 // 暴露方法给父组件
