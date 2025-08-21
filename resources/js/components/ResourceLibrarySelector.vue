@@ -149,8 +149,8 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { mediaApi, type MediaCharacter, type MediaItem, type MediaScenario } from '@/services/mediaApi';
-import { Check, Image, Loader2, Mountain, Package, Search, User } from 'lucide-vue-next';
+import { mediaApi, type MediaItem, type MediaScenario } from '@/services/mediaApi';
+import { Check, Image, Loader2, Mountain, Package, Search } from 'lucide-vue-next';
 import { computed, onMounted, ref, watch } from 'vue';
 
 interface Props {
@@ -255,10 +255,7 @@ const loadResources = async () => {
         // 根据选中的分类加载对应类型的资源
         if (!selectedCategory.value) {
             // 加载所有类型的资源
-            const [scenariosRes, itemsRes] = await Promise.all([
-                mediaApi.getScenarios(params),
-                mediaApi.getItems(params),
-            ]);
+            const [scenariosRes, itemsRes] = await Promise.all([mediaApi.getScenarios(params), mediaApi.getItems(params)]);
 
             allResources = [
                 ...scenariosRes.data.map((item: MediaScenario) => ({

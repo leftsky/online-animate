@@ -23,10 +23,6 @@
                                     <Plus class="mr-2 h-4 w-4" />
                                     添加人物
                                 </Button>
-                                <Button @click="showBatchUploadDialog = true" variant="outline" class="flex-1">
-                                    <Upload class="mr-2 h-4 w-4" />
-                                    批量上传
-                                </Button>
                             </div>
                         </div>
 
@@ -64,17 +60,9 @@
                                             {{ character.description }}
                                         </p>
                                         <div class="mt-1 flex items-center gap-2">
-                                            <span class="text-xs text-muted-foreground">{{
-                                                getGenderText(character.gender)
-                                            }}</span>
-                                            <span v-if="character.age" class="text-xs text-muted-foreground"
-                                                >{{ character.age }}岁</span
-                                            >
-                                            <!-- 模型文件状态指示器 -->
-                                            <span
-                                                v-if="hasModelFile(character)"
-                                                class="inline-flex items-center gap-1 text-xs text-green-600"
-                                            >
+                                            <span class="text-xs text-muted-foreground">{{ getGenderText(character.gender) }}</span>
+                                            <span v-if="character.age" class="text-xs text-muted-foreground">{{ character.age }}岁</span>
+                                            <span v-if="hasModelFile(character)" class="inline-flex items-center gap-1 text-xs text-green-600">
                                                 <div class="h-1.5 w-1.5 rounded-full bg-green-600"></div>
                                                 模型
                                             </span>
@@ -83,7 +71,6 @@
 
                                     <!-- 操作按钮 -->
                                     <div class="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                                        <!-- 模型文件上传按钮 -->
                                         <Button
                                             variant="ghost"
                                             size="sm"
@@ -91,10 +78,7 @@
                                             @click.stop="handleModelUploadClick(character)"
                                             :title="getModelFileStatus(character)"
                                         >
-                                            <Package
-                                                class="h-3 w-3"
-                                                :class="hasModelFile(character) ? 'text-green-600' : 'text-muted-foreground'"
-                                            />
+                                            <Package class="h-3 w-3" :class="hasModelFile(character) ? 'text-green-600' : 'text-muted-foreground'" />
                                         </Button>
 
                                         <DropdownMenu>
@@ -114,12 +98,10 @@
                                 </div>
                             </div>
 
-                            <!-- 加载更多指示器 -->
                             <div v-if="loading" class="py-4 text-center">
                                 <div class="text-sm text-muted-foreground">加载中...</div>
                             </div>
 
-                            <!-- 空状态 -->
                             <div v-if="filteredResources.length === 0 && !loading" class="py-8 text-center">
                                 <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
                                     <Users class="h-6 w-6 text-muted-foreground" />
@@ -130,9 +112,7 @@
                         </div>
                     </div>
 
-                    <!-- 中间Three.js画布 -->
                     <div class="relative flex-1 overflow-hidden rounded-lg border border-border bg-card">
-                        <!-- Three.js Canvas -->
                         <canvas ref="threeCanvas" class="h-full w-full" :class="{ 'opacity-0': !currentModelUrl }"></canvas>
 
                         <!-- 覆盖层 -->
@@ -266,13 +246,6 @@
                 </DialogContent>
             </Dialog>
 
-            <!-- 批量上传弹窗 -->
-            <BatchUploadDialog
-                v-model:open="showBatchUploadDialog"
-                resource-type="character"
-                @upload-complete="handleBatchUploadComplete"
-            />
-
             <!-- 隐藏的模型文件输入 -->
             <input ref="modelFileInput" type="file" accept=".glb,.gltf,.fbx,.obj,.dae,.3ds,.blend" class="hidden" @change="handleModelFileUpload" />
         </div>
@@ -280,7 +253,6 @@
 </template>
 
 <script setup lang="ts">
-import BatchUploadDialog from '@/components/BatchUploadDialog.vue';
 import ModelControlPanel from '@/components/ModelControlPanel.vue';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -290,14 +262,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/composables/useToast';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { ChevronDown, MoreVertical, Package, Plus, Search, Trash2, Upload, Users } from 'lucide-vue-next';
-import { computed, markRaw, nextTick, onMounted, ref, toRaw, watch } from 'vue';
+import { ChevronDown, MoreVertical, Package, Plus, Search, Trash2, Users } from 'lucide-vue-next';
+import { computed, markRaw, onMounted, ref, toRaw, watch } from 'vue';
 
+import { useModelController } from '@/lib/three/ModelController';
+import { useThreeJSManager } from '@/lib/three/ThreeJSBaseManager';
 import { type MediaCharacter } from '@/services/mediaApi';
 import { mediaApi, uploadApi } from '@/utils/api';
 import * as THREE from 'three';
-import { useModelController } from '@/lib/three/ModelController';
-import { useThreeJSManager } from '@/lib/three/ThreeJSBaseManager';
 
 const { threeScene, threeRenderer, threeControls, initThreeJS, handleResize, addMixer } = useThreeJSManager();
 const {
@@ -333,7 +305,6 @@ const searchQuery = ref('');
 const selectedGender = ref('');
 const showAddDialog = ref(false);
 const showGenderDropdown = ref(false);
-const showBatchUploadDialog = ref(false);
 const selectedCharacter = ref<MediaCharacter | null>(null);
 const loading = ref(false);
 const hasMore = ref(true);
@@ -342,7 +313,6 @@ const isUploadingModel = ref(false);
 const currentUploadingCharacter = ref<MediaCharacter | null>(null);
 
 // 模型控制面板相关状态
-const showControlPanel = ref(false);
 const controlPanelRef = ref<InstanceType<typeof ModelControlPanel> | null>(null);
 const currentAnimationAction = ref<THREE.AnimationAction | null>(null);
 
@@ -431,9 +401,6 @@ const clearModelDisplay = () => {
         currentAnimationAction.value = null;
     }
     availableAnimations.value = [];
-    showControlPanel.value = false;
-
-    console.log('清空模型显示');
 };
 
 // 处理模型文件上传点击
@@ -529,7 +496,6 @@ const getGenderText = (gender: number) => {
 };
 
 const selectResource = async (resource: MediaCharacter) => {
-    console.log('选择人物:', resource);
     selectedCharacter.value = resource;
 
     if (hasModelFile(resource)) {
@@ -604,21 +570,6 @@ const deleteResource = async (resource: MediaCharacter) => {
     } catch (error) {
         console.error('删除人物失败:', error);
         toast.error('删除失败，请重试');
-    }
-};
-
-// 批量上传完成处理
-const handleBatchUploadComplete = (results: any[]) => {
-    const successCount = results.filter((r) => r.success).length;
-    const failCount = results.length - successCount;
-
-    if (successCount > 0) {
-        toast.success(`成功上传 ${successCount} 个文件`);
-        loadResources();
-    }
-
-    if (failCount > 0) {
-        toast.error(`${failCount} 个文件上传失败`);
     }
 };
 
@@ -721,7 +672,6 @@ watch([searchQuery, selectedGender], () => {
 onMounted(async () => {
     loadResources();
 
-    await nextTick();
     if (threeCanvas.value) {
         initThreeJS(threeCanvas.value);
         window.addEventListener('resize', handleResize);
@@ -745,7 +695,6 @@ watch(() => false, cleanup);
 
 // 模型控制面板事件处理方法
 const handleAnimationPlay = (animationIndex: number) => {
-    console.log('handleAnimationPlay', currentModel.value, availableAnimations.value[animationIndex]);
     if (!currentModel.value || !availableAnimations.value[animationIndex]) return;
 
     try {
@@ -761,8 +710,6 @@ const handleAnimationPlay = (animationIndex: number) => {
             currentAnimationAction.value.play();
 
             controlPanelRef.value?.setAnimationState(true);
-
-            console.log('播放动画:', animation.name);
         }
     } catch (error) {
         console.error('播放动画失败:', error);
@@ -774,7 +721,6 @@ const handleAnimationPause = () => {
     if (currentAnimationAction.value) {
         currentAnimationAction.value.paused = true;
         controlPanelRef.value?.setAnimationState(false);
-        console.log('暂停动画');
     }
 };
 
@@ -783,7 +729,6 @@ const handleAnimationStop = () => {
         currentAnimationAction.value.stop();
         currentAnimationAction.value = null;
         controlPanelRef.value?.setAnimationState(false);
-        console.log('停止动画');
     }
 };
 
@@ -804,8 +749,6 @@ const handleModelUpdate = (updateData: { type: string; value: any }) => {
                 model.scale.setScalar(updateData.value);
                 break;
         }
-
-        console.log('更新模型参数:', updateData.type, updateData.value);
     } catch (error) {
         console.error('更新模型参数失败:', error);
         toast.error('更新模型参数失败');
@@ -821,13 +764,11 @@ const handleToggleBoundingBox = (show: boolean) => {
             if (!boundingBoxHelper.value) {
                 boundingBoxHelper.value = markRaw(new THREE.BoxHelper(toRaw(currentModel.value), 0x00ff00));
                 threeScene.value.add(toRaw(boundingBoxHelper.value));
-                console.log('显示模型边界框');
             }
         } else {
             if (boundingBoxHelper.value) {
                 threeScene.value.remove(toRaw(boundingBoxHelper.value));
                 boundingBoxHelper.value = null;
-                console.log('隐藏模型边界框');
             }
         }
     } catch (error) {
@@ -852,7 +793,6 @@ const handleToggleSkeleton = (show: boolean) => {
             if (skeleton && !skeletonHelper.value) {
                 skeletonHelper.value = markRaw(new THREE.SkeletonHelper(toRaw(currentModel.value)));
                 threeScene.value.add(toRaw(skeletonHelper.value));
-                console.log('显示模型骨骼');
             } else if (!skeleton) {
                 console.warn('模型中未找到骨骼数据');
                 toast.warning('该模型没有骨骼数据');
@@ -861,7 +801,6 @@ const handleToggleSkeleton = (show: boolean) => {
             if (skeletonHelper.value) {
                 threeScene.value.remove(toRaw(skeletonHelper.value));
                 skeletonHelper.value = null;
-                console.log('隐藏模型骨骼');
             }
         }
     } catch (error) {
