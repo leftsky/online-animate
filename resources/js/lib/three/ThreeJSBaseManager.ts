@@ -1,186 +1,131 @@
+import { ref, markRaw, toRaw } from 'vue';
 import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-/**
- * Three.js基础管理器
- * 负责渲染器、画布、渲染循环等基础资源管理
- */
-export class ThreeJSBaseManager {
-  private renderer: THREE.WebGLRenderer | null = null;
-  private canvas: HTMLCanvasElement | null = null;
-  private animationId: number | null = null;
-  private isRendering = false;
-  private renderCallbacks: (() => void)[] = [];
 
-  /**
-   * 初始化渲染器和画布
-   */
-  initRenderer(canvas: HTMLCanvasElement): void {
-    this.canvas = canvas;
-    
-    // 创建WebGL渲染器
-    this.renderer = new THREE.WebGLRenderer({
-      canvas: canvas,
-      antialias: true,
-      alpha: true
-    });
-    
-    // 设置渲染器属性
-    this.renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-    this.renderer.setPixelRatio(window.devicePixelRatio);
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;  
-    // 渲染器颜色空间
-    // this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    // 渲染器色调映射
-    // this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    // 渲染器色调映射曝光度
-    // this.renderer.toneMappingExposure = 1;
-    
-    // 监听窗口大小变化
-    this.setupResizeHandler();
-  }
+export function useThreeJSManager(
+) {
+    const canvas = ref<HTMLCanvasElement>();
+    // const threeCanvas = ref<HTMLCanvasElement>();
+    const threeScene = ref<THREE.Scene | null>(null);
+    const threeRenderer = ref<THREE.WebGLRenderer | null>(null);
+    const threeCamera = ref<THREE.PerspectiveCamera | null>(null);
+    const threeControls = ref<OrbitControls | null>(null);
+    const animationMixer = ref<THREE.AnimationMixer | null>(null);
 
-  /**
-   * 设置窗口大小变化监听
-   */
-  private setupResizeHandler(): void {
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.target === this.canvas) {
-          this.handleResize();
+    // 初始化Three.js场景
+    const initThreeJS = (
+        threeCanvas: HTMLCanvasElement
+    ) => {
+        if (!threeCanvas) {
+            console.error('threeCanvas is not defined');
+            return;
         }
-      }
-    });
-    
-    if (this.canvas) {
-      resizeObserver.observe(this.canvas);
-    }
-  }
 
-  /**
-   * 处理画布大小变化
-   */
-  handleResize(): void {
-    if (!this.renderer || !this.canvas) return;
-    
-    const width = this.canvas.clientWidth;
-    const height = this.canvas.clientHeight;
-    
-    this.renderer.setSize(width, height);
-    
-    // 通知其他管理器更新
-    this.notifyResize(width, height);
-  }
+        canvas.value = threeCanvas;
+        const rect = canvas.value.getBoundingClientRect();
 
-  /**
-   * 通知大小变化回调
-   */
-  private resizeCallbacks: ((width: number, height: number) => void)[] = [];
-  
-  onResize(callback: (width: number, height: number) => void): void {
-    this.resizeCallbacks.push(callback);
-  }
-  
-  private notifyResize(width: number, height: number): void {
-    this.resizeCallbacks.forEach(callback => callback(width, height));
-  }
+        // 创建场景
+        threeScene.value = markRaw(new THREE.Scene());
+        threeScene.value.background = new THREE.Color(0xf5f5f5);
 
-  /**
-   * 开始渲染循环
-   */
-  startRenderLoop(): void {
-    if (this.isRendering) return;
-    
-    this.isRendering = true;
-    this.renderLoop();
-  }
+        // 创建相机
+        threeCamera.value = markRaw(new THREE.PerspectiveCamera(
+            75,
+            rect.width / rect.height,
+            0.1,
+            1000
+        ));
+        threeCamera.value.position.set(0, 1, 3);
 
-  /**
-   * 停止渲染循环
-   */
-  stopRenderLoop(): void {
-    this.isRendering = false;
-    if (this.animationId) {
-      cancelAnimationFrame(this.animationId);
-      this.animationId = null;
-    }
-  }
+        // 创建渲染器
+        threeRenderer.value = markRaw(new THREE.WebGLRenderer({
+            canvas: canvas.value,
+            antialias: true,
+            alpha: true
+        }));
+        threeRenderer.value.setSize(rect.width, rect.height);
+        threeRenderer.value.setPixelRatio(window.devicePixelRatio);
+        threeRenderer.value.shadowMap.enabled = true;
+        threeRenderer.value.shadowMap.type = THREE.PCFSoftShadowMap;
 
-  /**
-   * 渲染循环
-   */
-  private renderLoop(): void {
-    if (!this.isRendering) return;
-    
-    // 执行所有渲染回调
-    this.renderCallbacks.forEach(callback => callback());
-    
-    this.animationId = requestAnimationFrame(() => this.renderLoop());
-  }
+        // 创建控制器
+        threeControls.value = markRaw(new OrbitControls(threeCamera.value, canvas.value));
+        threeControls.value.enableDamping = true;
+        threeControls.value.dampingFactor = 0.05;
+        threeControls.value.target.set(0, 0.5, 0); // 初始目标点，将在模型加载后动态调整
 
-  /**
-   * 添加渲染回调
-   */
-  addRenderCallback(callback: () => void): void {
-    this.renderCallbacks.push(callback);
-  }
+        // 添加光源
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        threeScene.value.add(ambientLight);
 
-  /**
-   * 移除渲染回调
-   */
-  removeRenderCallback(callback: () => void): void {
-    const index = this.renderCallbacks.indexOf(callback);
-    if (index > -1) {
-      this.renderCallbacks.splice(index, 1);
-    }
-  }
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 10, 5);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        threeScene.value.add(directionalLight);
 
-  /**
-   * 渲染场景
-   */
-  render(scene: THREE.Scene, camera: THREE.Camera): void {
-    if (!this.renderer) return;
-    this.renderer.render(scene, camera);
-  }
+        // 添加地面
+        const groundGeometry = new THREE.PlaneGeometry(10, 10);
+        const groundMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = 0; // 明确设置地面在Y=0位置
+        ground.receiveShadow = true;
+        threeScene.value.add(ground);
 
-  /**
-   * 获取渲染器
-   */
-  getRenderer(): THREE.WebGLRenderer | null {
-    return this.renderer;
-  }
+        console.log('地面平面已设置在Y=0位置');
 
-  /**
-   * 获取画布
-   */
-  getCanvas(): HTMLCanvasElement | null {
-    return this.canvas;
-  }
-
-  /**
-   * 获取画布尺寸
-   */
-  getCanvasSize(): { width: number; height: number } {
-    if (!this.canvas) return { width: 0, height: 0 };
-    return {
-      width: this.canvas.clientWidth,
-      height: this.canvas.clientHeight
+        // 开始渲染循环
+        originalAnimate();
     };
-  }
 
-  /**
-   * 清理资源
-   */
-  dispose(): void {
-    this.stopRenderLoop();
-    
-    if (this.renderer) {
-      this.renderer.dispose();
-      this.renderer = null;
+    // 修改animate函数以包含动画更新
+    const originalAnimate = () => {
+        if (!threeRenderer.value || !threeScene.value || !threeCamera.value) return;
+
+        requestAnimationFrame(originalAnimate);
+
+        // 更新动画
+        updateAnimations();
+
+        // 更新控制器
+        if (threeControls.value) {
+            toRaw(threeControls.value).update();
+        }
+
+        // 渲染场景
+        toRaw(threeRenderer.value).render(toRaw(threeScene.value), toRaw(threeCamera.value));
+    };
+
+    // 动画循环更新
+    const updateAnimations = () => {
+        if (animationMixer.value) {
+            animationMixer.value.update(0.016); // 假设60fps
+        }
+    };
+    // 处理窗口大小变化
+    const handleResize = () => {
+        if (!canvas.value || !threeCamera.value || !threeRenderer.value) return;
+
+        const rect = canvas.value.getBoundingClientRect();
+        const camera = toRaw(threeCamera.value);
+        const renderer = toRaw(threeRenderer.value);
+
+        camera.aspect = rect.width / rect.height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(rect.width, rect.height);
+    };
+
+    return {
+        // threeCanvas,
+        threeScene,
+        threeRenderer,
+        // threeCamera,
+        threeControls,
+        animationMixer,
+        initThreeJS,
+        handleResize
     }
-    
-    this.canvas = null;
-    this.renderCallbacks = [];
-    this.resizeCallbacks = [];
-  }
 }
