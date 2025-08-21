@@ -417,7 +417,6 @@ import { computed, markRaw, nextTick, onMounted, ref, toRaw, watch } from 'vue';
 import { type MediaCharacter, type MediaItem, type MediaScenario } from '@/services/mediaApi';
 import { mediaApi, uploadApi } from '@/utils/api';
 import * as THREE from 'three';
-// import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { useModelController } from '@/lib/three/ModelController';
 import { useThreeJSManager } from '@/lib/three/ThreeJSBaseManager';
 

@@ -16,7 +16,7 @@ Route::get('storyboard', function () {
 })->middleware(['auth', 'verified'])->name('storyboard');
 
 Route::get('resource-library', function () {
-    return Inertia::render('ResourceLibrary');
+    return Inertia::render('storyboard/resourcesctl/ResourceLibrary');
 })->middleware(['auth', 'verified'])->name('resource-library');
 
 
