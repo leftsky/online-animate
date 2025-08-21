@@ -1,6 +1,4 @@
-import { type MediaCharacter } from '@/services/mediaApi';
 import * as THREE from 'three';
-// import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { v4 as uuid } from 'uuid';
 import { markRaw, ref, toRaw } from 'vue';
@@ -15,17 +13,17 @@ enum ModelStatus {
     DESTROYED = 'destroyed', // 已销毁
 }
 
+/**
+ * 模型控制器
+ * @param threeManager 三维场景管理器
+ * @returns 模型控制器
+ */
 export function useModelController(threeManager: ReturnType<typeof useThreeJSManager>) {
     const { threeScene: scene, threeControls: controls, addAnimationCallback, removeAnimationCallback } = threeManager;
-    // const scene = ref<THREE.Scene>();
-    const loading = ref(false);
-    const url = ref<string | null>(null);
     const model = ref<THREE.Group | null>(null);
     const mixer = ref<THREE.AnimationMixer | null>(null);
     const animations = ref<Array<{ name: string; duration: number; clip: any }>>([]);
-    // const controls = ref<OrbitControls>();
-    const inited = ref(false);
-    const modelId = ref<string>('');
+    const modelId = ref<string>(uuid());
 
     // 模型状态
     const status = ref<ModelStatus>(ModelStatus.CREATED);
@@ -34,43 +32,18 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
     const boundingBox = ref<THREE.BoxHelper | null>(null);
     const skeleton = ref<THREE.SkeletonHelper | null>(null);
 
-    const init = () => {
-        // scene.value = sceneParam;
-        // controls.value = controlsParam;
-        modelId.value = uuid();
-        status.value = ModelStatus.INITED;
-        inited.value = true;
+    status.value = ModelStatus.INITED;
 
-        // 注册动画更新回调
-        addAnimationCallback(modelId.value, updateAnimation);
-    };
-
-    // 加载人物模型
-    const load = async (character: MediaCharacter) => {
-        if (!inited.value) {
-            init();
-        }
-
-        if (!character.additional_resources || !scene.value) return;
+    /**
+     * 加载人物模型
+     * @param modelFileUrl 模型文件URL
+     */
+    const load = async (modelFileUrl: string) => {
+        if (!modelFileUrl || !scene.value) return;
 
         try {
-            const resourcesData = Array.isArray(character.additional_resources) ? character.additional_resources[0] : character.additional_resources;
-
-            let modelFileUrl: string | null = null;
-            if (typeof resourcesData === 'string') {
-                const parsed = JSON.parse(resourcesData);
-                // 处理简单URL字符串格式
-                modelFileUrl = typeof parsed.modelFile === 'string' ? parsed.modelFile : parsed.modelFile?.url;
-            } else if (typeof resourcesData === 'object' && resourcesData !== null) {
-                // modelFile现在可能是简单的URL字符串或对象
-                const modelFile = (resourcesData as any).modelFile;
-                modelFileUrl = typeof modelFile === 'string' ? modelFile : modelFile?.url;
-            }
-
             if (modelFileUrl && typeof modelFileUrl === 'string' && modelFileUrl.trim().length > 0) {
-                loading.value = true;
                 status.value = ModelStatus.LOADING;
-                url.value = modelFileUrl;
 
                 // 移除之前的模型
                 if (model.value) {
@@ -164,7 +137,6 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
         } catch (error) {
             console.error('解析模型文件失败:', error);
         } finally {
-            loading.value = false;
             if (status.value === ModelStatus.LOADING) {
                 status.value = ModelStatus.INITED; // 加载失败时回到初始化状态
             }
@@ -303,8 +275,6 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
     // 清空模型显示
     const clear = () => {
         console.log('清空模型显示');
-        url.value = null;
-        loading.value = false;
         status.value = ModelStatus.INITED;
 
         if (model.value && scene.value) {
@@ -332,7 +302,7 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
         animations.value = [];
 
         // 移除动画更新回调
-        if (inited.value && modelId.value) {
+        if (modelId.value) {
             removeAnimationCallback(modelId.value);
         }
     };
@@ -419,24 +389,18 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
             scale: model.value.scale,
         };
     };
+    addAnimationCallback(modelId.value, updateAnimation);
 
     return {
         animations,
-        // loading,
-        // url,
-        // model,
-        // mixer,
         status,
         isPlaying,
-        // currentAnimationAction,
-        init,
         load,
         clear,
         play,
         pause,
         stop,
         resume,
-        // updateAnimation,
         destroy,
         toggleBoundingBox,
         toggleSkeleton,

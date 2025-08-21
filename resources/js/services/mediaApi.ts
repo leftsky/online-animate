@@ -52,7 +52,7 @@ export interface MediaCharacter {
     gender: number;
     age?: number;
     image_path?: string;
-    additional_resources: any[];
+    additional_resources: any;
     description?: string;
     personality?: string;
     occupation?: string;

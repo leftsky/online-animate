@@ -178,7 +178,6 @@ const {
     load,
     animations: availableAnimations,
     status: modelStatus,
-    // model: currentModel,
     clear: clearModelDisplay,
     toggleBoundingBox: handleToggleBoundingBox,
     toggleSkeleton: handleToggleSkeleton,
@@ -335,7 +334,7 @@ const selectResource = async (resource: MediaCharacter) => {
     selectedCharacter.value = resource;
 
     if (resource.additional_resources) {
-        await load(resource);
+        await load(resource.additional_resources?.modelFile);
         modelInitParams.value = modelController.getModelParams();
     } else {
         clearModelDisplay();
