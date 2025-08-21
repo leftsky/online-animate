@@ -28,75 +28,15 @@
 
                         <!-- 无限滚动人物列表 -->
                         <div class="flex-1 space-y-2 overflow-y-auto pr-2" @scroll="handleScroll">
-                            <div
+                            <CharacterCard
                                 v-for="character in filteredResources"
                                 :key="character.id"
-                                class="group relative cursor-pointer rounded-lg border border-border bg-card p-3 transition-all hover:border-primary/50"
-                                :class="{
-                                    'border-primary bg-primary/5': selectedCharacter?.id === character.id,
-                                }"
-                                @click="selectResource(character)"
-                            >
-                                <div class="flex items-center gap-3">
-                                    <!-- 人物头像 -->
-                                    <div class="h-12 w-12 flex-shrink-0 overflow-hidden rounded-full bg-muted">
-                                        <img
-                                            v-if="character.image_path"
-                                            :src="character.image_path"
-                                            :alt="character.name"
-                                            class="h-full w-full object-cover"
-                                        />
-                                        <div v-else class="flex h-full w-full items-center justify-center text-muted-foreground">
-                                            <Users class="h-6 w-6" />
-                                        </div>
-                                    </div>
-
-                                    <!-- 人物信息 -->
-                                    <div class="min-w-0 flex-1">
-                                        <h3 class="truncate text-sm font-medium text-foreground">
-                                            {{ character.name }}
-                                        </h3>
-                                        <p v-if="character.description" class="mt-0.5 truncate text-xs text-muted-foreground">
-                                            {{ character.description }}
-                                        </p>
-                                        <div class="mt-1 flex items-center gap-2">
-                                            <span class="text-xs text-muted-foreground">{{ getGenderText(character.gender) }}</span>
-                                            <span v-if="character.age" class="text-xs text-muted-foreground">{{ character.age }}岁</span>
-                                            <span v-if="hasModelFile(character)" class="inline-flex items-center gap-1 text-xs text-green-600">
-                                                <div class="h-1.5 w-1.5 rounded-full bg-green-600"></div>
-                                                模型
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <!-- 操作按钮 -->
-                                    <div class="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            class="h-6 w-6 p-0"
-                                            @click.stop="handleModelUploadClick(character)"
-                                            :title="getModelFileStatus(character)"
-                                        >
-                                            <Package class="h-3 w-3" :class="hasModelFile(character) ? 'text-green-600' : 'text-muted-foreground'" />
-                                        </Button>
-
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger as-child>
-                                                <Button variant="ghost" size="sm" class="h-6 w-6 p-0">
-                                                    <MoreVertical class="h-3 w-3" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem @click="deleteResource(character)">
-                                                    <Trash2 class="mr-2 h-4 w-4" />
-                                                    删除
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </div>
-                                </div>
-                            </div>
+                                :character="character"
+                                :is-selected="selectedCharacter?.id === character.id"
+                                @select="selectResource"
+                                @upload-model="handleModelUploadClick"
+                                @delete="deleteResource"
+                            />
 
                             <div v-if="loading" class="py-4 text-center">
                                 <div class="text-sm text-muted-foreground">加载中...</div>
@@ -190,61 +130,7 @@
             </div>
 
             <!-- 添加人物对话框 -->
-            <Dialog v-model:open="showAddDialog">
-                <DialogContent class="max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>添加人物</DialogTitle>
-                        <DialogDescription> 创建新的人物角色 </DialogDescription>
-                    </DialogHeader>
-
-                    <form @submit.prevent="handleAddResource" class="space-y-4">
-                        <div class="space-y-2">
-                            <Label for="name">名称</Label>
-                            <Input id="name" v-model="newResource.name" placeholder="输入名称" required />
-                        </div>
-
-                        <div class="space-y-2">
-                            <Label for="description">描述</Label>
-                            <Textarea id="description" v-model="newResource.description" placeholder="输入描述" rows="3" />
-                        </div>
-
-                        <div class="space-y-2">
-                            <Label for="gender">性别</Label>
-                            <div class="relative">
-                                <Button variant="outline" @click="showGenderDropdown = !showGenderDropdown" class="w-full justify-between">
-                                    {{ getGenderText(newResource.gender) }}
-                                    <ChevronDown class="h-4 w-4" />
-                                </Button>
-                                <div
-                                    v-if="showGenderDropdown"
-                                    class="absolute left-0 top-full z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-lg"
-                                >
-                                    <div class="p-1">
-                                        <div
-                                            v-for="gender in genderOptions"
-                                            :key="gender.value"
-                                            class="cursor-pointer rounded px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                                            @click="selectGender(gender.value)"
-                                        >
-                                            {{ gender.label }}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="space-y-2">
-                            <Label for="age">年龄</Label>
-                            <Input id="age" v-model="newResource.age" type="number" placeholder="输入年龄" />
-                        </div>
-
-                        <DialogFooter>
-                            <Button type="button" variant="outline" @click="showAddDialog = false">取消</Button>
-                            <Button type="submit" :disabled="loading">添加</Button>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
-            </Dialog>
+            <AddCharacterDialog v-model:open="showAddDialog" :loading="loading" @submit="handleAddResource" />
 
             <!-- 隐藏的模型文件输入 -->
             <input ref="modelFileInput" type="file" accept=".glb,.gltf,.fbx,.obj,.dae,.3ds,.blend" class="hidden" @change="handleModelFileUpload" />
@@ -255,15 +141,13 @@
 <script setup lang="ts">
 import ModelControlPanel from '@/components/ModelControlPanel.vue';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/composables/useToast';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { ChevronDown, MoreVertical, Package, Plus, Search, Trash2, Users } from 'lucide-vue-next';
+import { Package, Plus, Search, Users } from 'lucide-vue-next';
 import { computed, markRaw, onMounted, ref, toRaw, watch } from 'vue';
+import AddCharacterDialog from './components/AddCharacterDialog.vue';
+import CharacterCard from './components/CharacterCard.vue';
 
 import { useModelController } from '@/lib/three/ModelController';
 import { useThreeJSManager } from '@/lib/three/ThreeJSBaseManager';
@@ -288,14 +172,6 @@ const breadcrumbs = [
     { title: '人物库', href: '/character-library' },
 ];
 
-// 性别选项
-const genderOptions = [
-    { value: 0, label: '未知' },
-    { value: 1, label: '男性' },
-    { value: 2, label: '女性' },
-    { value: 3, label: '其他' },
-];
-
 // Toast
 const { toast } = useToast();
 const threeCanvas = ref<HTMLCanvasElement>();
@@ -304,7 +180,7 @@ const threeCanvas = ref<HTMLCanvasElement>();
 const searchQuery = ref('');
 const selectedGender = ref('');
 const showAddDialog = ref(false);
-const showGenderDropdown = ref(false);
+
 const selectedCharacter = ref<MediaCharacter | null>(null);
 const loading = ref(false);
 const hasMore = ref(true);
@@ -319,14 +195,6 @@ const currentAnimationAction = ref<THREE.AnimationAction | null>(null);
 // 显示控制相关状态
 const boundingBoxHelper = ref<THREE.BoxHelper | null>(null);
 const skeletonHelper = ref<THREE.SkeletonHelper | null>(null);
-
-// 新资源数据
-const newResource = ref({
-    name: '',
-    description: '',
-    gender: 0,
-    age: '' as string,
-});
 
 // 真实数据
 const resources = ref<MediaCharacter[]>([]);
@@ -371,11 +239,6 @@ const hasModelFile = (character: MediaCharacter): boolean => {
         return false;
     }
     return false;
-};
-
-// 获取模型文件状态文本
-const getModelFileStatus = (character: MediaCharacter): string => {
-    return hasModelFile(character) ? '已上传模型文件' : '上传模型文件';
 };
 
 // 清空模型显示
@@ -490,11 +353,6 @@ const handleModelFileUpload = async (event: Event) => {
     }
 };
 
-const getGenderText = (gender: number) => {
-    const option = genderOptions.find((g) => g.value === gender);
-    return option ? option.label : '未知';
-};
-
 const selectResource = async (resource: MediaCharacter) => {
     selectedCharacter.value = resource;
 
@@ -573,30 +431,19 @@ const deleteResource = async (resource: MediaCharacter) => {
     }
 };
 
-const selectGender = (gender: number) => {
-    newResource.value.gender = gender;
-    showGenderDropdown.value = false;
-};
-
-const handleAddResource = async () => {
-    if (!newResource.value.name.trim()) {
-        toast.error('请输入人物名称');
-        return;
-    }
-
+const handleAddResource = async (data: { name: string; description: string; gender: number; age?: number }) => {
     loading.value = true;
     try {
         const response = await mediaApi.createCharacter({
-            name: newResource.value.name,
-            description: newResource.value.description,
-            gender: newResource.value.gender,
-            age: newResource.value.age ? parseInt(newResource.value.age) : undefined,
+            name: data.name,
+            description: data.description,
+            gender: data.gender,
+            age: data.age,
         });
 
         if (response?.success) {
             toast.success('人物添加成功');
             showAddDialog.value = false;
-            resetForm();
             loadResources();
         } else {
             toast.error(response?.message || '添加失败');
@@ -607,15 +454,6 @@ const handleAddResource = async () => {
     } finally {
         loading.value = false;
     }
-};
-
-const resetForm = () => {
-    newResource.value = {
-        name: '',
-        description: '',
-        gender: 0,
-        age: '',
-    };
 };
 
 // 加载资源数据
