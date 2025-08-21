@@ -11,7 +11,9 @@ export function useThreeJSManager(
     const threeRenderer = ref<THREE.WebGLRenderer | null>(null);
     const threeCamera = ref<THREE.PerspectiveCamera | null>(null);
     const threeControls = ref<OrbitControls | null>(null);
-    const animationMixer = ref<THREE.AnimationMixer | null>(null);
+
+    // 使用Map来管理mixer，key可以是模型ID或模型对象引用
+    const internalMixers = new Map<string | THREE.Group, THREE.AnimationMixer>();
 
     // 初始化Three.js场景
     const initThreeJS = (
@@ -101,10 +103,14 @@ export function useThreeJSManager(
 
     // 动画循环更新
     const updateAnimations = () => {
-        if (animationMixer.value) {
-            animationMixer.value.update(0.016); // 假设60fps
-        }
+        // 更新所有内部mixer
+        internalMixers.forEach(mixer => {
+            if (mixer) {
+                mixer.update(0.016); // 假设60fps
+            }
+        });
     };
+
     // 处理窗口大小变化
     const handleResize = () => {
         if (!canvas.value || !threeCamera.value || !threeRenderer.value) return;
@@ -118,14 +124,62 @@ export function useThreeJSManager(
         renderer.setSize(rect.width, rect.height);
     };
 
+    // 添加mixer到内部Map
+    const addMixer = (key: string | THREE.Group, mixer: THREE.AnimationMixer) => {
+        if (!mixer) {
+            console.error('mixer is not defined');
+            return;
+        }
+        if (internalMixers.has(key)) {
+            removeMixer(key);
+        }
+        internalMixers.set(key, mixer);
+        console.log('添加动画混合器，当前总数:', internalMixers.size);
+    };
+
+    // 从内部Map移除mixer
+    const removeMixer = (key: string | THREE.Group) => {
+        const mixer = internalMixers.get(key);
+        if (mixer) {
+            // 停止所有动画动作
+            mixer.stopAllAction();
+            // 从Map中移除
+            internalMixers.delete(key);
+            console.log('移除动画混合器，当前总数:', internalMixers.size);
+        }
+    };
+
+    // 根据key获取mixer
+    const getMixer = (key: string | THREE.Group) => {
+        return internalMixers.get(key);
+    };
+
+    // 清理所有mixer
+    const clearAllMixers = () => {
+        internalMixers.forEach(mixer => {
+            if (mixer) {
+                mixer.stopAllAction();
+            }
+        });
+        internalMixers.clear();
+        console.log('清理所有动画混合器');
+    };
+
     return {
         // threeCanvas,
         threeScene,
         threeRenderer,
         // threeCamera,
         threeControls,
-        animationMixer,
         initThreeJS,
-        handleResize
+        handleResize,
+        // 新增的mixer管理方法
+        addMixer,
+        removeMixer,
+        getMixer,
+        clearAllMixers,
+        // 暴露内部mixer信息（只读）
+        getMixersCount: () => internalMixers.size,
+        hasMixer: (key: string | THREE.Group) => internalMixers.has(key)
     }
 }
