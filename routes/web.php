@@ -23,6 +23,10 @@ Route::get('character-library', function () {
     return Inertia::render('storyboard/resourcesctl/CharacterLibrary');
 })->middleware(['auth', 'verified'])->name('character-library');
 
+Route::get('character-animation-debug', function () {
+    return Inertia::render('storyboard/resourcesctl/CharacterAnimationDebug');
+})->middleware(['auth', 'verified'])->name('character-animation-debug');
+
 
 
 // 包含 API 路由
