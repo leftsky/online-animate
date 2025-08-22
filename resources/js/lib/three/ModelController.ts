@@ -169,7 +169,328 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
 
         console.log('解析到动画:', animationList.length, '个', mixer, model);
         console.log('动画详情', animationList);
+        
         animations.value = animationList;
+        // 添加自定义动画
+        addCustomAnimations(animationList);
+    };
+
+    // 添加自定义动画
+    const addCustomAnimations = (animationList: Array<{ name: string; duration: number; clip: any }>) => {
+        if (!mixer) return;
+
+        try {
+            // 挥手动画
+            const waveHandAnimation = createWaveHandAnimation();
+            if (waveHandAnimation) {
+                animationList.push({
+                    name: waveHandAnimation.name,
+                    duration: Math.round(waveHandAnimation.duration * 1000),
+                    clip: markRaw(waveHandAnimation)
+                });
+                console.log('自定义挥手动画添加成功');
+            }
+
+            // 点头动画
+            const nodHeadAnimation = createNodHeadAnimation();
+            if (nodHeadAnimation) {
+                animationList.push({
+                    name: nodHeadAnimation.name,
+                    duration: Math.round(nodHeadAnimation.duration * 1000),
+                    clip: markRaw(nodHeadAnimation)
+                });
+                console.log('自定义点头动画添加成功');
+            }
+
+            // 创建预设的融合动画
+            createPresetBlendedAnimations();
+
+        } catch (error) {
+            console.error('添加自定义动画失败:', error);
+        }
+    };
+
+    // 创建挥手动画
+    const createWaveHandAnimation = (): THREE.AnimationClip | null => {
+        try {
+            // 创建右臂挥手的旋转关键帧轨道
+            const rightArmTrack = new THREE.QuaternionKeyframeTrack(
+                'mixamorigRightArm.quaternion',
+                [0, 0.5, 1.0, 1.5, 2.0], // 时间轴
+                [
+                    // 初始状态 (0秒)
+                    0, 0, 0, 1,
+                    // 抬起手臂 (0.5秒)
+                    0, 0, 0.7, 0.7,
+                    // 最高点 (1.0秒)
+                    0, 0, 1, 0,
+                    // 放下手臂 (1.5秒)
+                    0, 0, 0.7, 0.7,
+                    // 回到初始状态 (2.0秒)
+                    0, 0, 0, 1
+                ]
+            );
+
+            // 创建右前臂弯曲的旋转关键帧轨道
+            const rightForeArmTrack = new THREE.QuaternionKeyframeTrack(
+                'mixamorigRightForeArm.quaternion',
+                [0, 0.5, 1.0, 1.5, 2.0], // 时间轴
+                [
+                    // 初始状态 (0秒)
+                    0, 0, 0, 1,
+                    // 弯曲前臂 (0.5秒)
+                    0, 0, 0.5, 0.87,
+                    // 最大弯曲 (1.0秒)
+                    0, 0, 0.7, 0.7,
+                    // 减少弯曲 (1.5秒)
+                    0, 0, 0.5, 0.87,
+                    // 回到初始状态 (2.0秒)
+                    0, 0, 0, 1
+                ]
+            );
+
+            // 创建动画片段
+            const clip = new THREE.AnimationClip('Wave Hand', 2.0, [rightArmTrack, rightForeArmTrack]);
+            return clip;
+
+        } catch (error) {
+            console.error('创建挥手动画失败:', error);
+            return null;
+        }
+    };
+
+    // 创建点头动画
+    const createNodHeadAnimation = (): THREE.AnimationClip | null => {
+        try {
+            // 创建头部点头的旋转关键帧轨道
+            const headTrack = new THREE.QuaternionKeyframeTrack(
+                'mixamorigHead.quaternion',
+                [0, 0.5, 1.0, 1.5, 2.0], // 时间轴
+                [
+                    // 初始状态 (0秒)
+                    0, 0, 0, 1,
+                    // 向前点头 (0.5秒)
+                    0.3, 0, 0, 0.95,
+                    // 最大点头角度 (1.0秒)
+                    0.5, 0, 0, 0.87,
+                    // 抬起头部 (1.5秒)
+                    0.3, 0, 0, 0.95,
+                    // 回到初始状态 (2.0秒)
+                    0, 0, 0, 1
+                ]
+            );
+
+            // 创建动画片段
+            const clip = new THREE.AnimationClip('Nod Head', 2.0, [headTrack]);
+            return clip;
+
+        } catch (error) {
+            console.error('创建点头动画失败:', error);
+            return null;
+        }
+    };
+
+    // 通用的自定义动画添加方法
+    const addCustomAnimation = (animationData: {
+        name: string;
+        duration: number;
+        tracks: Array<{
+            name: string;
+            times: number[];
+            positions?: number[][];
+            rotations?: number[][];
+            scales?: number[][];
+        }>;
+    }) => {
+        if (!mixer) return false;
+
+        try {
+            const tracks: THREE.KeyframeTrack[] = [];
+
+            animationData.tracks.forEach(track => {
+                if (track.rotations) {
+                    // 创建旋转关键帧轨道
+                    const rotationTrack = new THREE.QuaternionKeyframeTrack(
+                        `${track.name}.quaternion`,
+                        track.times,
+                        track.rotations.flat()
+                    );
+                    tracks.push(rotationTrack);
+                }
+
+                if (track.positions) {
+                    // 创建位置关键帧轨道
+                    const positionTrack = new THREE.VectorKeyframeTrack(
+                        `${track.name}.position`,
+                        track.times,
+                        track.positions.flat()
+                    );
+                    tracks.push(positionTrack);
+                }
+
+                if (track.scales) {
+                    // 创建缩放关键帧轨道
+                    const scaleTrack = new THREE.VectorKeyframeTrack(
+                        `${track.name}.scale`,
+                        track.times,
+                        track.scales.flat()
+                    );
+                    tracks.push(scaleTrack);
+                }
+            });
+
+            // 创建动画片段
+            const clip = new THREE.AnimationClip(
+                animationData.name,
+                animationData.duration,
+                tracks
+            );
+
+            // 添加到动画列表
+            animations.value.push({
+                name: clip.name,
+                duration: Math.round(clip.duration * 1000),
+                clip: markRaw(clip)
+            });
+
+            console.log('自定义动画添加成功:', clip.name);
+            return true;
+
+        } catch (error) {
+            console.error('添加自定义动画失败:', error);
+            return false;
+        }
+    };
+
+    // 动画融合方法
+    const blendAnimations = (baseAnimationName: string, overlayAnimationName: string, blendConfig: {
+        overlayBones: string[];        // 要替换的骨骼名称
+        blendWeight?: number;          // 融合权重 (0-1)
+        duration?: number;             // 融合后的动画时长
+        newName?: string;              // 融合后的动画名称
+    }) => {
+        if (!mixer) return false;
+
+        try {
+            // 查找基础动画和覆盖动画
+            const baseAnimation = animations.value.find(anim => anim.name === baseAnimationName);
+            const overlayAnimation = animations.value.find(anim => anim.name === overlayAnimationName);
+
+            if (!baseAnimation || !overlayAnimation) {
+                console.warn('未找到指定的动画:', { baseAnimationName, overlayAnimationName });
+                return false;
+            }
+
+            // 获取原始动画片段
+            const baseClip = baseAnimation.clip;
+            const overlayClip = overlayAnimation.clip;
+
+            // 创建融合后的轨道
+            const blendedTracks: THREE.KeyframeTrack[] = [];
+
+            // 处理基础动画的所有轨道
+            baseClip.tracks.forEach((baseTrack: THREE.KeyframeTrack) => {
+                const trackName = baseTrack.name;
+                const boneName = trackName.split('.')[0]; // 提取骨骼名称
+
+                // 检查这个骨骼是否在覆盖列表中
+                if (blendConfig.overlayBones.includes(boneName)) {
+                    // 如果骨骼在覆盖列表中，使用覆盖动画的轨道
+                    const overlayTrack = overlayClip.tracks.find((track: THREE.KeyframeTrack) => track.name === trackName);
+                    if (overlayTrack) {
+                        blendedTracks.push(overlayTrack.clone());
+                        console.log(`替换骨骼 ${boneName} 的动画轨道`);
+                    } else {
+                        // 如果覆盖动画中没有对应的轨道，保持基础动画
+                        blendedTracks.push(baseTrack.clone());
+                    }
+                } else {
+                    // 如果骨骼不在覆盖列表中，保持基础动画
+                    blendedTracks.push(baseTrack.clone());
+                }
+            });
+
+            // 添加覆盖动画中独有的轨道（如果基础动画中没有）
+            overlayClip.tracks.forEach((overlayTrack: THREE.KeyframeTrack) => {
+                const trackName = overlayTrack.name;
+                const boneName = trackName.split('.')[0];
+                
+                if (blendConfig.overlayBones.includes(boneName)) {
+                    const existingTrack = blendedTracks.find((track: THREE.KeyframeTrack) => track.name === trackName);
+                    if (!existingTrack) {
+                        blendedTracks.push(overlayTrack.clone());
+                        console.log(`添加新的动画轨道: ${trackName}`);
+                    }
+                }
+            });
+
+            // 创建融合后的动画片段
+            const finalDuration = blendConfig.duration || Math.max(baseClip.duration, overlayClip.duration);
+            const finalName = blendConfig.newName || `${baseAnimationName}_${overlayAnimationName}_Blend`;
+            
+            const blendedClip = new THREE.AnimationClip(
+                finalName,
+                finalDuration,
+                blendedTracks
+            );
+
+            // 添加到动画列表
+            animations.value.push({
+                name: blendedClip.name,
+                duration: Math.round(blendedClip.duration * 1000),
+                clip: markRaw(blendedClip)
+            });
+
+            console.log('动画融合成功:', {
+                baseAnimation: baseAnimationName,
+                overlayAnimation: overlayAnimationName,
+                blendedName: finalName,
+                duration: finalDuration,
+                tracksCount: blendedTracks.length
+            });
+
+            return true;
+
+        } catch (error) {
+            console.error('动画融合失败:', error);
+            return false;
+        }
+    };
+
+    // 创建预设的融合动画
+    const createPresetBlendedAnimations = () => {
+        if (!mixer) return;
+
+        try {
+            // 查找走路动画
+            const walkAnimation = animations.value.find(anim => 
+                anim.name.toLowerCase().includes('walk') || 
+                anim.name.toLowerCase().includes('走路')
+            );
+
+            if (walkAnimation) {
+                // 走路 + 挥手融合
+                blendAnimations(walkAnimation.name, 'Wave Hand', {
+                    overlayBones: ['mixamorigRightArm', 'mixamorigRightForeArm'],
+                    newName: 'Walk and Wave',
+                    duration: walkAnimation.duration / 1000 // 转换为秒
+                });
+
+                // 走路 + 点头融合
+                blendAnimations(walkAnimation.name, 'Nod Head', {
+                    overlayBones: ['mixamorigHead'],
+                    newName: 'Walk and Nod',
+                    duration: walkAnimation.duration / 1000
+                });
+
+                console.log('预设融合动画创建完成');
+            } else {
+                console.log('未找到走路动画，跳过预设融合动画创建', animations.value);
+            }
+
+        } catch (error) {
+            console.error('创建预设融合动画失败:', error);
+        }
     };
 
     // 播放动画
@@ -408,5 +729,7 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
         toggleSkeleton,
         updateParams,
         getModelParams,
+        addCustomAnimation, // 添加自定义动画的通用方法
+        blendAnimations,    // 动画融合方法
     };
 }
