@@ -106,41 +106,21 @@
                     </div>
 
                     <!-- 右侧区域 -->
-                    <div class="flex h-[calc(100vh-200px)] w-80 flex-col rounded-lg border border-border bg-card">
+                    <div class="flex w-80 flex-col rounded-lg border border-border bg-card">
                         <!-- 模型控制面板 -->
-                        <div v-if="modelStatus === 'loaded' && selectedCharacter" class="border-b border-border">
-                            <ModelControlPanel
-                                ref="controlPanelRef"
-                                :model-name="selectedCharacter.name"
-                                :model-init-params="modelInitParams"
-                                :available-animations="availableAnimations"
-                                @animation-play="handleAnimationPlay"
-                                @animation-pause="handleAnimationPause"
-                                @animation-stop="handleAnimationStop"
-                                @model-update="modelController.updateParams"
-                                @toggle-bounding-box="handleToggleBoundingBox"
-                                @toggle-skeleton="handleToggleSkeleton"
-                            />
-                        </div>
-
-                        <!-- 对话框 -->
-                        <div class="flex min-h-0 flex-1 flex-col p-4">
-                            <div class="mb-3">
-                                <h3 class="text-base font-medium text-foreground">对话框</h3>
-                                <p class="text-xs text-muted-foreground">与人物进行对话交互</p>
-                            </div>
-
-                            <!-- 对话内容区域 -->
-                            <div class="mb-3 flex-1 overflow-y-auto rounded-lg bg-muted/30 p-3">
-                                <div class="text-center text-sm text-muted-foreground">选择人物开始对话</div>
-                            </div>
-
-                            <!-- 输入框 -->
-                            <div class="flex gap-2">
-                                <Input placeholder="输入消息..." class="flex-1" />
-                                <Button size="sm"> 发送 </Button>
-                            </div>
-                        </div>
+                        <ModelControlPanel
+                            ref="controlPanelRef"
+                            :model-name="selectedCharacter.name"
+                            :model-init-params="modelInitParams"
+                            :available-animations="availableAnimations"
+                            @animation-play="handleAnimationPlay"
+                            @animation-pause="handleAnimationPause"
+                            @animation-stop="handleAnimationStop"
+                            @model-update="modelController.updateParams"
+                            @toggle-bounding-box="handleToggleBoundingBox"
+                            @toggle-skeleton="handleToggleSkeleton"
+                            v-if="modelStatus === 'loaded' && selectedCharacter"
+                        />
                     </div>
                 </div>
             </div>

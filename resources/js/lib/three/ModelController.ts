@@ -169,7 +169,7 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
 
         console.log('解析到动画:', animationList.length, '个', mixer, model);
         console.log('动画详情', animationList);
-        
+
         animations.value = animationList;
         // 添加自定义动画
         addCustomAnimations(animationList);
@@ -186,7 +186,7 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
                 animationList.push({
                     name: waveHandAnimation.name,
                     duration: Math.round(waveHandAnimation.duration * 1000),
-                    clip: markRaw(waveHandAnimation)
+                    clip: markRaw(waveHandAnimation),
                 });
                 console.log('自定义挥手动画添加成功');
             }
@@ -197,14 +197,13 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
                 animationList.push({
                     name: nodHeadAnimation.name,
                     duration: Math.round(nodHeadAnimation.duration * 1000),
-                    clip: markRaw(nodHeadAnimation)
+                    clip: markRaw(nodHeadAnimation),
                 });
                 console.log('自定义点头动画添加成功');
             }
 
             // 创建预设的融合动画
             createPresetBlendedAnimations();
-
         } catch (error) {
             console.error('添加自定义动画失败:', error);
         }
@@ -227,8 +226,8 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
                     // 放下手臂 (1.5秒)
                     0, 0, 0.7, 0.7,
                     // 回到初始状态 (2.0秒)
-                    0, 0, 0, 1
-                ]
+                    0, 0, 0, 1,
+                ],
             );
 
             // 创建右前臂弯曲的旋转关键帧轨道
@@ -245,14 +244,13 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
                     // 减少弯曲 (1.5秒)
                     0, 0, 0.5, 0.87,
                     // 回到初始状态 (2.0秒)
-                    0, 0, 0, 1
-                ]
+                    0, 0, 0, 1,
+                ],
             );
 
             // 创建动画片段
             const clip = new THREE.AnimationClip('Wave Hand', 2.0, [rightArmTrack, rightForeArmTrack]);
             return clip;
-
         } catch (error) {
             console.error('创建挥手动画失败:', error);
             return null;
@@ -276,14 +274,13 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
                     // 抬起头部 (1.5秒)
                     0.3, 0, 0, 0.95,
                     // 回到初始状态 (2.0秒)
-                    0, 0, 0, 1
-                ]
+                    0, 0, 0, 1,
+                ],
             );
 
             // 创建动画片段
             const clip = new THREE.AnimationClip('Nod Head', 2.0, [headTrack]);
             return clip;
-
         } catch (error) {
             console.error('创建点头动画失败:', error);
             return null;
@@ -307,55 +304,38 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
         try {
             const tracks: THREE.KeyframeTrack[] = [];
 
-            animationData.tracks.forEach(track => {
+            animationData.tracks.forEach((track) => {
                 if (track.rotations) {
                     // 创建旋转关键帧轨道
-                    const rotationTrack = new THREE.QuaternionKeyframeTrack(
-                        `${track.name}.quaternion`,
-                        track.times,
-                        track.rotations.flat()
-                    );
+                    const rotationTrack = new THREE.QuaternionKeyframeTrack(`${track.name}.quaternion`, track.times, track.rotations.flat());
                     tracks.push(rotationTrack);
                 }
 
                 if (track.positions) {
                     // 创建位置关键帧轨道
-                    const positionTrack = new THREE.VectorKeyframeTrack(
-                        `${track.name}.position`,
-                        track.times,
-                        track.positions.flat()
-                    );
+                    const positionTrack = new THREE.VectorKeyframeTrack(`${track.name}.position`, track.times, track.positions.flat());
                     tracks.push(positionTrack);
                 }
 
                 if (track.scales) {
                     // 创建缩放关键帧轨道
-                    const scaleTrack = new THREE.VectorKeyframeTrack(
-                        `${track.name}.scale`,
-                        track.times,
-                        track.scales.flat()
-                    );
+                    const scaleTrack = new THREE.VectorKeyframeTrack(`${track.name}.scale`, track.times, track.scales.flat());
                     tracks.push(scaleTrack);
                 }
             });
 
             // 创建动画片段
-            const clip = new THREE.AnimationClip(
-                animationData.name,
-                animationData.duration,
-                tracks
-            );
+            const clip = new THREE.AnimationClip(animationData.name, animationData.duration, tracks);
 
             // 添加到动画列表
             animations.value.push({
                 name: clip.name,
                 duration: Math.round(clip.duration * 1000),
-                clip: markRaw(clip)
+                clip: markRaw(clip),
             });
 
             console.log('自定义动画添加成功:', clip.name);
             return true;
-
         } catch (error) {
             console.error('添加自定义动画失败:', error);
             return false;
@@ -363,18 +343,22 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
     };
 
     // 动画融合方法
-    const blendAnimations = (baseAnimationName: string, overlayAnimationName: string, blendConfig: {
-        overlayBones: string[];        // 要替换的骨骼名称
-        blendWeight?: number;          // 融合权重 (0-1)
-        duration?: number;             // 融合后的动画时长
-        newName?: string;              // 融合后的动画名称
-    }) => {
+    const blendAnimations = (
+        baseAnimationName: string,
+        overlayAnimationName: string,
+        blendConfig: {
+            overlayBones: string[]; // 要替换的骨骼名称
+            blendWeight?: number; // 融合权重 (0-1)
+            duration?: number; // 融合后的动画时长
+            newName?: string; // 融合后的动画名称
+        },
+    ) => {
         if (!mixer) return false;
 
         try {
             // 查找基础动画和覆盖动画
-            const baseAnimation = animations.value.find(anim => anim.name === baseAnimationName);
-            const overlayAnimation = animations.value.find(anim => anim.name === overlayAnimationName);
+            const baseAnimation = animations.value.find((anim) => anim.name === baseAnimationName);
+            const overlayAnimation = animations.value.find((anim) => anim.name === overlayAnimationName);
 
             if (!baseAnimation || !overlayAnimation) {
                 console.warn('未找到指定的动画:', { baseAnimationName, overlayAnimationName });
@@ -414,7 +398,7 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
             overlayClip.tracks.forEach((overlayTrack: THREE.KeyframeTrack) => {
                 const trackName = overlayTrack.name;
                 const boneName = trackName.split('.')[0];
-                
+
                 if (blendConfig.overlayBones.includes(boneName)) {
                     const existingTrack = blendedTracks.find((track: THREE.KeyframeTrack) => track.name === trackName);
                     if (!existingTrack) {
@@ -427,18 +411,14 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
             // 创建融合后的动画片段
             const finalDuration = blendConfig.duration || Math.max(baseClip.duration, overlayClip.duration);
             const finalName = blendConfig.newName || `${baseAnimationName}_${overlayAnimationName}_Blend`;
-            
-            const blendedClip = new THREE.AnimationClip(
-                finalName,
-                finalDuration,
-                blendedTracks
-            );
+
+            const blendedClip = new THREE.AnimationClip(finalName, finalDuration, blendedTracks);
 
             // 添加到动画列表
             animations.value.push({
                 name: blendedClip.name,
                 duration: Math.round(blendedClip.duration * 1000),
-                clip: markRaw(blendedClip)
+                clip: markRaw(blendedClip),
             });
 
             console.log('动画融合成功:', {
@@ -446,11 +426,10 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
                 overlayAnimation: overlayAnimationName,
                 blendedName: finalName,
                 duration: finalDuration,
-                tracksCount: blendedTracks.length
+                tracksCount: blendedTracks.length,
             });
 
             return true;
-
         } catch (error) {
             console.error('动画融合失败:', error);
             return false;
@@ -463,9 +442,8 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
 
         try {
             // 查找走路动画
-            const walkAnimation = animations.value.find(anim => 
-                anim.name.toLowerCase().includes('walk') || 
-                anim.name.toLowerCase().includes('走路')
+            const walkAnimation = animations.value.find(
+                (anim) => anim.name.toLowerCase().includes('walk') || anim.name.toLowerCase().includes('走路'),
             );
 
             if (walkAnimation) {
@@ -473,21 +451,20 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
                 blendAnimations(walkAnimation.name, 'Wave Hand', {
                     overlayBones: ['mixamorigRightArm', 'mixamorigRightForeArm'],
                     newName: 'Walk and Wave',
-                    duration: walkAnimation.duration / 1000 // 转换为秒
+                    duration: walkAnimation.duration / 1000, // 转换为秒
                 });
 
                 // 走路 + 点头融合
                 blendAnimations(walkAnimation.name, 'Nod Head', {
                     overlayBones: ['mixamorigHead'],
                     newName: 'Walk and Nod',
-                    duration: walkAnimation.duration / 1000
+                    duration: walkAnimation.duration / 1000,
                 });
 
                 console.log('预设融合动画创建完成');
             } else {
                 console.log('未找到走路动画，跳过预设融合动画创建', animations.value);
             }
-
         } catch (error) {
             console.error('创建预设融合动画失败:', error);
         }
@@ -667,7 +644,10 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
                     skeleton = new THREE.SkeletonHelper(model);
                     console.log('添加骨骼:', skeleton);
                     // 输出所有骨骼的名称
-                    console.log('骨骼名称:', skeleton.bones.map((bone: any) => bone.name));
+                    console.log(
+                        '骨骼名称:',
+                        skeleton.bones.map((bone: any) => bone.name),
+                    );
                     scene.value.add(skeleton);
                 } else if (!skeletonData) {
                     console.warn('模型中未找到骨骼数据');
@@ -730,6 +710,6 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
         updateParams,
         getModelParams,
         addCustomAnimation, // 添加自定义动画的通用方法
-        blendAnimations,    // 动画融合方法
+        blendAnimations, // 动画融合方法
     };
 }

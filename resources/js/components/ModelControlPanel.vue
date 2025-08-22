@@ -1,5 +1,5 @@
 <template>
-    <div class="flex max-h-80 w-full flex-col rounded-lg border border-border bg-background/95 shadow-lg backdrop-blur-sm">
+    <div class="flex h-full w-full flex-col rounded-lg border border-border bg-background/95 shadow-lg backdrop-blur-sm">
         <!-- 标题栏 -->
         <div class="sticky top-0 z-10 flex flex-shrink-0 items-center border-b border-border bg-background/95 p-2">
             <div class="flex flex-col">
