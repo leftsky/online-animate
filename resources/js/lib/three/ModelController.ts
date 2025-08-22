@@ -43,7 +43,7 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
      */
     const load = async (modelFileUrl: string) => {
         if (!modelFileUrl || !scene.value) return;
-
+        toggleSkeleton(false);
         try {
             if (modelFileUrl && typeof modelFileUrl === 'string' && modelFileUrl.trim().length > 0) {
                 status.value = ModelStatus.LOADING;
@@ -136,6 +136,7 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
                 } catch (loadError) {
                     console.error('模型加载失败:', loadError);
                 }
+                toggleSkeleton(true);
             }
         } catch (error) {
             console.error('解析模型文件失败:', error);
@@ -343,6 +344,9 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
 
                 if (skeletonData && !skeleton) {
                     skeleton = new THREE.SkeletonHelper(model);
+                    console.log('添加骨骼:', skeleton);
+                    // 输出所有骨骼的名称
+                    console.log('骨骼名称:', skeleton.bones.map((bone: any) => bone.name));
                     scene.value.add(skeleton);
                 } else if (!skeletonData) {
                     console.warn('模型中未找到骨骼数据');
