@@ -62,7 +62,7 @@ export function useThreeJSManager() {
 
         // 添加地面
         const groundGeometry = new THREE.PlaneGeometry(10, 10);
-        const groundMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
+        const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x00ffff, opacity: 0.2, transparent: true });
         const ground = new THREE.Mesh(groundGeometry, groundMaterial);
         ground.rotation.x = -Math.PI / 2;
         ground.position.y = 0; // 明确设置地面在Y=0位置

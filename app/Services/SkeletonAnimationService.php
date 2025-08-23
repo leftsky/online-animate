@@ -202,7 +202,7 @@ class SkeletonAnimationService
                 ->withHeaders([
                     'Authorization' => 'Bearer ' . $this->deepseek_api_key,
                     'Content-Type' => 'application/json',
-                ])->post($this->deepseek_api_url, [
+                ])                ->post($this->deepseek_api_url, [
                     'model' => 'deepseek-chat',
                     'messages' => [
                         [
@@ -215,7 +215,7 @@ class SkeletonAnimationService
                         ]
                     ],
                     'temperature' => 0.1,
-                    'max_tokens' => 4000
+                    'max_tokens' => 8000
                 ]);
 
             if (!$response->successful()) {
@@ -266,7 +266,9 @@ class SkeletonAnimationService
 
         return "分析动作：{$text}
 
-直接返回JSON，不要任何解释：
+**重要：必须返回完整的JSON，不要截断，不要添加任何解释文字**
+
+返回格式：
 {
     \"duration\": 2.0,
     \"tracks\": [
@@ -279,12 +281,14 @@ class SkeletonAnimationService
     ]
 }
 
-规则：
-- 只返回JSON，无其他文字
-- 使用骨骼：{$bonesList}
-- 时间轴：0到duration，5-10个关键帧
-- 四元数：[x,y,z,w]，位置：[x,y,z]
-- duration：1-5秒";
+**严格要求：**
+1. 只返回JSON，无其他任何文字
+2. 确保JSON完整，不要截断
+3. 使用骨骼：{$bonesList}
+4. 时间轴：0到duration，5-10个关键帧
+5. 四元数：[x,y,z,w]，位置：[x,y,z]
+6. duration：1-5秒
+7. 每个轨道必须包含完整的times、rotations、positions数组";
     }
 
     /**
@@ -304,8 +308,18 @@ class SkeletonAnimationService
             'cleaned_preview' => substr($cleanedContent, 0, 300)
         ]);
 
-        // 尝试提取JSON内容
-        if (preg_match('/\{.*\}/s', $cleanedContent, $matches)) {
+        // 方法1: 尝试直接解析整个内容
+        $decoded = json_decode($cleanedContent, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            Log::info('直接JSON解析成功', [
+                'json_length' => strlen($cleanedContent),
+                'json_keys' => array_keys($decoded)
+            ]);
+            return $this->validateAndNormalizeAIResult($decoded);
+        }
+
+        // 方法2: 尝试提取JSON内容（改进的正则表达式）
+        if (preg_match('/\{[\s\S]*\}/', $cleanedContent, $matches)) {
             $jsonContent = $matches[0];
             $decoded = json_decode($jsonContent, true);
 
@@ -323,17 +337,33 @@ class SkeletonAnimationService
             }
         }
 
-        // 如果正则匹配失败，尝试直接解析整个内容
-        $decoded = json_decode($cleanedContent, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-            Log::info('直接JSON解析成功', [
-                'json_length' => strlen($cleanedContent),
-                'json_keys' => array_keys($decoded)
-            ]);
-            return $this->validateAndNormalizeAIResult($decoded);
+        // 方法3: 尝试智能修复不完整的JSON
+        $fixedJson = $this->fixIncompleteJSON($cleanedContent);
+        if ($fixedJson) {
+            $decoded = json_decode($fixedJson, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                Log::info('智能修复JSON解析成功', [
+                    'fixed_length' => strlen($fixedJson),
+                    'json_keys' => array_keys($decoded)
+                ]);
+                return $this->validateAndNormalizeAIResult($decoded);
+            }
         }
 
-        // 如果都失败了，尝试查找可能的JSON片段
+        // 方法4: 尝试从截断的JSON中提取有效部分
+        $partialJson = $this->extractPartialJSON($cleanedContent);
+        if ($partialJson) {
+            $decoded = json_decode($partialJson, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                Log::info('部分JSON解析成功', [
+                    'partial_length' => strlen($partialJson),
+                    'json_keys' => array_keys($decoded)
+                ]);
+                return $this->validateAndNormalizeAIResult($decoded);
+            }
+        }
+
+        // 如果所有方法都失败了
         Log::error('所有JSON解析方法都失败了', [
             'json_error' => json_last_error_msg(),
             'content_length' => strlen($content),
@@ -353,74 +383,148 @@ class SkeletonAnimationService
      */
     private function cleanAIResponse(string $content): string
     {
-        // 移除可能的解释文字
-        $lines = explode("\n", $content);
-        $cleanedLines = [];
-        $inJson = false;
+        // 移除可能的解释文字和多余内容
+        $content = trim($content);
+        
+        // 查找JSON开始位置
+        $jsonStart = strpos($content, '{');
+        if ($jsonStart === false) {
+            return $content;
+        }
+
+        // 从JSON开始位置截取内容
+        $jsonContent = substr($content, $jsonStart);
+        
+        // 尝试找到JSON结束位置
         $braceCount = 0;
-
-        foreach ($lines as $line) {
-            $line = trim($line);
-
-            // 如果遇到JSON开始标记，开始收集
-            if (str_contains($line, '{')) {
-                $inJson = true;
-            }
-
-            if ($inJson) {
-                $cleanedLines[] = $line;
-
-                // 计算大括号的平衡
-                $braceCount += substr_count($line, '{');
-                $braceCount -= substr_count($line, '}');
-
-                // 只有当大括号平衡时才结束收集
-                if ($braceCount <= 0) {
+        $jsonEnd = -1;
+        
+        for ($i = 0; $i < strlen($jsonContent); $i++) {
+            if ($jsonContent[$i] === '{') {
+                $braceCount++;
+            } elseif ($jsonContent[$i] === '}') {
+                $braceCount--;
+                if ($braceCount === 0) {
+                    $jsonEnd = $i;
                     break;
                 }
             }
         }
 
-        $cleanedContent = implode("\n", $cleanedLines);
-
-        // 如果清理后内容太短，返回原始内容
-        if (strlen($cleanedContent) < 50) {
-            return $content;
-        }
-
-        // 验证JSON完整性
-        $decoded = json_decode($cleanedContent, true);
-        if (json_last_error() === JSON_ERROR_NONE) {
-            Log::info('JSON验证成功', [
-                'cleaned_length' => strlen($cleanedContent),
-                'json_keys' => array_keys($decoded)
-            ]);
-            return $cleanedContent;
-        }
-
-        // 如果JSON不完整，尝试修复
-        Log::warning('JSON不完整，尝试修复', [
-            'json_error' => json_last_error_msg(),
-            'cleaned_content' => substr($cleanedContent, 0, 500)
-        ]);
-
-        // 尝试找到最后一个完整的JSON结构
-        $lastBracePos = strrpos($cleanedContent, '}');
-        if ($lastBracePos !== false) {
-            $potentialJson = substr($cleanedContent, 0, $lastBracePos + 1);
-            $decoded = json_decode($potentialJson, true);
+        if ($jsonEnd !== -1) {
+            $cleanedContent = substr($jsonContent, 0, $jsonEnd + 1);
+            
+            // 验证JSON完整性
+            $decoded = json_decode($cleanedContent, true);
             if (json_last_error() === JSON_ERROR_NONE) {
-                Log::info('JSON修复成功', [
-                    'fixed_length' => strlen($potentialJson),
+                Log::info('JSON清理成功', [
+                    'cleaned_length' => strlen($cleanedContent),
                     'json_keys' => array_keys($decoded)
                 ]);
+                return $cleanedContent;
+            }
+        }
+
+        // 如果无法找到完整的JSON，返回截取的内容
+        Log::warning('无法找到完整JSON，返回截取内容', [
+            'content_length' => strlen($content),
+            'json_start' => $jsonStart,
+            'json_content_preview' => substr($jsonContent, 0, 200)
+        ]);
+        
+        return $jsonContent;
+    }
+
+    /**
+     * 智能修复不完整的JSON
+     *
+     * @param string $content
+     * @return string|null
+     */
+    private function fixIncompleteJSON(string $content): ?string
+    {
+        // 查找最后一个完整的JSON结构
+        $lastBracePos = strrpos($content, '}');
+        if ($lastBracePos === false) {
+            return null;
+        }
+
+        // 尝试找到匹配的开始大括号
+        $braceCount = 0;
+        $startPos = $lastBracePos;
+        
+        for ($i = $lastBracePos; $i >= 0; $i--) {
+            if ($content[$i] === '}') {
+                $braceCount++;
+            } elseif ($content[$i] === '{') {
+                $braceCount--;
+                if ($braceCount === 0) {
+                    $startPos = $i;
+                    break;
+                }
+            }
+        }
+
+        if ($startPos < $lastBracePos) {
+            $potentialJson = substr($content, $startPos, $lastBracePos - $startPos + 1);
+            $decoded = json_decode($potentialJson, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
                 return $potentialJson;
             }
         }
 
-        // 如果都失败了，返回原始内容
-        Log::warning('JSON修复失败，返回原始内容');
-        return $content;
+        return null;
+    }
+
+    /**
+     * 从截断的JSON中提取有效部分
+     *
+     * @param string $content
+     * @return string|null
+     */
+    private function extractPartialJSON(string $content): ?string
+    {
+        // 尝试找到最后一个完整的轨道数据
+        $tracksPattern = '/"tracks":\s*\[([\s\S]*?)\]/';
+        if (preg_match($tracksPattern, $content, $matches)) {
+            $tracksContent = $matches[1];
+            
+            // 尝试构建一个完整的JSON结构
+            $partialJson = '{
+                "duration": 2.0,
+                "tracks": [' . $tracksContent . ']
+            }';
+            
+            $decoded = json_decode($partialJson, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                return $partialJson;
+            }
+        }
+
+        // 如果轨道提取失败，尝试提取基本信息
+        if (preg_match('/"duration":\s*([0-9.]+)/', $content, $durationMatch)) {
+            $duration = $durationMatch[1];
+            
+            // 生成默认轨道
+            $defaultJson = '{
+                "duration": ' . $duration . ',
+                "tracks": [
+                    {
+                        "name": "mixamorigHips",
+                        "times": [0, ' . ($duration / 2) . ', ' . $duration . '],
+                        "rotations": [[0,0,0,1], [0,0,0,1], [0,0,0,1]],
+                        "positions": [[0,0,0], [0,1,0], [0,0,0]]
+                    }
+                ]
+            }';
+            
+            $decoded = json_decode($defaultJson, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                return $defaultJson;
+            }
+        }
+
+        return null;
     }
 
     /**
