@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\UploadController;
 use App\Http\Controllers\Api\SceneContentController;
 use App\Http\Controllers\Api\SkeletonAnimationController;
+use App\Http\Controllers\Api\AiSkeletonAnimationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -45,4 +46,7 @@ Route::middleware(['auth', 'verified'])->prefix('web/api')->name('web.api.')->gr
 
     // 骨骼动画接口
     Route::post('/skeleton-animation/generate', [SkeletonAnimationController::class, 'generateFromText'])->name('skeleton-animation.generate');
+    
+    // AI骨骼动画接口
+    Route::get('/ai-skeleton-animations', [AiSkeletonAnimationController::class, 'index'])->name('ai-skeleton-animations.index');
 });
