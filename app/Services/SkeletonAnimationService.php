@@ -97,6 +97,11 @@ class SkeletonAnimationService
             // 1. 使用 DeepSeek API 解析自然语言并生成动画数据
             $aiResult = $this->analyzeTextWithAI($text);
 
+            Log::info('AI分析结果', [
+                'ai_result' => $aiResult,
+                'ai_result_keys' => array_keys($aiResult)
+            ]);
+
             // 2. 提取动画参数
             $animationParams = $this->extractAnimationParams($aiResult, $options);
 
@@ -106,12 +111,15 @@ class SkeletonAnimationService
             // 4. 优化动画参数
             $optimizedData = $this->optimizeAnimation($animationData, $options);
 
-            // 5. 更新数据库记录
+            // 5. 转换为Three.js标准格式
+            $threeJSData = $this->convertToThreeJSFormat($optimizedData);
+
+            // 6. 更新数据库记录
             $animationRecord->update([
                 'name' => $aiResult['action_type'] ?? $text,
                 'description' => $aiResult['description'] ?? $text,
-                'animation_data' => $optimizedData,
-                'skeleton_data' => $this->extractSkeletonData($optimizedData),
+                'animation_data' => $threeJSData, // 存储Three.js格式
+                'skeleton_data' => $this->extractSkeletonData($threeJSData),
                 'duration' => $aiResult['duration'] ?? $animationRecord->duration,
                 'confidence' => $aiResult['confidence'] ?? 0.0,
             ]);
@@ -122,12 +130,12 @@ class SkeletonAnimationService
             ]);
 
             return [
-                'animation_data' => $optimizedData,
+                'animation_data' => $threeJSData,
+                'original_data' => $optimizedData, // 保留原始数据
                 'metadata' => [
                     'action_type' => $aiResult['action_type'],
                     'confidence' => $aiResult['confidence'],
-                    'suggestions' => $aiResult['suggestions'],
-                    'ai_analysis' => $aiResult,
+                    'format' => 'threejs',
                     'processing_time' => microtime(true) - LARAVEL_START,
                     'record_id' => $animationRecord->id
                 ]
@@ -256,60 +264,27 @@ class SkeletonAnimationService
     {
         $bonesList = implode(', ', $this->standardBones);
 
-        return "请分析以下动作描述，并生成完整的骨骼动画数据。请严格按照JSON格式返回结果，不要包含任何解释文字。
+        return "分析动作：{$text}
 
-动作描述：{$text}
-
-请直接返回以下JSON格式，不要有任何其他文字：
+直接返回JSON，不要任何解释：
 {
-    \"action_type\": \"动作类型描述\",
-    \"confidence\": 0.95,
     \"duration\": 2.0,
-    \"speed\": 1.0,
-    \"intensity\": 1.0,
-    \"direction\": \"动作方向\",
-    \"style\": \"动画风格\",
-    \"description\": \"动作的详细描述\",
-    \"suggestions\": [\"改进建议1\", \"改进建议2\"],
-    \"bones_affected\": [\"受影响的骨骼列表\"],
-    \"special_effects\": \"特殊效果描述\",
     \"tracks\": [
         {
             \"name\": \"mixamorigRightArm\",
             \"times\": [0, 0.5, 1.0, 1.5, 2.0],
-            \"rotations\": [
-                [0, 0, 0, 1],
-                [0, 0, 0.7, 0.7],
-                [0, 0, 1, 0],
-                [0, 0, 0.7, 0.7],
-                [0, 0, 0, 1]
-            ],
-            \"positions\": [
-                [0, 0, 0],
-                [0, 0, 0],
-                [0, 0, 0],
-                [0, 0, 0],
-                [0, 0, 0]
-            ]
+            \"rotations\": [[0,0,0,1], [0,0,0.7,0.7], [0,0,1,0], [0,0,0.7,0.7], [0,0,0,1]],
+            \"positions\": [[0,0,0], [0,0,0], [0,0,0], [0,0,0], [0,0,0]]
         }
     ]
 }
 
-重要说明：
-1. 动作类型可以是任何描述性的文字，不需要限制在预定义类型中
-2. 使用标准的Mixamo骨骼名称：{$bonesList}
-3. 每个轨道包含：
-   - name: 骨骼名称（如 mixamorigRightArm）
-   - times: 时间轴数组，单位为秒
-   - rotations: 四元数旋转数组 [x, y, z, w]，每个时间点的旋转值
-   - positions: 位置数组 [x, y, z]，每个时间点的位置值
-4. 时间轴应该从0开始，到duration结束，建议包含5-10个关键帧
-5. 四元数格式：[x, y, z, w]，其中w是实部
-6. 确保动画的连续性和自然性
-7. 可以只包含受影响的骨骼，不需要包含所有骨骼
-8. 建议duration在1-5秒之间，关键帧间隔0.1-0.5秒
-
-请确保返回的是有效的JSON格式，并且动画数据是完整和连贯的。不要包含任何解释、推理过程或其他文字，只返回JSON。";
+规则：
+- 只返回JSON，无其他文字
+- 使用骨骼：{$bonesList}
+- 时间轴：0到duration，5-10个关键帧
+- 四元数：[x,y,z,w]，位置：[x,y,z]
+- duration：1-5秒";
     }
 
     /**
@@ -460,14 +435,6 @@ class SkeletonAnimationService
             'action_type' => '自定义动作',
             'confidence' => 0.7,
             'duration' => 2.0,
-            'speed' => 1.0,
-            'intensity' => 1.0,
-            'direction' => 'forward',
-            'style' => 'normal',
-            'description' => '',
-            'suggestions' => [],
-            'bones_affected' => [],
-            'special_effects' => '',
             'tracks' => []
         ];
 
@@ -475,8 +442,6 @@ class SkeletonAnimationService
 
         // 验证数值范围
         $result['duration'] = max(0.1, min(60.0, (float) $result['duration']));
-        $result['speed'] = max(0.1, min(5.0, (float) $result['speed']));
-        $result['intensity'] = max(0.1, min(3.0, (float) $result['intensity']));
         $result['confidence'] = max(0.0, min(1.0, (float) $result['confidence']));
 
         // 验证轨道数据
@@ -636,6 +601,108 @@ class SkeletonAnimationService
     }
 
     /**
+     * 转换为Three.js标准格式
+     *
+     * @param array $animationData
+     * @return array
+     */
+    private function convertToThreeJSFormat(array $animationData): array
+    {
+        $threeJSData = [
+            'metadata' => [
+                'version' => 4.5,
+                'type' => 'keyframe',
+                'generator' => 'SkeletonAnimationService'
+            ],
+            'animations' => [
+                [
+                    'name' => 'skeleton_animation',
+                    'duration' => $animationData['duration'],
+                    'tracks' => []
+                ]
+            ]
+        ];
+
+        foreach ($animationData['tracks'] as $track) {
+            $threeJSTracks = $this->convertTrackToThreeJS($track);
+            if ($threeJSTracks) {
+                if (is_array($threeJSTracks)) {
+                    $threeJSData['animations'][0]['tracks'] = array_merge(
+                        $threeJSData['animations'][0]['tracks'], 
+                        $threeJSTracks
+                    );
+                } else {
+                    $threeJSData['animations'][0]['tracks'][] = $threeJSTracks;
+                }
+            }
+        }
+
+        return $threeJSData;
+    }
+
+    /**
+     * 转换单个轨道为Three.js格式
+     *
+     * @param array $track
+     * @return array|null
+     */
+    private function convertTrackToThreeJS(array $track): ?array
+    {
+        if (empty($track['name']) || empty($track['times'])) {
+            return null;
+        }
+
+        $tracks = [];
+
+        // 转换旋转轨道
+        if (!empty($track['rotations'])) {
+            $rotationTrack = [
+                'name' => $track['name'] . '.quaternion',
+                'type' => 'quaternion',
+                'times' => $track['times'],
+                'values' => []
+            ];
+
+            foreach ($track['rotations'] as $rotation) {
+                if (is_array($rotation) && count($rotation) === 4) {
+                    $rotationTrack['values'] = array_merge($rotationTrack['values'], $rotation);
+                }
+            }
+
+            if (!empty($rotationTrack['values'])) {
+                $tracks[] = $rotationTrack;
+            }
+        }
+
+        // 转换位置轨道
+        if (!empty($track['positions'])) {
+            $positionTrack = [
+                'name' => $track['name'] . '.position',
+                'type' => 'vector3',
+                'times' => $track['times'],
+                'values' => []
+            ];
+
+            foreach ($track['positions'] as $position) {
+                if (is_array($position) && count($position) === 3) {
+                    $positionTrack['values'] = array_merge($positionTrack['values'], $position);
+                }
+            }
+
+            if (!empty($positionTrack['values'])) {
+                $tracks[] = $positionTrack;
+            }
+        }
+
+        if (empty($tracks)) {
+            return null;
+        }
+        
+        // 如果只有一个轨道，返回单个轨道；否则返回轨道数组
+        return count($tracks) === 1 ? $tracks[0] : $tracks;
+    }
+
+    /**
      * 优化动画参数
      *
      * @param array $animationData
@@ -675,5 +742,35 @@ class SkeletonAnimationService
         }
 
         return $animationData;
+    }
+
+    /**
+     * 测试AI响应解析功能
+     *
+     * @param string $testText
+     * @return array
+     */
+    public function testAIResponse(string $testText): array
+    {
+        try {
+            $aiResult = $this->analyzeTextWithAI($testText);
+            $threeJSData = $this->convertToThreeJSFormat([
+                'tracks' => $aiResult['tracks'] ?? [],
+                'duration' => $aiResult['duration'] ?? 2.0
+            ]);
+            
+            return [
+                'success' => true,
+                'ai_result' => $aiResult,
+                'threejs_data' => $threeJSData,
+                'message' => 'AI响应解析成功'
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'message' => 'AI响应解析失败'
+            ];
+        }
     }
 }
