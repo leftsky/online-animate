@@ -51,8 +51,8 @@ class TestSkeletonAnimationCommand extends Command
     {
         $text = $this->argument('text');
         
-        $this->info("开始测试骨骼动画服务...");
-        $this->info("输入文本: {$text}");
+        $this->info("🚀 开始测试AI驱动的骨骼动画服务...");
+        $this->info("📝 输入文本: {$text}");
         $this->newLine();
 
         try {
@@ -63,7 +63,7 @@ class TestSkeletonAnimationCommand extends Command
             $endTime = microtime(true);
             $processingTime = ($endTime - $startTime) * 1000; // 转换为毫秒
 
-            $this->info("✅ 动画生成成功！");
+            $this->info("✅ AI动画生成成功！");
             $this->newLine();
 
             // 显示基本信息
@@ -102,6 +102,20 @@ class TestSkeletonAnimationCommand extends Command
                     $this->line($aiAnalysis['description']);
                 }
 
+                if (!empty($aiAnalysis['bones_affected'])) {
+                    $this->newLine();
+                    $this->info("🦴 受影响的骨骼:");
+                    foreach ($aiAnalysis['bones_affected'] as $bone) {
+                        $this->line("• {$bone}");
+                    }
+                }
+
+                if (!empty($aiAnalysis['special_effects'])) {
+                    $this->newLine();
+                    $this->info("✨ 特殊效果:");
+                    $this->line($aiAnalysis['special_effects']);
+                }
+
                 if (!empty($aiAnalysis['suggestions'])) {
                     $this->newLine();
                     $this->info("💡 改进建议:");
@@ -121,11 +135,20 @@ class TestSkeletonAnimationCommand extends Command
                 $this->line("帧 {$frame['frame']} (时间: {$frame['time']}s):");
                 foreach ($frame['bones'] as $boneName => $boneData) {
                     if (isset($boneData['rotation'])) {
-                        $this->line("  - {$boneName}: 旋转 " . number_format($boneData['rotation'], 2) . "°");
+                        $rotation = $boneData['rotation'];
+                        if (is_array($rotation)) {
+                            $this->line("  - {$boneName}: 旋转 [" . implode(', ', array_map('number_format', $rotation, array_fill(0, count($rotation), 2))) . "]°");
+                        } else {
+                            $this->line("  - {$boneName}: 旋转 " . number_format($rotation, 2) . "°");
+                        }
                     }
                     if (isset($boneData['position'])) {
-                        $pos = $boneData['position'];
-                        $this->line("  - {$boneName}: 位置 ({$pos['x']}, {$pos['y']}, {$pos['z']})");
+                        $position = $boneData['position'];
+                        if (is_array($position)) {
+                            $this->line("  - {$boneName}: 位置 [" . implode(', ', array_map('number_format', $position, array_fill(0, count($position), 2))) . "]");
+                        } else {
+                            $this->line("  - {$boneName}: 位置 " . number_format($position, 2));
+                        }
                     }
                 }
                 $this->newLine();
@@ -134,6 +157,17 @@ class TestSkeletonAnimationCommand extends Command
             if (count($frames) > 3) {
                 $this->line("... 还有 " . (count($frames) - 3) . " 帧");
             }
+
+            // 显示标准骨骼信息
+            $this->newLine();
+            $this->info("🦴 标准 Mixamo 骨骼系统:");
+            $this->line("本服务使用标准的 Mixamo 骨骼名称，包含 49 个骨骼节点");
+            $this->line("主要骨骼组：");
+            $this->line("• 躯干: Hips, Spine, Neck, Head");
+            $this->line("• 左臂: LeftShoulder, LeftArm, LeftForeArm, LeftHand + 手指");
+            $this->line("• 右臂: RightShoulder, RightArm, RightForeArm, RightHand + 手指");
+            $this->line("• 左腿: LeftUpLeg, LeftLeg, LeftFoot, LeftToeBase");
+            $this->line("• 右腿: RightUpLeg, RightLeg, RightFoot, RightToeBase");
 
             return 0;
 

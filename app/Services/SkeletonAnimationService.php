@@ -9,12 +9,31 @@ use Exception;
 /**
  * 骨骼动画服务
  * 负责将自然语言描述转换为骨骼动画数据
- * 使用 DeepSeek API 进行自然语言理解
+ * 使用 DeepSeek API 进行自然语言理解，完全由AI自主生成
  */
 class SkeletonAnimationService
 {
     protected $deepseek_api_key = "sk-80f8ccea7f2b482eb0c8d60bcb4e06dc";
     protected $deepseek_api_url = "https://api.deepseek.com/v1/chat/completions";
+
+    // 标准 Mixamo 骨骼名称
+    protected $standardBones = [
+        'mixamorigHips', 'mixamorigSpine', 'mixamorigSpine1', 'mixamorigSpine2', 
+        'mixamorigNeck', 'mixamorigHead', 'mixamorigLeftShoulder', 'mixamorigLeftArm', 
+        'mixamorigLeftForeArm', 'mixamorigLeftHand', 'mixamorigLeftHandThumb1', 
+        'mixamorigLeftHandThumb2', 'mixamorigLeftHandIndex1', 'mixamorigLeftHandIndex2', 
+        'mixamorigLeftHandIndex3', 'mixamorigLeftHandMiddle1', 'mixamorigLeftHandMiddle2', 
+        'mixamorigLeftHandMiddle3', 'mixamorigLeftHandRing1', 'mixamorigLeftHandRing2', 
+        'mixamorigLeftHandRing3', 'mixamorigLeftHandPinky1', 'mixamorigLeftHandPinky2', 
+        'mixamorigRightShoulder', 'mixamorigRightArm', 'mixamorigRightForeArm', 
+        'mixamorigRightHand', 'mixamorigRightHandThumb1', 'mixamorigRightHandThumb2', 
+        'mixamorigRightHandThumb3', 'mixamorigRightHandIndex1', 'mixamorigRightHandIndex2', 
+        'mixamorigRightHandIndex3', 'mixamorigRightHandMiddle1', 'mixamorigRightHandMiddle2', 
+        'mixamorigRightHandMiddle3', 'mixamorigRightHandRing1', 'mixamorigRightHandRing2', 
+        'mixamorigRightHandRing3', 'mixamorigRightHandPinky1', 'mixamorigRightHandPinky2', 
+        'mixamorigLeftUpLeg', 'mixamorigLeftLeg', 'mixamorigLeftFoot', 'mixamorigLeftToeBase', 
+        'mixamorigRightUpLeg', 'mixamorigRightLeg', 'mixamorigRightFoot', 'mixamorigRightToeBase'
+    ];
 
     /**
      * 从自然语言描述生成骨骼动画
@@ -29,27 +48,27 @@ class SkeletonAnimationService
         try {
             Log::info('开始生成骨骼动画', ['text' => $text, 'options' => $options]);
 
-            // 1. 使用 DeepSeek API 解析自然语言
-            $aiAnalysis = $this->analyzeTextWithAI($text);
+            // 1. 使用 DeepSeek API 解析自然语言并生成动画数据
+            $aiResult = $this->analyzeTextWithAI($text);
             
             // 2. 提取动画参数
-            $animationParams = $this->extractAnimationParams($aiAnalysis, $options);
+            $animationParams = $this->extractAnimationParams($aiResult, $options);
             
             // 3. 生成骨骼动画数据
-            $animationData = $this->generateSkeletonData($aiAnalysis, $animationParams);
+            $animationData = $this->generateSkeletonData($aiResult, $animationParams);
             
             // 4. 优化动画参数
             $optimizedData = $this->optimizeAnimation($animationData, $options);
             
-            Log::info('骨骼动画生成成功', ['action_type' => $aiAnalysis['action_type']]);
+            Log::info('骨骼动画生成成功', ['action_type' => $aiResult['action_type']]);
             
             return [
                 'animation_data' => $optimizedData,
                 'metadata' => [
-                    'action_type' => $aiAnalysis['action_type'],
-                    'confidence' => $aiAnalysis['confidence'],
-                    'suggestions' => $aiAnalysis['suggestions'],
-                    'ai_analysis' => $aiAnalysis,
+                    'action_type' => $aiResult['action_type'],
+                    'confidence' => $aiResult['confidence'],
+                    'suggestions' => $aiResult['suggestions'],
+                    'ai_analysis' => $aiResult,
                     'processing_time' => microtime(true) - LARAVEL_START
                 ]
             ];
@@ -65,7 +84,7 @@ class SkeletonAnimationService
     }
 
     /**
-     * 使用 DeepSeek API 分析自然语言文本
+     * 使用 DeepSeek API 分析自然语言文本并生成动画数据
      *
      * @param string $text
      * @return array
@@ -84,7 +103,7 @@ class SkeletonAnimationService
                 'messages' => [
                     [
                         'role' => 'system',
-                        'content' => '你是一个专业的动画分析助手，专门分析自然语言描述并转换为结构化的动画参数。请严格按照JSON格式返回结果。'
+                        'content' => '你是一个专业的3D动画师和骨骼动画专家，专门分析自然语言描述并生成完整的骨骼动画数据。请严格按照JSON格式返回结果，包含所有必要的动画帧和骨骼变换信息。'
                     ],
                     [
                         'role' => 'user',
@@ -92,7 +111,7 @@ class SkeletonAnimationService
                     ]
                 ],
                 'temperature' => 0.1,
-                'max_tokens' => 1000
+                'max_tokens' => 2000
             ]);
 
             if (!$response->successful()) {
@@ -131,42 +150,54 @@ class SkeletonAnimationService
      */
     private function buildAnalysisPrompt(string $text): string
     {
-        return "请分析以下动作描述，并返回JSON格式的分析结果：
+        $bonesList = implode(', ', $this->standardBones);
+        
+        return "请分析以下动作描述，并生成完整的骨骼动画数据：
 
 动作描述：{$text}
 
-请返回以下JSON格式：
+请返回以下JSON格式，包含完整的动画帧数据：
 {
-    \"action_type\": \"动作类型\",
+    \"action_type\": \"动作类型描述\",
     \"confidence\": 0.95,
     \"duration\": 2.0,
     \"speed\": 1.0,
     \"intensity\": 1.0,
-    \"direction\": \"forward\",
-    \"style\": \"normal\",
+    \"direction\": \"动作方向\",
+    \"style\": \"动画风格\",
     \"description\": \"动作的详细描述\",
     \"suggestions\": [\"改进建议1\", \"改进建议2\"],
     \"bones_affected\": [\"受影响的骨骼列表\"],
-    \"special_effects\": \"特殊效果描述\"
+    \"special_effects\": \"特殊效果描述\",
+    \"frames\": [
+        {
+            \"frame\": 0,
+            \"time\": 0.0,
+            \"bones\": {
+                \"mixamorigHips\": {
+                    \"rotation\": [0, 0, 0],
+                    \"position\": [0, 0, 0]
+                },
+                \"mixamorigSpine\": {
+                    \"rotation\": [0, 0, 0],
+                    \"position\": [0, 0, 0]
+                }
+            }
+        }
+    ]
 }
 
-动作类型必须是以下之一：
-- walking (走路)
-- running (跑步)
-- jumping (跳跃)
-- sitting (坐下)
-- standing (站立)
-- waving (挥手)
-- pointing (指向)
-- nodding (点头)
-- shaking (摇头)
-- bowing (鞠躬)
-- dancing (跳舞)
-- fighting (战斗)
-- idle (待机)
-- custom (自定义)
+重要说明：
+1. 动作类型可以是任何描述性的文字，不需要限制在预定义类型中
+2. 使用标准的Mixamo骨骼名称：{$bonesList}
+3. 每个骨骼可以包含rotation（旋转，欧拉角）和position（位置）
+4. rotation格式：[x, y, z]，单位为度
+5. position格式：[x, y, z]，单位为任意单位
+6. 根据duration生成足够的帧数，建议30fps
+7. 确保动画的连续性和自然性
+8. 可以只包含受影响的骨骼，不需要包含所有骨骼
 
-请确保返回的是有效的JSON格式。";
+请确保返回的是有效的JSON格式，并且动画数据是完整和连贯的。";
     }
 
     /**
@@ -199,7 +230,7 @@ class SkeletonAnimationService
     private function validateAndNormalizeAIResult(array $aiResult): array
     {
         $defaults = [
-            'action_type' => 'idle',
+            'action_type' => '自定义动作',
             'confidence' => 0.7,
             'duration' => 2.0,
             'speed' => 1.0,
@@ -209,30 +240,58 @@ class SkeletonAnimationService
             'description' => '',
             'suggestions' => [],
             'bones_affected' => [],
-            'special_effects' => ''
+            'special_effects' => '',
+            'frames' => []
         ];
 
         $result = array_merge($defaults, $aiResult);
         
-        // 验证动作类型
-        $validActionTypes = [
-            'walking', 'running', 'jumping', 'sitting', 'standing',
-            'waving', 'pointing', 'nodding', 'shaking', 'bowing',
-            'dancing', 'fighting', 'idle', 'custom'
-        ];
-        
-        if (!in_array($result['action_type'], $validActionTypes)) {
-            $result['action_type'] = 'idle';
-            $result['confidence'] *= 0.8; // 降低置信度
-        }
-
         // 验证数值范围
         $result['duration'] = max(0.1, min(60.0, (float) $result['duration']));
         $result['speed'] = max(0.1, min(5.0, (float) $result['speed']));
         $result['intensity'] = max(0.1, min(3.0, (float) $result['intensity']));
         $result['confidence'] = max(0.0, min(1.0, (float) $result['confidence']));
 
+        // 验证帧数据
+        if (empty($result['frames'])) {
+            $result['frames'] = $this->generateDefaultFrames($result['duration']);
+        }
+
         return $result;
+    }
+
+    /**
+     * 生成默认帧数据（当AI没有提供帧数据时）
+     *
+     * @param float $duration
+     * @return array
+     */
+    private function generateDefaultFrames(float $duration): array
+    {
+        $frames = [];
+        $frameCount = intval($duration * 30); // 30fps
+        
+        for ($i = 0; $i < $frameCount; $i++) {
+            $progress = $i / $frameCount;
+            $cycle = ($progress * 2 * M_PI);
+            
+            $frames[] = [
+                'frame' => $i,
+                'time' => $i / 30.0,
+                'bones' => [
+                    'mixamorigHips' => [
+                        'rotation' => [0, 0, 0],
+                        'position' => [0, 0, 0]
+                    ],
+                    'mixamorigSpine' => [
+                        'rotation' => [sin($cycle) * 2, 0, 0],
+                        'position' => [0, 0, 0]
+                    ]
+                ]
+            ];
+        }
+        
+        return $frames;
     }
 
     /**
@@ -245,119 +304,38 @@ class SkeletonAnimationService
     {
         Log::warning('使用回退分析模式', ['text' => $text]);
         
-        // 使用原有的模式匹配逻辑作为回退
-        $actionType = $this->parseActionTypeFallback($text);
-        $params = $this->extractAnimationParamsFallback($text);
-        
         return [
-            'action_type' => $actionType,
-            'confidence' => 0.6, // 回退模式置信度较低
-            'duration' => $params['duration'],
-            'speed' => $params['speed'],
-            'intensity' => $params['intensity'],
-            'direction' => $params['direction'],
-            'style' => $params['style'],
-            'description' => '使用回退分析模式',
-            'suggestions' => ['建议使用更清晰的描述', '可以尝试重新描述动作'],
-            'bones_affected' => [],
-            'special_effects' => ''
-        ];
-    }
-
-    /**
-     * 回退模式的动作类型解析
-     *
-     * @param string $text
-     * @return string
-     */
-    private function parseActionTypeFallback(string $text): string
-    {
-        $text = strtolower(trim($text));
-        
-        $actionPatterns = [
-            'walking' => ['走', '行走', '走路', '步行', 'walk', 'walking'],
-            'running' => ['跑', '跑步', '奔跑', 'run', 'running'],
-            'jumping' => ['跳', '跳跃', '蹦', 'jump', 'jumping'],
-            'sitting' => ['坐', '坐下', 'sit', 'sitting'],
-            'standing' => ['站', '站立', 'stand', 'standing'],
-            'waving' => ['挥手', '招手', 'wave', 'waving'],
-            'pointing' => ['指', '指向', 'point', 'pointing'],
-            'nodding' => ['点头', 'nod', 'nodding'],
-            'shaking' => ['摇头', 'shake', 'shaking'],
-            'bowing' => ['鞠躬', '弯腰', 'bow', 'bowing'],
-            'dancing' => ['跳舞', '舞蹈', 'dance', 'dancing'],
-            'fighting' => ['战斗', '打架', 'fight', 'fighting'],
-            'idle' => ['待机', '空闲', 'idle', 'rest']
-        ];
-
-        foreach ($actionPatterns as $actionType => $patterns) {
-            foreach ($patterns as $pattern) {
-                if (str_contains($text, $pattern)) {
-                    return $actionType;
-                }
-            }
-        }
-
-        return 'idle';
-    }
-
-    /**
-     * 回退模式的参数提取
-     *
-     * @param string $text
-     * @return array
-     */
-    private function extractAnimationParamsFallback(string $text): array
-    {
-        $params = [
+            'action_type' => '回退模式',
+            'confidence' => 0.5,
             'duration' => 2.0,
-            'loop' => true,
             'speed' => 1.0,
             'intensity' => 1.0,
             'direction' => 'forward',
-            'style' => 'normal'
+            'style' => 'normal',
+            'description' => '使用回退分析模式',
+            'suggestions' => ['建议使用更清晰的描述', '可以尝试重新描述动作'],
+            'bones_affected' => ['mixamorigHips', 'mixamorigSpine'],
+            'special_effects' => '',
+            'frames' => $this->generateDefaultFrames(2.0)
         ];
-
-        $text = strtolower($text);
-        
-        // 提取时长
-        if (preg_match('/(\d+(?:\.\d+)?)\s*(秒|秒种|second|s)/', $text, $matches)) {
-            $params['duration'] = floatval($matches[1]);
-        }
-        
-        // 提取速度
-        if (str_contains($text, '快') || str_contains($text, 'fast')) {
-            $params['speed'] = 1.5;
-        } elseif (str_contains($text, '慢') || str_contains($text, 'slow')) {
-            $params['speed'] = 0.5;
-        }
-        
-        // 提取强度
-        if (str_contains($text, '强烈') || str_contains($text, 'intense')) {
-            $params['intensity'] = 1.5;
-        } elseif (str_contains($text, '轻微') || str_contains($text, 'gentle')) {
-            $params['intensity'] = 0.5;
-        }
-
-        return $params;
     }
 
     /**
      * 提取动画参数
      *
-     * @param array $aiAnalysis
+     * @param array $aiResult
      * @param array $options
      * @return array
      */
-    private function extractAnimationParams(array $aiAnalysis, array $options): array
+    private function extractAnimationParams(array $aiResult, array $options): array
     {
         $params = [
-            'duration' => $options['duration'] ?? $aiAnalysis['duration'] ?? 2.0,
+            'duration' => $options['duration'] ?? $aiResult['duration'] ?? 2.0,
             'loop' => $options['loop'] ?? true,
-            'speed' => $options['speed'] ?? $aiAnalysis['speed'] ?? 1.0,
-            'intensity' => $options['intensity'] ?? $aiAnalysis['intensity'] ?? 1.0,
-            'direction' => $options['direction'] ?? $aiAnalysis['direction'] ?? 'forward',
-            'style' => $options['style'] ?? $aiAnalysis['style'] ?? 'normal'
+            'speed' => $options['speed'] ?? $aiResult['speed'] ?? 1.0,
+            'intensity' => $options['intensity'] ?? $aiResult['intensity'] ?? 1.0,
+            'direction' => $options['direction'] ?? $aiResult['direction'] ?? 'forward',
+            'style' => $options['style'] ?? $aiResult['style'] ?? 'normal'
         ];
 
         return $params;
@@ -366,304 +344,35 @@ class SkeletonAnimationService
     /**
      * 生成骨骼动画数据
      *
-     * @param array $aiAnalysis
+     * @param array $aiResult
      * @param array $params
      * @return array
      */
-    private function generateSkeletonData(array $aiAnalysis, array $params): array
+    private function generateSkeletonData(array $aiResult, array $params): array
     {
-        $frames = [];
-        $frameCount = intval($params['duration'] * 30); // 30fps
-        $actionType = $aiAnalysis['action_type'];
-        
-        // 根据动作类型生成关键帧
-        switch ($actionType) {
-            case 'walking':
-                $frames = $this->generateWalkingFrames($frameCount, $params);
-                break;
-            case 'running':
-                $frames = $this->generateRunningFrames($frameCount, $params);
-                break;
-            case 'jumping':
-                $frames = $this->generateJumpingFrames($frameCount, $params);
-                break;
-            case 'waving':
-                $frames = $this->generateWavingFrames($frameCount, $params);
-                break;
-            case 'custom':
-                $frames = $this->generateCustomFrames($frameCount, $params, $aiAnalysis);
-                break;
-            case 'idle':
-            default:
-                $frames = $this->generateIdleFrames($frameCount, $params);
-                break;
+        // 如果AI已经提供了完整的帧数据，直接使用
+        if (!empty($aiResult['frames']) && count($aiResult['frames']) > 0) {
+            return [
+                'frames' => $aiResult['frames'],
+                'duration' => $params['duration'],
+                'loop' => $params['loop'],
+                'fps' => 30,
+                'total_frames' => count($aiResult['frames']),
+                'ai_analysis' => $aiResult
+            ];
         }
 
+        // 否则生成默认帧数据
+        $frames = $this->generateDefaultFrames($params['duration']);
+        
         return [
             'frames' => $frames,
             'duration' => $params['duration'],
             'loop' => $params['loop'],
             'fps' => 30,
             'total_frames' => count($frames),
-            'ai_analysis' => $aiAnalysis
+            'ai_analysis' => $aiResult
         ];
-    }
-
-    /**
-     * 生成自定义动画帧
-     *
-     * @param int $frameCount
-     * @param array $params
-     * @param array $aiAnalysis
-     * @return array
-     */
-    private function generateCustomFrames(int $frameCount, array $params, array $aiAnalysis): array
-    {
-        $frames = [];
-        $intensity = $params['intensity'];
-        
-        // 基于AI分析的描述生成自定义动画
-        $description = strtolower($aiAnalysis['description'] ?? '');
-        
-        for ($i = 0; $i < $frameCount; $i++) {
-            $progress = $i / $frameCount;
-            $cycle = ($progress * 2 * M_PI) * $params['speed'];
-            
-            $frames[] = [
-                'frame' => $i,
-                'time' => $i / 30.0,
-                'bones' => [
-                    'spine' => [
-                        'rotation' => sin($cycle) * 10 * $intensity,
-                        'position' => ['x' => 0, 'y' => 0, 'z' => 0]
-                    ],
-                    'chest' => [
-                        'rotation' => cos($cycle) * 8 * $intensity,
-                        'position' => ['x' => 0, 'y' => 0, 'z' => 0]
-                    ],
-                    'head' => [
-                        'rotation' => sin($cycle * 0.5) * 5 * $intensity,
-                        'position' => ['x' => 0, 'y' => 0, 'z' => 0]
-                    ]
-                ]
-            ];
-        }
-        
-        return $frames;
-    }
-
-    /**
-     * 生成走路动画帧
-     *
-     * @param int $frameCount
-     * @param array $params
-     * @return array
-     */
-    private function generateWalkingFrames(int $frameCount, array $params): array
-    {
-        $frames = [];
-        $speed = $params['speed'];
-        $intensity = $params['intensity'];
-        
-        for ($i = 0; $i < $frameCount; $i++) {
-            $progress = $i / $frameCount;
-            $cycle = ($progress * 2 * M_PI) * $speed;
-            
-            $frames[] = [
-                'frame' => $i,
-                'time' => $i / 30.0,
-                'bones' => [
-                    'left_leg' => [
-                        'rotation' => sin($cycle) * 30 * $intensity,
-                        'position' => ['x' => 0, 'y' => 0, 'z' => 0]
-                    ],
-                    'right_leg' => [
-                        'rotation' => -sin($cycle) * 30 * $intensity,
-                        'position' => ['x' => 0, 'y' => 0, 'z' => 0]
-                    ],
-                    'left_arm' => [
-                        'rotation' => -sin($cycle) * 20 * $intensity,
-                        'position' => ['x' => 0, 'y' => 0, 'z' => 0]
-                    ],
-                    'right_arm' => [
-                        'rotation' => sin($cycle) * 20 * $intensity,
-                        'position' => ['x' => 0, 'y' => 0, 'z' => 0]
-                    ],
-                    'spine' => [
-                        'rotation' => sin($cycle) * 5 * $intensity,
-                        'position' => ['x' => 0, 'y' => 0, 'z' => 0]
-                    ]
-                ]
-            ];
-        }
-        
-        return $frames;
-    }
-
-    /**
-     * 生成跑步动画帧
-     *
-     * @param int $frameCount
-     * @param array $params
-     * @return array
-     */
-    private function generateRunningFrames(int $frameCount, array $params): array
-    {
-        $frames = [];
-        $speed = $params['speed'] * 1.5; // 跑步比走路快
-        $intensity = $params['intensity'] * 1.3; // 跑步动作更强烈
-        
-        for ($i = 0; $i < $frameCount; $i++) {
-            $progress = $i / $frameCount;
-            $cycle = ($progress * 2 * M_PI) * $speed;
-            
-            $frames[] = [
-                'frame' => $i,
-                'time' => $i / 30.0,
-                'bones' => [
-                    'left_leg' => [
-                        'rotation' => sin($cycle) * 45 * $intensity,
-                        'position' => ['x' => 0, 'y' => 0, 'z' => 0]
-                    ],
-                    'right_leg' => [
-                        'rotation' => -sin($cycle) * 45 * $intensity,
-                        'position' => ['x' => 0, 'y' => 0, 'z' => 0]
-                    ],
-                    'left_arm' => [
-                        'rotation' => -sin($cycle) * 35 * $intensity,
-                        'position' => ['x' => 0, 'y' => 0, 'z' => 0]
-                    ],
-                    'right_arm' => [
-                        'rotation' => sin($cycle) * 35 * $intensity,
-                        'position' => ['x' => 0, 'y' => 0, 'z' => 0]
-                    ],
-                    'spine' => [
-                        'rotation' => sin($cycle) * 8 * $intensity,
-                        'position' => ['x' => 0, 'y' => 0, 'z' => 0]
-                    ]
-                ]
-            ];
-        }
-        
-        return $frames;
-    }
-
-    /**
-     * 生成跳跃动画帧
-     *
-     * @param int $frameCount
-     * @param array $params
-     * @return array
-     */
-    private function generateJumpingFrames(int $frameCount, array $params): array
-    {
-        $frames = [];
-        $intensity = $params['intensity'];
-        
-        for ($i = 0; $i < $frameCount; $i++) {
-            $progress = $i / $frameCount;
-            
-            // 跳跃的抛物线运动
-            $height = sin($progress * M_PI) * 100 * $intensity;
-            
-            $frames[] = [
-                'frame' => $i,
-                'time' => $i / 30.0,
-                'bones' => [
-                    'root' => [
-                        'position' => ['x' => 0, 'y' => $height, 'z' => 0]
-                    ],
-                    'left_leg' => [
-                        'rotation' => $progress < 0.5 ? -30 * $intensity : 30 * $intensity,
-                        'position' => ['x' => 0, 'y' => 0, 'z' => 0]
-                    ],
-                    'right_leg' => [
-                        'rotation' => $progress < 0.5 ? -30 * $intensity : 30 * $intensity,
-                        'position' => ['x' => 0, 'y' => 0, 'z' => 0]
-                    ],
-                    'left_arm' => [
-                        'rotation' => $progress < 0.5 ? 45 * $intensity : -45 * $intensity,
-                        'position' => ['x' => 0, 'y' => 0, 'z' => 0]
-                    ],
-                    'right_arm' => [
-                        'rotation' => $progress < 0.5 ? 45 * $intensity : -45 * $intensity,
-                        'position' => ['x' => 0, 'y' => 0, 'z' => 0]
-                    ]
-                ]
-            ];
-        }
-        
-        return $frames;
-    }
-
-    /**
-     * 生成挥手动画帧
-     *
-     * @param int $frameCount
-     * @param array $params
-     * @return array
-     */
-    private function generateWavingFrames(int $frameCount, array $params): array
-    {
-        $frames = [];
-        $intensity = $params['intensity'];
-        
-        for ($i = 0; $i < $frameCount; $i++) {
-            $progress = $i / $frameCount;
-            $cycle = ($progress * 2 * M_PI) * 2; // 挥手频率
-            
-            $frames[] = [
-                'frame' => $i,
-                'time' => $i / 30.0,
-                'bones' => [
-                    'right_arm' => [
-                        'rotation' => sin($cycle) * 60 * $intensity,
-                        'position' => ['x' => 0, 'y' => 0, 'z' => 0]
-                    ],
-                    'right_forearm' => [
-                        'rotation' => sin($cycle) * 30 * $intensity,
-                        'position' => ['x' => 0, 'y' => 0, 'z' => 0]
-                    ]
-                ]
-            ];
-        }
-        
-        return $frames;
-    }
-
-    /**
-     * 生成待机动画帧
-     *
-     * @param int $frameCount
-     * @param array $params
-     * @return array
-     */
-    private function generateIdleFrames(int $frameCount, array $params): array
-    {
-        $frames = [];
-        $intensity = $params['intensity'] * 0.3; // 待机动作很轻微
-        
-        for ($i = 0; $i < $frameCount; $i++) {
-            $progress = $i / $frameCount;
-            $cycle = ($progress * 2 * M_PI) * 0.5; // 很慢的呼吸运动
-            
-            $frames[] = [
-                'frame' => $i,
-                'time' => $i / 30.0,
-                'bones' => [
-                    'spine' => [
-                        'rotation' => sin($cycle) * 2 * $intensity,
-                        'position' => ['x' => 0, 'y' => 0, 'z' => 0]
-                    ],
-                    'chest' => [
-                        'rotation' => sin($cycle) * 1 * $intensity,
-                        'position' => ['x' => 0, 'y' => 0, 'z' => 0]
-                    ]
-                ]
-            ];
-        }
-        
-        return $frames;
     }
 
     /**
@@ -681,12 +390,22 @@ class SkeletonAnimationService
             foreach ($animationData['frames'] as &$frame) {
                 foreach ($frame['bones'] as &$bone) {
                     if (isset($bone['rotation'])) {
-                        $bone['rotation'] *= $scale;
+                        if (is_array($bone['rotation'])) {
+                            $bone['rotation'] = array_map(function($val) use ($scale) {
+                                return $val * $scale;
+                            }, $bone['rotation']);
+                        } else {
+                            $bone['rotation'] *= $scale;
+                        }
                     }
                     if (isset($bone['position'])) {
-                        $bone['position']['x'] *= $scale;
-                        $bone['position']['y'] *= $scale;
-                        $bone['position']['z'] *= $scale;
+                        if (is_array($bone['position'])) {
+                            $bone['position'] = array_map(function($val) use ($scale) {
+                                return $val * $scale;
+                            }, $bone['position']);
+                        } else {
+                            $bone['position'] *= $scale;
+                        }
                     }
                 }
             }

@@ -710,6 +710,6 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
         updateParams,
         getModelParams,
         addCustomAnimation, // 添加自定义动画的通用方法
-        blendAnimations, // 动画融合方法
+        // blendAnimations, // 动画融合方法
     };
 }
