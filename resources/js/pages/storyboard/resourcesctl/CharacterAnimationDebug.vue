@@ -65,13 +65,7 @@
 
                     <!-- 右侧AI对话面板 -->
                     <div class="w-80">
-                        <AIChatPanel
-                            ref="aiChatPanelRef"
-                            :model-status="modelStatus"
-                            :available-animations="availableAnimations"
-                            @ai-action="handleAIAction"
-                            @ai-animation-generated="handleAIAnimationGenerated"
-                        />
+                        <AIChatPanel ref="aiChatPanelRef" @ai-action="handleAIAction" @ai-animation-generated="handleAIAnimationGenerated" />
                     </div>
                 </div>
             </div>
@@ -132,11 +126,9 @@ const handleAnimationPlay = (animationIndex: number) => {
     const success = modelController.play(animationIndex);
     if (success) {
         controlPanelRef.value?.setAnimationState(true);
-        aiChatPanelRef.value?.addLog('info', `开始播放动画: ${availableAnimations.value[animationIndex]?.name || '未知动画'}`);
         console.log('播放动画成功');
     } else {
         toast.error('播放动画失败');
-        aiChatPanelRef.value?.addLog('error', '播放动画失败');
     }
 };
 
@@ -144,7 +136,6 @@ const handleAnimationPause = () => {
     const success = modelController.pause();
     if (success) {
         controlPanelRef.value?.setAnimationState(false);
-        aiChatPanelRef.value?.addLog('info', '动画已暂停');
     }
 };
 
@@ -152,14 +143,11 @@ const handleAnimationStop = () => {
     const success = modelController.stop();
     if (success) {
         controlPanelRef.value?.setAnimationState(false);
-        aiChatPanelRef.value?.addLog('info', '动画已停止');
     }
 };
 
 // AI动作处理
 const handleAIAction = (action: string) => {
-    aiChatPanelRef.value?.addLog('info', `执行AI指令: ${action}`);
-
     // 这里可以根据AI指令执行相应的模型控制操作
     // 例如：解析自然语言指令并转换为模型动作
     console.log('AI指令:', action);
@@ -170,46 +158,36 @@ const handleAIAction = (action: string) => {
         if (availableAnimations.value.length > 0) {
             handleAnimationPlay(0); // 假设第一个动画是走路
         }
-        aiChatPanelRef.value?.addLog('success', '执行走路动作');
     } else if (action.includes('挥手')) {
         // 播放挥手动画
         if (availableAnimations.value.length > 1) {
             handleAnimationPlay(1); // 假设第二个动画是挥手
         }
-        aiChatPanelRef.value?.addLog('success', '执行挥手动作');
     } else {
-        aiChatPanelRef.value?.addLog('warning', `无法理解的指令: ${action}`);
     }
 };
 
 // AI动画生成处理
 const handleAIAnimationGenerated = async (animation: { type: string; data: any; name: string; duration: number }) => {
     try {
-        aiChatPanelRef.value?.addLog('info', `正在添加AI生成的动画: ${animation.name}`);
-        
         // 调用ModelController的addCustomAnimation方法
         const success = await modelController.addCustomAnimation({
             name: animation.name,
             duration: animation.data.animation_data.duration,
-            tracks: animation.data.animation_data.tracks
+            tracks: animation.data.animation_data.tracks,
         });
-        
+
         if (success) {
-            aiChatPanelRef.value?.addLog('success', `AI动画添加成功: ${animation.name}`);
-            
             // 自动播放新添加的动画
             const animationIndex = availableAnimations.value.length - 1;
             if (animationIndex >= 0) {
                 handleAnimationPlay(animationIndex);
-                aiChatPanelRef.value?.addLog('success', `开始播放AI生成的动画: ${animation.name}`);
             }
         } else {
             throw new Error('添加动画失败');
         }
-        
     } catch (error) {
         console.error('处理AI动画失败:', error);
-        aiChatPanelRef.value?.addLog('error', `处理AI动画失败: ${error instanceof Error ? error.message : '未知错误'}`);
         toast.error('AI动画处理失败');
     }
 };
@@ -217,13 +195,10 @@ const handleAIAnimationGenerated = async (animation: { type: string; data: any; 
 // 加载默认模型
 const loadDefaultModel = async () => {
     try {
-        aiChatPanelRef.value?.addLog('info', '开始加载默认模型...');
         await load(defaultModelUrl);
-        aiChatPanelRef.value?.addLog('success', '默认模型加载成功');
         modelInitParams.value = modelController.getModelParams();
     } catch (error) {
         console.error('加载默认模型失败:', error);
-        aiChatPanelRef.value?.addLog('error', '加载默认模型失败: ' + (error instanceof Error ? error.message : '未知错误'));
         toast.error('加载默认模型失败');
     }
 };

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AiSkeletonAnimation;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Exception;
@@ -45,8 +46,11 @@ class SkeletonAnimationService
      */
     public function generateAnimation(string $text, array $options = []): array
     {
+        // 创建数据库记录
+        $animationRecord = $this->createAnimationRecord($text, $options);
+        
         try {
-            Log::info('开始生成骨骼动画', ['text' => $text, 'options' => $options]);
+            Log::info('开始生成骨骼动画', ['text' => $text, 'options' => $options, 'record_id' => $animationRecord->id]);
 
             // 1. 使用 DeepSeek API 解析自然语言并生成动画数据
             $aiResult = $this->analyzeTextWithAI($text);
@@ -60,7 +64,13 @@ class SkeletonAnimationService
             // 4. 优化动画参数
             $optimizedData = $this->optimizeAnimation($animationData, $options);
             
-            Log::info('骨骼动画生成成功', ['action_type' => $aiResult['action_type']]);
+            // 5. 更新数据库记录
+            $this->updateAnimationRecord($animationRecord, $aiResult, $optimizedData);
+            
+            Log::info('骨骼动画生成成功', [
+                'action_type' => $aiResult['action_type'],
+                'record_id' => $animationRecord->id
+            ]);
             
             return [
                 'animation_data' => $optimizedData,
@@ -69,7 +79,8 @@ class SkeletonAnimationService
                     'confidence' => $aiResult['confidence'],
                     'suggestions' => $aiResult['suggestions'],
                     'ai_analysis' => $aiResult,
-                    'processing_time' => microtime(true) - LARAVEL_START
+                    'processing_time' => microtime(true) - LARAVEL_START,
+                    'record_id' => $animationRecord->id
                 ]
             ];
             
@@ -77,10 +88,107 @@ class SkeletonAnimationService
             Log::error('骨骼动画生成失败', [
                 'text' => $text,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'record_id' => $animationRecord->id
             ]);
+            
+            // 更新数据库记录为失败状态
+            $this->updateAnimationRecordOnError($animationRecord, $e);
+            
             throw $e;
         }
+    }
+
+    /**
+     * 创建动画记录
+     *
+     * @param string $text
+     * @param array $options
+     * @return AiSkeletonAnimation
+     */
+    private function createAnimationRecord(string $text, array $options): AiSkeletonAnimation
+    {
+        return AiSkeletonAnimation::create([
+            'name' => $this->generateAnimationName($text),
+            'description' => $text,
+            'prompt' => $text,
+            'animation_data' => [],
+            'skeleton_data' => [],
+            'duration' => $options['duration'] ?? 3.0,
+            'confidence' => 0.0,
+        ]);
+    }
+
+    /**
+     * 更新动画记录
+     *
+     * @param AiSkeletonAnimation $record
+     * @param array $aiResult
+     * @param array $animationData
+     * @return void
+     */
+    private function updateAnimationRecord(AiSkeletonAnimation $record, array $aiResult, array $animationData): void
+    {
+        $record->update([
+            'name' => $this->generateAnimationName($aiResult['action_type'] ?? $record->description),
+            'description' => $aiResult['description'] ?? $record->description,
+            'animation_data' => $animationData,
+            'skeleton_data' => $this->extractSkeletonData($animationData),
+            'duration' => $aiResult['duration'] ?? $record->duration,
+            'confidence' => $aiResult['confidence'] ?? 0.0,
+        ]);
+    }
+
+    /**
+     * 更新动画记录为错误状态
+     *
+     * @param AiSkeletonAnimation $record
+     * @param Exception $e
+     * @return void
+     */
+    private function updateAnimationRecordOnError(AiSkeletonAnimation $record, Exception $e): void
+    {
+        $record->update([
+            'error_message' => $e->getMessage(),
+        ]);
+    }
+
+    /**
+     * 生成动画名称
+     *
+     * @param string $text
+     * @return string
+     */
+    private function generateAnimationName(string $text): string
+    {
+        $timestamp = now()->format('Y-m-d H:i:s');
+        return "AI_动画_{$timestamp}";
+    }
+
+    /**
+     * 提取骨骼数据
+     *
+     * @param array $animationData
+     * @return array
+     */
+    private function extractSkeletonData(array $animationData): array
+    {
+        $skeletonData = [];
+        
+        if (isset($animationData['tracks']) && is_array($animationData['tracks'])) {
+            foreach ($animationData['tracks'] as $track) {
+                if (isset($track['name'])) {
+                    $skeletonData[] = [
+                        'bone_name' => $track['name'],
+                        'has_rotation' => !empty($track['rotations']),
+                        'has_position' => !empty($track['positions']),
+                        'keyframe_count' => count($track['times'] ?? []),
+                    ];
+                }
+            }
+        }
+        
+        return $skeletonData;
     }
 
     /**
