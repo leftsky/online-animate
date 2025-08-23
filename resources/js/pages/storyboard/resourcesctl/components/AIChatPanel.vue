@@ -120,6 +120,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Activity, FileText, Loader2, MessageSquare, Send, Zap } from 'lucide-vue-next';
 import { ref, watch } from 'vue';
+import { apiPost } from '@/utils/api';
 
 interface ChatMessage {
     content: string;
@@ -141,6 +142,7 @@ interface Props {
 const props = defineProps<Props>();
 const emit = defineEmits<{
     'ai-action': [action: string];
+    'ai-animation-generated': [animation: { type: string; data: any; name: string; duration: number }];
 }>();
 
 // 响应式数据
@@ -161,25 +163,45 @@ const sendMessage = async () => {
     // 清空输入框
     newMessage.value = '';
 
-    // 模拟AI处理
+    // 开始处理
     isProcessing.value = true;
+    addLog('info', '正在处理您的指令...');
 
     try {
-        // 这里可以集成DeepSeek API进行自然语言理解
-        // 目前使用简单的关键词匹配作为示例
+        // 调用后端骨骼动画接口
+        const result = await apiPost('/skeleton-animation/generate', {
+            text: userMessage,
+            duration: 3.0, // 默认3秒
+            loop: true,
+            speed: 1.0,
+            intensity: 1.0,
+        });
+        
+        if (result.success) {
+            // 添加AI响应到聊天历史
+            const aiResponse = `✅ 动画生成成功！\n动作类型: ${result.data.metadata.action_type}\n置信度: ${(result.data.metadata.confidence * 100).toFixed(1)}%\n时长: ${result.data.animation_data.duration}秒`;
+            addChatMessage(aiResponse, false);
+            
+            // 添加成功日志
+            addLog('success', `AI动画生成成功: ${result.data.metadata.action_type}`);
+            
+            // 发送动画数据给父组件
+            emit('ai-animation-generated', {
+                type: 'custom',
+                data: result.data,
+                name: `AI_${result.data.metadata.action_type}_${Date.now()}`,
+                duration: result.data.animation_data.duration * 1000
+            });
+            
+        } else {
+            throw new Error(result.message || '动画生成失败');
+        }
 
-        // 模拟AI响应延迟
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        // 生成AI响应
-        const aiResponse = generateAIResponse(userMessage);
-        addChatMessage(aiResponse, false);
-
-        // 发送动作指令
-        emit('ai-action', userMessage);
     } catch (error) {
         console.error('AI处理失败:', error);
-        addChatMessage('抱歉，处理您的指令时出现了错误。', false);
+        const errorMessage = `❌ 处理失败: ${error instanceof Error ? error.message : '未知错误'}`;
+        addChatMessage(errorMessage, false);
+        addLog('error', `AI处理失败: ${error instanceof Error ? error.message : '未知错误'}`);
     } finally {
         isProcessing.value = false;
     }
@@ -205,22 +227,7 @@ const addChatMessage = (content: string, isUser: boolean) => {
     }
 };
 
-// 生成AI响应
-const generateAIResponse = (userMessage: string): string => {
-    const lowerMessage = userMessage.toLowerCase();
 
-    if (lowerMessage.includes('走路') || lowerMessage.includes('走')) {
-        return '好的，我将让模型执行走路动作。';
-    } else if (lowerMessage.includes('挥手')) {
-        return '好的，我将让模型执行挥手动作。';
-    } else if (lowerMessage.includes('转') || lowerMessage.includes('旋转')) {
-        return '好的，我将调整模型的旋转角度。';
-    } else if (lowerMessage.includes('移动') || lowerMessage.includes('前进')) {
-        return '好的，我将让模型向前移动。';
-    } else {
-        return '我理解了您的指令，正在执行相应的动作。';
-    }
-};
 
 // 添加日志
 const addLog = (type: LogEntry['type'], message: string) => {

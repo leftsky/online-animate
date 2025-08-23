@@ -70,6 +70,7 @@
                             :model-status="modelStatus"
                             :available-animations="availableAnimations"
                             @ai-action="handleAIAction"
+                            @ai-animation-generated="handleAIAnimationGenerated"
                         />
                     </div>
                 </div>
@@ -178,6 +179,38 @@ const handleAIAction = (action: string) => {
         aiChatPanelRef.value?.addLog('success', '执行挥手动作');
     } else {
         aiChatPanelRef.value?.addLog('warning', `无法理解的指令: ${action}`);
+    }
+};
+
+// AI动画生成处理
+const handleAIAnimationGenerated = async (animation: { type: string; data: any; name: string; duration: number }) => {
+    try {
+        aiChatPanelRef.value?.addLog('info', `正在添加AI生成的动画: ${animation.name}`);
+        
+        // 调用ModelController的addCustomAnimation方法
+        const success = await modelController.addCustomAnimation({
+            name: animation.name,
+            duration: animation.data.animation_data.duration,
+            tracks: animation.data.animation_data.tracks
+        });
+        
+        if (success) {
+            aiChatPanelRef.value?.addLog('success', `AI动画添加成功: ${animation.name}`);
+            
+            // 自动播放新添加的动画
+            const animationIndex = availableAnimations.value.length - 1;
+            if (animationIndex >= 0) {
+                handleAnimationPlay(animationIndex);
+                aiChatPanelRef.value?.addLog('success', `开始播放AI生成的动画: ${animation.name}`);
+            }
+        } else {
+            throw new Error('添加动画失败');
+        }
+        
+    } catch (error) {
+        console.error('处理AI动画失败:', error);
+        aiChatPanelRef.value?.addLog('error', `处理AI动画失败: ${error instanceof Error ? error.message : '未知错误'}`);
+        toast.error('AI动画处理失败');
     }
 };
 

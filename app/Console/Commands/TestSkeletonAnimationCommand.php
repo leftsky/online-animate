@@ -127,35 +127,105 @@ class TestSkeletonAnimationCommand extends Command
 
             // 显示动画帧信息
             $this->newLine();
-            $this->info("🎬 动画帧信息:");
-            $frames = $result['animation_data']['frames'];
-            $sampleFrames = array_slice($frames, 0, 3); // 只显示前3帧作为示例
+            $this->info("🎬 动画轨道信息:");
             
-            foreach ($sampleFrames as $frame) {
-                $this->line("帧 {$frame['frame']} (时间: {$frame['time']}s):");
-                foreach ($frame['bones'] as $boneName => $boneData) {
-                    if (isset($boneData['rotation'])) {
-                        $rotation = $boneData['rotation'];
-                        if (is_array($rotation)) {
-                            $this->line("  - {$boneName}: 旋转 [" . implode(', ', array_map('number_format', $rotation, array_fill(0, count($rotation), 2))) . "]°");
-                        } else {
-                            $this->line("  - {$boneName}: 旋转 " . number_format($rotation, 2) . "°");
+            if (isset($result['animation_data']['tracks'])) {
+                $tracks = $result['animation_data']['tracks'];
+                $this->line("总轨道数: " . count($tracks));
+                
+                foreach ($tracks as $index => $track) {
+                    $this->newLine();
+                    $trackNumber = $index + 1;
+                    $this->line("轨道 {$trackNumber}: {$track['name']}");
+                    $this->line("  时间轴: [" . implode(', ', array_map('number_format', $track['times'], array_fill(0, count($track['times']), 2))) . "] 秒");
+                    
+                    if (isset($track['rotations']) && count($track['rotations']) > 0) {
+                        $this->line("  旋转关键帧数: " . count($track['rotations']));
+                        // 显示前3个旋转关键帧
+                        $sampleRotations = array_slice($track['rotations'], 0, 3);
+                        foreach ($sampleRotations as $i => $rotation) {
+                            $this->line("    帧 {$i}: [" . implode(', ', array_map('number_format', $rotation, array_fill(0, count($rotation), 3))) . "]");
+                        }
+                        if (count($track['rotations']) > 3) {
+                            $this->line("    ... 还有 " . (count($track['rotations']) - 3) . " 个旋转关键帧");
                         }
                     }
-                    if (isset($boneData['position'])) {
-                        $position = $boneData['position'];
-                        if (is_array($position)) {
-                            $this->line("  - {$boneName}: 位置 [" . implode(', ', array_map('number_format', $position, array_fill(0, count($position), 2))) . "]");
-                        } else {
-                            $this->line("  - {$boneName}: 位置 " . number_format($position, 2));
+                    
+                    if (isset($track['positions']) && count($track['positions']) > 0) {
+                        $this->line("  位置关键帧数: " . count($track['positions']));
+                        // 显示前3个位置关键帧
+                        $samplePositions = array_slice($track['positions'], 0, 3);
+                        foreach ($samplePositions as $i => $position) {
+                            $this->line("    帧 {$i}: [" . implode(', ', array_map('number_format', $position, array_fill(0, count($position), 3))) . "]");
+                        }
+                        if (count($track['positions']) > 3) {
+                            $this->line("    ... 还有 " . (count($track['positions']) - 3) . " 个位置关键帧");
                         }
                     }
                 }
-                $this->newLine();
+            } else {
+                $this->line("❌ 未找到轨道数据");
             }
 
-            if (count($frames) > 3) {
-                $this->line("... 还有 " . (count($frames) - 3) . " 帧");
+            // 显示Three.js兼容性信息
+            $this->newLine();
+            $this->info("🔧 Three.js 兼容性检查:");
+            
+            $isCompatible = true;
+            $compatibilityIssues = [];
+            
+            if (isset($result['animation_data']['tracks'])) {
+                $tracks = $result['animation_data']['tracks'];
+                
+                foreach ($tracks as $track) {
+                    // 检查必要字段
+                    if (!isset($track['name']) || !isset($track['times'])) {
+                        $isCompatible = false;
+                        $compatibilityIssues[] = "轨道缺少必要字段: name 或 times";
+                        continue;
+                    }
+                    
+                    // 检查时间轴
+                    if (count($track['times']) < 2) {
+                        $isCompatible = false;
+                        $compatibilityIssues[] = "轨道 {$track['name']} 时间轴关键帧不足";
+                    }
+                    
+                    // 检查旋转数据
+                    if (isset($track['rotations'])) {
+                        foreach ($track['rotations'] as $rotation) {
+                            if (!is_array($rotation) || count($rotation) !== 4) {
+                                $isCompatible = false;
+                                $compatibilityIssues[] = "轨道 {$track['name']} 旋转数据格式错误，需要4个值 [x,y,z,w]";
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // 检查位置数据
+                    if (isset($track['positions'])) {
+                        foreach ($track['positions'] as $position) {
+                            if (!is_array($position) || count($position) !== 3) {
+                                $isCompatible = false;
+                                $compatibilityIssues[] = "轨道 {$track['name']} 位置数据格式错误，需要3个值 [x,y,z]";
+                                break;
+                            }
+                        }
+                    }
+                }
+            } else {
+                $isCompatible = false;
+                $compatibilityIssues[] = "缺少轨道数据";
+            }
+            
+            if ($isCompatible) {
+                $this->line("✅ 数据格式完全兼容 Three.js");
+                $this->line("✅ 可以直接调用 addCustomAnimation() 方法");
+            } else {
+                $this->line("❌ 数据格式存在兼容性问题:");
+                foreach ($compatibilityIssues as $issue) {
+                    $this->line("   • {$issue}");
+                }
             }
 
             // 显示标准骨骼信息
