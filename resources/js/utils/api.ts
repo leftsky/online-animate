@@ -26,7 +26,7 @@ export interface AppConfig {
 // 配置 axios 实例
 const apiClient = axios.create({
     baseURL: '/web/api',
-    timeout: 30000,
+    timeout: 300000,
     headers: {
         Accept: 'application/json',
         'X-Requested-With': 'XMLHttpRequest',

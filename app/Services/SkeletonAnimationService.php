@@ -15,7 +15,7 @@ use Exception;
 class SkeletonAnimationService
 {
     protected $deepseek_api_key = "sk-80f8ccea7f2b482eb0c8d60bcb4e06dc";
-    protected $deepseek_api_url = "https://api.deepseek.com/v1/chat/completions";
+    protected $deepseek_api_url = "https://api.deepseek.com/chat/completions";
 
     // 标准 Mixamo 骨骼名称
     protected $standardBones = [
@@ -100,6 +100,70 @@ class SkeletonAnimationService
     }
 
     /**
+     * 流式生成骨骼动画（实时返回内容）
+     *
+     * @param string $text 自然语言描述
+     * @param array $options 动画选项
+     * @param callable $callback 流式回调函数
+     * @return array 骨骼动画数据
+     * @throws Exception
+     */
+    public function generateAnimationStream(string $text, array $options = [], callable $callback = null): array
+    {
+        // 创建数据库记录
+        $animationRecord = $this->createAnimationRecord($text, $options);
+        
+        try {
+            Log::info('开始流式生成骨骼动画', ['text' => $text, 'options' => $options, 'record_id' => $animationRecord->id]);
+
+            // 1. 使用 DeepSeek API 流式解析自然语言并生成动画数据
+            $aiResult = $this->analyzeTextWithAIStream($text, $callback);
+            
+            // 2. 提取动画参数
+            $animationParams = $this->extractAnimationParams($aiResult, $options);
+            
+            // 3. 生成骨骼动画数据
+            $animationData = $this->generateSkeletonData($aiResult, $animationParams);
+            
+            // 4. 优化动画参数
+            $optimizedData = $this->optimizeAnimation($animationData, $options);
+            
+            // 5. 更新数据库记录
+            $this->updateAnimationRecord($animationRecord, $aiResult, $optimizedData);
+            
+            Log::info('流式骨骼动画生成成功', [
+                'action_type' => $aiResult['action_type'],
+                'record_id' => $animationRecord->id
+            ]);
+            
+            return [
+                'animation_data' => $optimizedData,
+                'metadata' => [
+                    'action_type' => $aiResult['action_type'],
+                    'confidence' => $aiResult['confidence'],
+                    'suggestions' => $aiResult['suggestions'],
+                    'ai_analysis' => $aiResult,
+                    'processing_time' => microtime(true) - LARAVEL_START,
+                    'record_id' => $animationRecord->id
+                ]
+            ];
+            
+        } catch (Exception $e) {
+            Log::error('流式骨骼动画生成失败', [
+                'text' => $text,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'record_id' => $animationRecord->id
+            ]);
+            
+            // 更新数据库记录为失败状态
+            $this->updateAnimationRecordOnError($animationRecord, $e);
+            
+            throw $e;
+        }
+    }
+
+    /**
      * 创建动画记录
      *
      * @param string $text
@@ -161,8 +225,7 @@ class SkeletonAnimationService
      */
     private function generateAnimationName(string $text): string
     {
-        $timestamp = now()->format('Y-m-d H:i:s');
-        return "AI_动画_{$timestamp}";
+        return $text;
     }
 
     /**
@@ -203,31 +266,39 @@ class SkeletonAnimationService
         try {
             $prompt = $this->buildAnalysisPrompt($text);
             
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $this->deepseek_api_key,
-                'Content-Type' => 'application/json',
-            ])->post($this->deepseek_api_url, [
-                'model' => 'deepseek-chat',
-                'messages' => [
-                    [
-                        'role' => 'system',
-                        'content' => '你是一个专业的3D动画师和骨骼动画专家，专门分析自然语言描述并生成完整的骨骼动画数据。请严格按照JSON格式返回结果，包含所有必要的动画帧和骨骼变换信息。'
+            $response = Http::timeout(15) // 减少超时时间到15秒
+                // ->retry(2, 1000) // 重试2次，间隔1秒
+                ->withHeaders([
+                    'Authorization' => 'Bearer ' . $this->deepseek_api_key,
+                    'Content-Type' => 'application/json',
+                ])->post($this->deepseek_api_url, [
+                    'model' => 'deepseek-reasoner',
+                    'messages' => [
+                        [
+                            'role' => 'system',
+                            'content' => '你是一个专业的3D动画师和骨骼动画专家，专门分析自然语言描述并生成完整的骨骼动画数据。请严格按照JSON格式返回结果，包含所有必要的动画帧和骨骼变换信息。'
+                        ],
+                        [
+                            'role' => 'user',
+                            'content' => $prompt
+                        ]
                     ],
-                    [
-                        'role' => 'user',
-                        'content' => $prompt
-                    ]
-                ],
-                'temperature' => 0.1,
-                'max_tokens' => 2000
-            ]);
+                    'temperature' => 0.1,
+                    'max_tokens' => 2000,
+                    'stream' => true // 启用流式响应
+                ]);
 
             if (!$response->successful()) {
                 throw new Exception('DeepSeek API 请求失败: ' . $response->status() . ' - ' . $response->body());
             }
 
-            $responseData = $response->json();
-            $content = $responseData['choices'][0]['message']['content'] ?? '';
+            // 流式处理响应
+            $content = $this->processStreamResponse($response);
+            
+            Log::info('DeepSeek API 分析', [
+                'text' => $text,
+                'ai_response' => $content
+            ]);
             
             // 尝试解析JSON响应
             $aiResult = $this->parseAIResponse($content);
@@ -245,9 +316,466 @@ class SkeletonAnimationService
                 'error' => $e->getMessage()
             ]);
             
-            // 如果AI分析失败，回退到基础模式匹配
-            return $this->fallbackAnalysis($text);
+            // 直接抛出异常，不进行回退分析
+            throw $e;
         }
+    }
+
+    /**
+     * 流式使用 DeepSeek API 分析自然语言文本
+     *
+     * @param string $text
+     * @param callable|null $callback
+     * @return array
+     * @throws Exception
+     */
+    private function analyzeTextWithAIStream(string $text, callable $callback = null): array
+    {
+        try {
+            $prompt = $this->buildAnalysisPrompt($text);
+            
+            // 首先尝试流式请求
+            try {
+                $content = $this->makeStreamRequest($prompt, $callback);
+                Log::info('流式请求成功');
+            } catch (Exception $e) {
+                Log::warning('流式请求失败，尝试非流式请求', ['error' => $e->getMessage()]);
+                
+                // 如果流式失败，回退到非流式
+                if ($callback) {
+                    $callback("流式请求失败，切换到非流式模式...\n", "", 0);
+                }
+                
+                $content = $this->makeNonStreamRequest($prompt, $callback);
+            }
+            
+            // 尝试解析JSON响应
+            $aiResult = $this->parseAIResponse($content);
+            
+            return $aiResult;
+
+        } catch (Exception $e) {
+            Log::error('DeepSeek API 流式分析失败', [
+                'text' => $text,
+                'error' => $e->getMessage()
+            ]);
+            
+            throw $e;
+        }
+    }
+
+    /**
+     * 使用非流式方式发送请求（备用方案）
+     *
+     * @param string $prompt
+     * @param callable|null $callback
+     * @return string
+     * @throws Exception
+     */
+    private function makeNonStreamRequest(string $prompt, callable $callback = null): string
+    {
+        $data = [
+            'model' => 'deepseek-reasoner',
+            'messages' => [
+                [
+                    'role' => 'system',
+                    'content' => '你是一个专业的3D动画师和骨骼动画专家，专门分析自然语言描述并生成完整的骨骼动画数据。请严格按照JSON格式返回结果，包含所有必要的动画帧和骨骼变换信息。'
+                ],
+                [
+                    'role' => 'user',
+                    'content' => $prompt
+                ]
+            ],
+            'temperature' => 0.1,
+            'max_tokens' => 2000,
+            'stream' => false // 禁用流式
+        ];
+        
+        $response = Http::timeout(60)
+            ->withHeaders([
+                'Authorization' => 'Bearer ' . $this->deepseek_api_key,
+                'Content-Type' => 'application/json',
+            ])->post($this->deepseek_api_url, $data);
+
+        if (!$response->successful()) {
+            throw new Exception('非流式API请求失败: ' . $response->status() . ' - ' . $response->body());
+        }
+
+        $responseData = $response->json();
+        $content = $responseData['choices'][0]['message']['content'] ?? '';
+        
+        // 如果没有content，尝试获取reasoning_content
+        if (empty($content) && isset($responseData['choices'][0]['message']['reasoning_content'])) {
+            $content = $responseData['choices'][0]['message']['reasoning_content'];
+        }
+        
+        if (empty($content)) {
+            throw new Exception('非流式响应内容为空');
+        }
+        
+        // 模拟流式输出
+        if ($callback && is_callable($callback)) {
+            $words = explode(' ', $content);
+            $chunkSize = max(1, intval(count($words) / 20)); // 分成20个块
+            
+            for ($i = 0; $i < count($words); $i += $chunkSize) {
+                $chunk = implode(' ', array_slice($words, $i, $chunkSize));
+                $callback($chunk . ' ', $content, strlen($content));
+                usleep(100000); // 100ms延迟，模拟流式效果
+            }
+        }
+        
+        Log::info('非流式请求完成', [
+            'content_length' => strlen($content),
+            'content_preview' => substr($content, 0, 100) . '...'
+        ]);
+        
+        return $content;
+    }
+
+    /**
+     * 使用cURL发送流式请求
+     *
+     * @param string $prompt
+     * @param callable|null $callback
+     * @return string
+     * @throws Exception
+     */
+    private function makeStreamRequest(string $prompt, callable $callback = null): string
+    {
+        $ch = curl_init();
+        $content = ''; // 初始化内容变量
+        
+        $data = [
+            'model' => 'deepseek-reasoner',
+            'messages' => [
+                [
+                    'role' => 'system',
+                    'content' => '你是一个专业的3D动画师和骨骼动画专家，专门分析自然语言描述并生成完整的骨骼动画数据。请严格按照JSON格式返回结果，包含所有必要的动画帧和骨骼变换信息。'
+                ],
+                [
+                    'role' => 'user',
+                    'content' => $prompt
+                ]
+            ],
+            'temperature' => 0.1,
+            'max_tokens' => 2000,
+            'stream' => true
+        ];
+        
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $this->deepseek_api_url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => json_encode($data),
+            CURLOPT_HTTPHEADER => [
+                'Authorization: Bearer ' . $this->deepseek_api_key,
+                'Content-Type: application/json',
+                'Accept: text/event-stream',
+            ],
+            CURLOPT_TIMEOUT => 120, // 增加到2分钟
+            CURLOPT_WRITEFUNCTION => function($ch, $data) use (&$content, $callback) {
+                // 记录原始数据用于调试
+                // Log::debug('收到原始流式数据', [
+                //     'data_length' => strlen($data),
+                //     'data_preview' => substr($data, 0, 200)
+                // ]);
+                
+                $lines = explode("\n", $data);
+                
+                foreach ($lines as $line) {
+                    $line = trim($line);
+                    
+                    if (empty($line) || $line === 'data: [DONE]') {
+                        continue;
+                    }
+                    
+                    if (str_starts_with($line, 'data: ')) {
+                        $jsonData = substr($line, 6);
+                        
+                        try {
+                            $responseData = json_decode($jsonData, true);
+                            
+                            if (json_last_error() === JSON_ERROR_NONE && 
+                                isset($responseData['choices'][0]['delta']['content'])) {
+                                
+                                $fragment = $responseData['choices'][0]['delta']['content'];
+                                $content .= $fragment;
+                                
+                                // 调用回调函数，确保实时输出
+                                if ($callback && is_callable($callback)) {
+                                    $callback($fragment, $content, strlen($content));
+                                    
+                                    // 强制刷新输出缓冲区
+                                    if (function_exists('flush')) {
+                                        flush();
+                                    }
+                                    if (function_exists('ob_flush')) {
+                                        ob_flush();
+                                    }
+                                }
+                                
+                                // Log::debug('流式接收内容片段', [
+                                //     'fragment' => $fragment,
+                                //     'total_length' => strlen($content)
+                                // ]);
+                            } else if (json_last_error() === JSON_ERROR_NONE && 
+                                       isset($responseData['choices'][0]['delta']['reasoning_content'])) {
+                                // 处理 DeepSeek 的 reasoning_content 字段
+                                $fragment = $responseData['choices'][0]['delta']['reasoning_content'];
+                                if (!empty($fragment)) {
+                                    $content .= $fragment;
+                                    
+                                    // 调用回调函数，确保实时输出
+                                    if ($callback && is_callable($callback)) {
+                                        $callback($fragment, $content, strlen($content));
+                                        
+                                        // 强制刷新输出缓冲区
+                                        if (function_exists('flush')) {
+                                            flush();
+                                        }
+                                        if (function_exists('ob_flush')) {
+                                            ob_flush();
+                                        }
+                                    }
+                                    
+                                    // Log::debug('流式接收推理内容片段', [
+                                    //     'fragment' => $fragment,
+                                    //     'total_length' => strlen($content)
+                                    // ]);
+                                }
+                            } else {
+                                // 记录解析失败的情况
+                                Log::debug('JSON解析结果', [
+                                    'json_data' => $jsonData,
+                                    'parsed_data' => $responseData,
+                                    'json_error' => json_last_error_msg()
+                                ]);
+                            }
+                        } catch (Exception $e) {
+                            Log::warning('解析流式响应片段失败', [
+                                'json_data' => $jsonData,
+                                'error' => $e->getMessage()
+                            ]);
+                        }
+                    } else {
+                        // 记录非标准格式的行，帮助调试
+                        Log::debug('非标准流式响应行', [
+                            'line' => $line,
+                            'line_length' => strlen($line)
+                        ]);
+                    }
+                }
+                
+                return strlen($data);
+            }
+        ]);
+        
+        $result = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        $info = curl_getinfo($ch);
+        
+        curl_close($ch);
+        
+        // 记录详细的cURL信息
+        Log::info('cURL请求完成', [
+            'http_code' => $httpCode,
+            'total_time' => $info['total_time'],
+            'size_download' => $info['size_download'],
+            'speed_download' => $info['speed_download'],
+            'content_length' => strlen($content),
+            'curl_error' => $error
+        ]);
+        
+        if ($result === false) {
+            throw new Exception('cURL请求失败: ' . $error);
+        }
+        
+        if ($httpCode !== 200) {
+            throw new Exception('HTTP请求失败，状态码: ' . $httpCode . ', 响应: ' . $result);
+        }
+        
+        // 尝试从原始响应中解析JSON
+        if (preg_match('/\{.*\}/s', $result, $matches)) {
+            $jsonContent = $matches[0];
+            $decoded = json_decode($jsonContent, true);
+            
+            if (json_last_error() === JSON_ERROR_NONE && 
+                isset($decoded['choices'][0]['message']['content'])) {
+                $content = $decoded['choices'][0]['message']['content'];
+                Log::info('从原始响应中提取到内容', [
+                    'content_length' => strlen($content),
+                    'content_preview' => substr($content, 0, 100)
+                ]);
+            } else if (json_last_error() === JSON_ERROR_NONE && 
+                       isset($decoded['choices'][0]['message']['reasoning_content'])) {
+                // 尝试获取 reasoning_content
+                $content = $decoded['choices'][0]['message']['reasoning_content'];
+                Log::info('从原始响应中提取到推理内容', [
+                    'content_length' => strlen($content),
+                    'content_preview' => substr($content, 0, 100)
+                ]);
+            }
+        }
+        
+        if (empty($content)) {
+            throw new Exception('流式响应为空，未接收到任何内容。原始响应长度: ' . strlen($result));
+        }
+        
+        Log::info('流式请求完成', [
+            'total_content_length' => strlen($content),
+            'content_preview' => substr($content, 0, 100) . '...'
+        ]);
+        
+        return $content;
+    }
+
+    /**
+     * 处理流式响应
+     *
+     * @param \Illuminate\Http\Client\Response $response
+     * @return string
+     * @throws Exception
+     */
+    private function processStreamResponse($response): string
+    {
+        $content = '';
+        $body = $response->body();
+        
+        // 按行分割流式响应
+        $lines = explode("\n", $body);
+        
+        foreach ($lines as $line) {
+            $line = trim($line);
+            
+            // 跳过空行和data: [DONE]
+            if (empty($line) || $line === 'data: [DONE]') {
+                continue;
+            }
+            
+            // 处理data: 开头的行
+            if (str_starts_with($line, 'data: ')) {
+                $jsonData = substr($line, 6); // 移除 "data: " 前缀
+                
+                try {
+                    $data = json_decode($jsonData, true);
+                    
+                    if (json_last_error() === JSON_ERROR_NONE && isset($data['choices'][0]['delta']['content'])) {
+                        $content .= $data['choices'][0]['delta']['content'];
+                        
+                        // 记录流式接收的进度
+                        Log::debug('流式接收内容片段', [
+                            'fragment' => $data['choices'][0]['delta']['content'],
+                            'total_length' => strlen($content)
+                        ]);
+                    }
+                } catch (Exception $e) {
+                    Log::warning('解析流式响应片段失败', [
+                        'json_data' => $jsonData,
+                        'error' => $e->getMessage()
+                    ]);
+                    continue;
+                }
+            }
+        }
+        
+        if (empty($content)) {
+            throw new Exception('流式响应解析失败，未获取到有效内容');
+        }
+        
+        Log::info('流式响应处理完成', [
+            'total_content_length' => strlen($content),
+            'content_preview' => substr($content, 0, 100) . '...'
+        ]);
+        
+        return $content;
+    }
+
+    /**
+     * 带回调的流式响应处理
+     *
+     * @param \Illuminate\Http\Client\Response $response
+     * @param callable|null $callback
+     * @return string
+     * @throws Exception
+     */
+    private function processStreamResponseWithCallback($response, callable $callback = null): string
+    {
+        $content = '';
+        $body = $response->body();
+        
+        Log::info('开始处理流式响应', ['response_length' => strlen($body)]);
+        
+        // 按行分割流式响应
+        $lines = explode("\n", $body);
+        $lineCount = count($lines);
+        
+        Log::info('流式响应行数', ['total_lines' => $lineCount]);
+        
+        foreach ($lines as $index => $line) {
+            $line = trim($line);
+            
+            // 跳过空行和data: [DONE]
+            if (empty($line) || $line === 'data: [DONE]') {
+                continue;
+            }
+            
+            // 处理data: 开头的行
+            if (str_starts_with($line, 'data: ')) {
+                $jsonData = substr($line, 6);
+                
+                try {
+                    $data = json_decode($jsonData, true);
+                    
+                    if (json_last_error() === JSON_ERROR_NONE && isset($data['choices'][0]['delta']['content'])) {
+                        $fragment = $data['choices'][0]['delta']['content'];
+                        $content .= $fragment;
+                        
+                        // 调用回调函数，实时返回内容片段
+                        if ($callback && is_callable($callback)) {
+                            $callback($fragment, $content, strlen($content));
+                        }
+                        
+                        Log::debug('流式接收内容片段', [
+                            'fragment' => $fragment,
+                            'total_length' => strlen($content),
+                            'line_number' => $index + 1
+                        ]);
+                    }
+                } catch (Exception $e) {
+                    Log::warning('解析流式响应片段失败', [
+                        'json_data' => $jsonData,
+                        'error' => $e->getMessage(),
+                        'line_number' => $index + 1
+                    ]);
+                    continue;
+                }
+            } else {
+                // 记录非标准格式的行，帮助调试
+                Log::debug('非标准流式响应行', [
+                    'line' => $line,
+                    'line_number' => $index + 1
+                ]);
+            }
+        }
+        
+        if (empty($content)) {
+            Log::error('流式响应解析失败', [
+                'total_lines' => $lineCount,
+                'response_body' => substr($body, 0, 500) . '...',
+                'lines_sample' => array_slice($lines, 0, 5)
+            ]);
+            throw new Exception('流式响应解析失败，未获取到有效内容。响应行数: ' . $lineCount);
+        }
+        
+        Log::info('流式响应处理完成', [
+            'total_content_length' => strlen($content),
+            'content_preview' => substr($content, 0, 100) . '...',
+            'total_lines_processed' => $lineCount
+        ]);
+        
+        return $content;
     }
 
     /**
@@ -333,7 +861,6 @@ class SkeletonAnimationService
                 return $this->validateAndNormalizeAIResult($decoded);
             }
         }
-        
         throw new Exception('无法解析AI响应中的JSON内容');
     }
 
@@ -470,32 +997,6 @@ class SkeletonAnimationService
     }
 
 
-
-    /**
-     * 回退分析（当AI分析失败时使用）
-     *
-     * @param string $text
-     * @return array
-     */
-    private function fallbackAnalysis(string $text): array
-    {
-        Log::warning('使用回退分析模式', ['text' => $text]);
-        
-        return [
-            'action_type' => '回退模式',
-            'confidence' => 0.5,
-            'duration' => 2.0,
-            'speed' => 1.0,
-            'intensity' => 1.0,
-            'direction' => 'forward',
-            'style' => 'normal',
-            'description' => '使用回退分析模式',
-            'suggestions' => ['建议使用更清晰的描述', '可以尝试重新描述动作'],
-            'bones_affected' => ['mixamorigHips', 'mixamorigSpine'],
-            'special_effects' => '',
-            'tracks' => $this->generateDefaultTracks(2.0)
-        ];
-    }
 
     /**
      * 提取动画参数

@@ -15,7 +15,7 @@ class TestSkeletonAnimationCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'test:skeleton-animation {text : 动作描述文本}';
+    protected $signature = 'test:skeleton-animation {text : 动作描述文本} {--stream : 启用流式输出}';
 
     /**
      * 命令描述
@@ -50,15 +50,64 @@ class TestSkeletonAnimationCommand extends Command
     public function handle(): int
     {
         $text = $this->argument('text');
+        $isStream = $this->option('stream');
+        
+        // 设置输出缓冲区，支持实时输出
+        if ($isStream) {
+            // 禁用输出缓冲
+            if (ob_get_level()) {
+                ob_end_clean();
+            }
+            
+            // 设置无缓冲输出
+            if (function_exists('apache_setenv')) {
+                @apache_setenv('no-gzip', 1);
+            }
+            
+            // 设置HTTP头，禁用缓冲
+            if (!headers_sent()) {
+                header('Content-Type: text/plain; charset=utf-8');
+                header('Cache-Control: no-cache');
+                header('X-Accel-Buffering: no');
+            }
+        }
         
         $this->info("🚀 开始测试AI驱动的骨骼动画服务...");
         $this->info("📝 输入文本: {$text}");
+        $this->info("🔄 流式输出: " . ($isStream ? '启用' : '禁用'));
         $this->newLine();
 
         try {
             $startTime = microtime(true);
             
-            $result = $this->skeletonAnimationService->generateAnimation($text);
+            if ($isStream) {
+                $this->info("🔄 开始流式生成动画...");
+                $this->newLine();
+                
+                $result = $this->skeletonAnimationService->generateAnimationStream(
+                    $text, 
+                    [], 
+                    function(string $fragment, string $content, int $length) {
+                        // 实时输出每个内容片段
+                        $this->output->write($fragment);
+                        
+                        // 强制刷新输出
+                        if (function_exists('flush')) {
+                            flush();
+                        }
+                        
+                        // 每100个字符换行一次，避免输出过长
+                        if ($length % 100 === 0) {
+                            $this->newLine();
+                        }
+                    }
+                );
+                
+                $this->newLine(2);
+                $this->info("✅ 流式生成完成！");
+            } else {
+                $result = $this->skeletonAnimationService->generateAnimation($text);
+            }
             
             $endTime = microtime(true);
             $processingTime = ($endTime - $startTime) * 1000; // 转换为毫秒
