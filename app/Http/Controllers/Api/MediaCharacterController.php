@@ -91,8 +91,15 @@ class MediaCharacterController extends WebApiController
     /**
      * 获取人物详情
      */
-    public function show(MediaCharacter $character): JsonResponse
+    public function show($id): JsonResponse
     {
+        // 手动查询角色，避免路由模型绑定问题
+        $character = MediaCharacter::find($id);
+        
+        if (!$character) {
+            return $this->error('资源不存在');
+        }
+
         if ($character->user_id !== Auth::id()) {
             return $this->unauthorized('无权访问此资源');
         }
@@ -103,8 +110,15 @@ class MediaCharacterController extends WebApiController
     /**
      * 更新人物
      */
-    public function update(Request $request, MediaCharacter $mediaCharacter): JsonResponse
+    public function update(Request $request, $id): JsonResponse
     {
+        // 手动查询角色，避免路由模型绑定问题
+        $mediaCharacter = MediaCharacter::find($id);
+        
+        if (!$mediaCharacter) {
+            return $this->error('资源不存在');
+        }
+
         // 验证用户权限
         if ($mediaCharacter->user_id !== Auth::id()) {
             return $this->unauthorized('无权访问此资源');
@@ -149,8 +163,16 @@ class MediaCharacterController extends WebApiController
     /**
      * 删除人物
      */
-    public function destroy(MediaCharacter $character): JsonResponse
+    public function destroy($id): JsonResponse
     {
+        // 手动查询角色，避免路由模型绑定问题
+        $character = MediaCharacter::find($id);
+        
+        if (!$character) {
+            return $this->error('资源不存在');
+        }
+
+        // 验证用户权限
         if ($character->user_id !== Auth::id()) {
             return $this->unauthorized('无权访问此资源');
         }
