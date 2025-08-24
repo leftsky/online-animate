@@ -12,6 +12,27 @@
                         
                         <!-- AI动画搜索和选择 -->
                         <div class="flex items-center gap-3">
+                            <!-- 载入FBX动画按钮 -->
+                            <Button 
+                                @click="handleLoadFBXAnimation" 
+                                variant="outline" 
+                                size="sm"
+                                class="flex items-center gap-2"
+                            >
+                                <FileUp class="h-4 w-4" />
+                                载入FBX动画
+                            </Button>
+                            
+                            <!-- 隐藏的文件输入 -->
+                            <input
+                                ref="fbxFileInput"
+                                type="file"
+                                accept=".fbx"
+                                multiple
+                                class="hidden"
+                                @change="handleFBXFileSelected"
+                            />
+                            
                             <div class="relative">
                                 <Input
                                     v-model="aiAnimationSearch"
@@ -162,7 +183,7 @@
 import ModelControlPanel from '@/components/ModelControlPanel.vue';
 import { useToast } from '@/composables/useToast';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Package, Search, RefreshCw, Loader2 } from 'lucide-vue-next';
+import { Package, Search, RefreshCw, Loader2, FileUp } from 'lucide-vue-next';
 import { onMounted, ref, watch } from 'vue';
 import AIChatPanel from './components/AIChatPanel.vue';
 import { Button } from '@/components/ui/button';
@@ -209,7 +230,7 @@ const aiChatPanelRef = ref<InstanceType<typeof AIChatPanel> | null>(null);
 const modelName = ref('调试模型');
 
 // 默认模型URL
-const defaultModelUrl = 'http://online-animate-qos.leftsky.top/models/2025/08/tOS0oFc8hx_1755666406.glb';
+const defaultModelUrl = 'https://online-animate-qos.leftsky.top/models/2025/08/DY5l9zbaqO_1756016791.fbx';
 
 // AI动画搜索相关状态
 const aiAnimationSearch = ref('');
@@ -447,6 +468,93 @@ const loadDefaultModel = async () => {
     } catch (error) {
         console.error('加载默认模型失败:', error);
         toast.error('加载默认模型失败');
+    }
+};
+
+// 载入FBX动画
+const fbxFileInput = ref<HTMLInputElement | null>(null);
+const handleLoadFBXAnimation = () => {
+    fbxFileInput.value?.click();
+};
+
+const handleFBXFileSelected = async (event: Event) => {
+    const files = (event.target as HTMLInputElement).files;
+    if (!files || files.length === 0) {
+        toast.error('未选择文件');
+        return;
+    }
+
+    try {
+        isLoadingAiAnimations.value = true;
+        
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            
+            // 检查文件类型
+            if (!file.name.toLowerCase().endsWith('.fbx')) {
+                toast.error(`文件 ${file.name} 不是有效的FBX文件`);
+                continue;
+            }
+
+            // 使用FileReader读取文件
+            const reader = new FileReader();
+            
+            reader.onload = async (e) => {
+                try {
+                    const arrayBuffer = e.target?.result as ArrayBuffer;
+                    if (!arrayBuffer) {
+                        toast.error(`读取文件 ${file.name} 失败`);
+                        return;
+                    }
+
+                    // 创建Blob URL
+                    const blob = new Blob([arrayBuffer], { type: 'application/octet-stream' });
+                    const fileUrl = URL.createObjectURL(blob);
+
+                    // 调用ModelController的importFBXAnimations方法
+                    const result = await modelController.importFBXAnimations(fileUrl, {
+                        prefix: `FBX_${file.name.replace('.fbx', '')}_`,
+                        replaceExisting: false
+                    });
+
+                    if (result.success) {
+                        toast.success(`成功载入 ${result.importedCount} 个动画`);
+                        console.log(`FBX动画载入成功: ${result.importedCount} 个动画`);
+                        
+                        // 更新可用动画列表
+                        availableAnimations.value = [...modelController.animations.value];
+                        
+                        // 清理Blob URL
+                        URL.revokeObjectURL(fileUrl);
+                    } else {
+                        toast.error(`载入文件 ${file.name} 失败: ${result.errors?.join(', ')}`);
+                        console.error(`FBX动画载入失败:`, result.errors);
+                        
+                        // 清理Blob URL
+                        URL.revokeObjectURL(fileUrl);
+                    }
+                } catch (error) {
+                    console.error(`处理文件 ${file.name} 失败:`, error);
+                    toast.error(`处理文件 ${file.name} 失败`);
+                }
+            };
+
+            reader.onerror = () => {
+                toast.error(`读取文件 ${file.name} 失败`);
+            };
+
+            // 读取文件为ArrayBuffer
+            reader.readAsArrayBuffer(file);
+        }
+    } catch (error) {
+        console.error('FBX动画载入失败:', error);
+        toast.error('FBX动画载入失败');
+    } finally {
+        isLoadingAiAnimations.value = false;
+        // 清空文件输入
+        if (fbxFileInput.value) {
+            fbxFileInput.value.value = '';
+        }
     }
 };
 
