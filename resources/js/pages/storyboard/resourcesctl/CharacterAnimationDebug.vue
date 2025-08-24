@@ -101,6 +101,7 @@
                                 :model-id="modelId"
                                 @animation-selected="handleAnimationSelected"
                                 @animation-preview="handleAnimationPreview"
+                                @batch-animation-preview="handleBatchAnimationPreview"
                             />
                         </div>
 
@@ -140,6 +141,52 @@
                                 <h4 class="font-medium text-foreground">{{ modelName }}</h4>
                                 <p class="text-xs text-muted-foreground">3D模型预览</p>
                             </div>
+
+                            <!-- 批量预览状态显示 -->
+                            <div
+                                v-if="isBatchPreviewMode"
+                                class="absolute right-4 top-4 rounded-lg border border-border bg-background/80 p-3 text-sm backdrop-blur-sm"
+                            >
+                                <h4 class="font-medium text-foreground">批量预览模式</h4>
+                                <p class="text-xs text-muted-foreground">
+                                    {{ isCreatingBatchPreview ? '创建预览中...' : `预览 ${batchPreviewAnimations.length} 个动画` }}
+                                </p>
+                                <div v-if="batchPreviewError" class="mt-2 text-xs text-red-500">
+                                    错误: {{ batchPreviewError }}
+                                </div>
+                                
+                                <!-- 批量预览控制按钮 -->
+                                <div class="mt-2 flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        class="h-6 px-2 text-xs"
+                                        @click="refreshBatchPreview"
+                                        :disabled="isCreatingBatchPreview"
+                                    >
+                                        <RefreshCw class="h-3 w-3" />
+                                        刷新
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        class="h-6 px-2 text-xs"
+                                        @click="stopBatchPreview"
+                                    >
+                                        <Square class="h-3 w-3" />
+                                        停止
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        class="h-6 px-2 text-xs"
+                                        @click="debugBatchPreview"
+                                    >
+                                        <Bug class="h-3 w-3" />
+                                        调试
+                                    </Button>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- 右侧AI对话面板 -->
@@ -157,7 +204,7 @@
 import ActionLibraryPanel from '@/components/ActionLibraryPanel.vue';
 import { useToast } from '@/composables/useToast';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Package, Search, RefreshCw, Loader2 } from 'lucide-vue-next';
+import { Package, Search, RefreshCw, Loader2, Square, Bug } from 'lucide-vue-next';
 import { onMounted, ref, watch } from 'vue';
 import AIChatPanel from './components/AIChatPanel.vue';
 import { Button } from '@/components/ui/button';
@@ -176,8 +223,6 @@ const {
     load,
     animations: availableAnimations,
     status: modelStatus,
-    toggleBoundingBox: handleToggleBoundingBox,
-    toggleSkeleton: handleToggleSkeleton,
 } = modelController;
 
 const modelInitParams = ref<any>({
@@ -199,6 +244,13 @@ const threeCanvas = ref<HTMLCanvasElement>();
 // 动作库面板相关状态
 const actionLibraryRef = ref<InstanceType<typeof ActionLibraryPanel> | null>(null);
 const aiChatPanelRef = ref<InstanceType<typeof AIChatPanel> | null>(null);
+
+// 批量预览相关状态
+const batchPreviewControllers = ref<any[]>([]);
+const isBatchPreviewMode = ref(false);
+const batchPreviewAnimations = ref<any[]>([]);
+const isCreatingBatchPreview = ref(false);
+const batchPreviewError = ref<string | null>(null);
 
 // 模型名称和ID
 const modelName = ref('调试模型');
@@ -294,6 +346,45 @@ const handleAnimationPreview = (animation: any) => {
     console.log('预览动画:', animation);
     // TODO: 实现动画预览功能
     toast.info(`预览动画: ${animation.name}`);
+};
+
+// 批量预览动画
+const handleBatchAnimationPreview = async (animations: any[]) => {
+    console.log('批量预览动画:', animations);
+    
+    try {
+        // 清理之前的预览
+        await cleanupBatchPreview();
+        
+        // 限制预览数量，避免性能问题
+        const maxPreviewCount = 100; // 最多9个（3x3网格）
+        const previewAnimations = animations.slice(0, maxPreviewCount);
+        
+        if (previewAnimations.length === 0) {
+            toast.warning('没有可预览的动画');
+            return;
+        }
+        
+        // 设置批量预览模式
+        isBatchPreviewMode.value = true;
+        batchPreviewAnimations.value = previewAnimations;
+        isCreatingBatchPreview.value = true;
+        batchPreviewError.value = null;
+        
+        // 创建多个预览控制器
+        await createBatchPreviewControllers(previewAnimations);
+        
+        toast.success(`开始预览 ${previewAnimations.length} 个动画`);
+        
+    } catch (error) {
+        console.error('批量预览失败:', error);
+        const errorMessage = error instanceof Error ? error.message : '未知错误';
+        toast.error('批量预览失败: ' + errorMessage);
+        batchPreviewError.value = errorMessage;
+        isBatchPreviewMode.value = false;
+    } finally {
+        isCreatingBatchPreview.value = false;
+    }
 };
 
 // 防抖搜索AI动画
@@ -455,20 +546,6 @@ const handleAnimationPlay = (animationIndex: number) => {
     }
 };
 
-const handleAnimationPause = () => {
-    const success = modelController.pause();
-    if (success) {
-        console.log('暂停动画成功');
-    }
-};
-
-const handleAnimationStop = () => {
-    const success = modelController.stop();
-    if (success) {
-        console.log('停止动画成功');
-    }
-};
-
 // AI动作处理
 const handleAIAction = (action: string) => {
     // 这里可以根据AI指令执行相应的模型控制操作
@@ -513,6 +590,264 @@ const handleAIAnimationGenerated = async (animation: { type: string; data: any; 
         console.error('处理AI动画失败:', error);
         toast.error('AI动画处理失败');
     }
+};
+
+// 创建批量预览控制器
+const createBatchPreviewControllers = async (animations: any[]) => {
+    try {
+        const controllers = [];
+        
+        // 计算网格布局
+        const gridSize = Math.ceil(Math.sqrt(animations.length));
+        const spacing = 4; // 增加模型之间的间距，避免重叠
+        
+        for (let i = 0; i < animations.length; i++) {
+            const animation = animations[i];
+            const row = Math.floor(i / gridSize);
+            const col = i % gridSize;
+            
+            // 计算位置偏移
+            const x = (col - (gridSize - 1) / 2) * spacing;
+            const z = (row - (gridSize - 1) / 2) * spacing;
+            
+            console.log(`创建预览控制器 ${i + 1}: ${animation.name} 在位置 (${x}, 0, ${z})`);
+            
+            // 创建新的控制器实例
+            const newController = useModelController(threeManager);
+            
+            // 加载相同的模型但应用不同的动画
+            await newController.load(defaultModelUrl);
+            
+            // 等待一帧，确保模型完全加载
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // 应用对应的动画
+            if (animation.source_file_url) {
+                await newController.importFBXAnimations(animation.source_file_url, {
+                    prefix: `${animation.name}_`,
+                    replaceExisting: true
+                });
+            } else if (animation.animation_tracks) {
+                const animationTracks = typeof animation.animation_tracks === 'string' 
+                    ? JSON.parse(animation.animation_tracks) 
+                    : animation.animation_tracks;
+                
+                const animationData = {
+                    name: animation.name,
+                    duration: typeof animation.duration === 'string' ? parseFloat(animation.duration) : animation.duration,
+                    frameCount: typeof animation.frame_count === 'string' ? parseInt(animation.frame_count) : animation.frame_count,
+                    loopType: animation.loop_type,
+                    tracks: animationTracks.tracks || []
+                };
+                
+                await newController.addCustomAnimation(animationData);
+            }
+            
+            // 设置模型位置 - 通过 updateParams 方法分别设置
+            try {
+                newController.updateParams({ type: 'position', value: { x, y: 0, z } });
+                console.log(`设置模型 ${i + 1} 位置: (${x}, 0, ${z})`);
+                
+                // 等待位置设置生效
+                await new Promise(resolve => setTimeout(resolve, 50));
+                
+            } catch (posError) {
+                console.warn(`设置模型 ${i + 1} 位置失败:`, posError);
+            }
+            
+            // 开始播放动画 - 播放最新导入的FBX动画
+            try {
+                let animationIndex = 0; // 默认播放第一个动画
+                
+                // 如果有FBX动画，播放最后一个（最新导入的）
+                if (animation.source_file_url) {
+                    const animations = newController.animations?.value || [];
+                    // 找到以动画名称为前缀的动画
+                    const fbxAnimationIndex = animations.findIndex((a: any) => 
+                        a.name && a.name.includes(animation.name)
+                    );
+                    if (fbxAnimationIndex !== -1) {
+                        animationIndex = fbxAnimationIndex;
+                        console.log(`模型 ${i + 1} 找到FBX动画: ${animations[animationIndex]?.name} 在索引 ${animationIndex}`);
+                    }
+                }
+                
+                const playResult = newController.play(animationIndex);
+                console.log(`模型 ${i + 1} 播放动画索引 ${animationIndex} 结果:`, playResult);
+                
+                // 验证动画是否真的在播放
+                setTimeout(() => {
+                    const isPlaying = newController.isPlaying?.value;
+                    console.log(`模型 ${i + 1} 播放状态验证:`, isPlaying);
+                }, 100);
+                
+            } catch (playError) {
+                console.warn(`模型 ${i + 1} 播放动画失败:`, playError);
+            }
+            
+            controllers.push(newController);
+        }
+        
+        batchPreviewControllers.value = controllers;
+        console.log(`创建了 ${controllers.length} 个预览控制器，网格大小: ${gridSize}x${gridSize}`);
+        
+        // 验证所有控制器是否正常工作
+        await validateBatchPreviewControllers(controllers);
+        
+    } catch (error) {
+        console.error('创建批量预览控制器失败:', error);
+        throw error;
+    }
+};
+
+// 清理批量预览
+const cleanupBatchPreview = async () => {
+    try {
+        if (batchPreviewControllers.value.length > 0) {
+            // 停止所有控制器
+            for (const controller of batchPreviewControllers.value) {
+                try {
+                    controller.stop();
+                    // 这里可以调用控制器的销毁方法，如果有的话
+                } catch (error) {
+                    console.warn('清理控制器时出错:', error);
+                }
+            }
+            
+            // 清空数组
+            batchPreviewControllers.value = [];
+        }
+        
+        // 重置状态
+        isBatchPreviewMode.value = false;
+        batchPreviewAnimations.value = [];
+        isCreatingBatchPreview.value = false;
+        batchPreviewError.value = null;
+        
+        console.log('批量预览清理完成');
+        
+    } catch (error) {
+        console.error('清理批量预览失败:', error);
+    }
+};
+
+// 验证批量预览控制器
+const validateBatchPreviewControllers = async (controllers: any[]) => {
+    try {
+        console.log('开始验证批量预览控制器...');
+        
+        for (let i = 0; i < controllers.length; i++) {
+            const controller = controllers[i];
+            
+            // 检查控制器状态
+            const status = controller.status?.value;
+            const isPlaying = controller.isPlaying?.value;
+            const animations = controller.animations?.value;
+            
+            console.log(`控制器 ${i + 1} 状态:`, {
+                status,
+                isPlaying,
+                animationCount: animations?.length || 0
+            });
+            
+            // 检查是否有动画
+            if (animations && animations.length > 0) {
+                console.log(`控制器 ${i + 1} 动画列表:`, animations.map((a: any) => a.name));
+                
+                // 检查当前播放的动画
+                if (isPlaying && animations.length > 0) {
+                    // 尝试获取当前播放的动画信息
+                    try {
+                        // 这里可以添加更多调试信息
+                        console.log(`控制器 ${i + 1} 当前播放状态:`, isPlaying);
+                    } catch (e) {
+                        console.warn(`控制器 ${i + 1} 获取播放状态失败:`, e);
+                    }
+                }
+            }
+        }
+        
+        console.log('批量预览控制器验证完成');
+        
+        // 延迟验证，确保动画有时间开始播放
+        setTimeout(() => {
+            console.log('延迟验证动画播放状态...');
+            controllers.forEach((controller, index) => {
+                const isPlaying = controller.isPlaying?.value;
+                console.log(`延迟验证 - 控制器 ${index + 1} 播放状态:`, isPlaying);
+            });
+        }, 500);
+        
+    } catch (error) {
+        console.error('验证批量预览控制器失败:', error);
+    }
+};
+
+// 刷新批量预览
+const refreshBatchPreview = async () => {
+    if (!batchPreviewAnimations.value.length) return;
+    
+    try {
+        console.log('刷新批量预览...');
+        await handleBatchAnimationPreview(batchPreviewAnimations.value);
+    } catch (error) {
+        console.error('刷新批量预览失败:', error);
+        toast.error('刷新批量预览失败');
+    }
+};
+
+// 停止批量预览
+const stopBatchPreview = async () => {
+    try {
+        console.log('停止批量预览...');
+        await cleanupBatchPreview();
+        toast.success('已停止批量预览');
+    } catch (error) {
+        console.error('停止批量预览失败:', error);
+        toast.error('停止批量预览失败');
+    }
+};
+
+// 调试批量预览
+const debugBatchPreview = () => {
+    if (!batchPreviewControllers.value.length) {
+        toast.warning('没有可调试的批量预览');
+        return;
+    }
+    
+    console.log('=== 批量预览调试信息 ===');
+    
+    batchPreviewControllers.value.forEach((controller, index) => {
+        const status = controller.status?.value;
+        const isPlaying = controller.isPlaying?.value;
+        const animations = controller.animations?.value;
+        
+        console.log(`控制器 ${index + 1}:`, {
+            status,
+            isPlaying,
+            animationCount: animations?.length || 0,
+            animations: animations?.map((a: any) => a.name) || []
+        });
+        
+        // 尝试播放不同的动画
+        if (animations && animations.length > 0) {
+            // 找到FBX动画（通常包含动画名称）
+            const fbxAnimationIndex = animations.findIndex((a: any) => 
+                a.name && a.name.includes('_mixamocom')
+            );
+            
+            if (fbxAnimationIndex !== -1) {
+                console.log(`控制器 ${index + 1} 尝试播放FBX动画: ${animations[fbxAnimationIndex].name} (索引: ${fbxAnimationIndex})`);
+                try {
+                    controller.play(fbxAnimationIndex);
+                } catch (e) {
+                    console.warn(`控制器 ${index + 1} 播放FBX动画失败:`, e);
+                }
+            }
+        }
+    });
+    
+    toast.info('调试信息已输出到控制台');
 };
 
 // 加载默认模型

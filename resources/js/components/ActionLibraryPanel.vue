@@ -7,18 +7,33 @@
                 <div class="text-xs text-muted-foreground">选择和应用动画</div>
             </div>
             
-            <!-- 上传按钮 -->
-            <Button
-                variant="outline"
-                size="sm"
-                class="h-7 px-2 text-xs"
-                @click="handleUploadClick"
-                :disabled="isUploading"
-            >
-                <Loader2 v-if="isUploading" class="mr-1 h-3 w-3 animate-spin" />
-                <Upload v-else class="mr-1 h-3 w-3" />
-                {{ isUploading ? '批量上传中...' : '批量上传动作' }}
-            </Button>
+            <!-- 按钮组 -->
+            <div class="flex gap-2">
+                <!-- 上传按钮 -->
+                <Button
+                    variant="outline"
+                    size="sm"
+                    class="h-7 px-2 text-xs"
+                    @click="handleUploadClick"
+                    :disabled="isUploading"
+                >
+                    <Loader2 v-if="isUploading" class="mr-1 h-3 w-3 animate-spin" />
+                    <Upload v-else class="mr-1 h-3 w-3" />
+                    {{ isUploading ? '批量上传中...' : '批量上传动作' }}
+                </Button>
+
+                <!-- 预览动画按钮 -->
+                <Button
+                    variant="outline"
+                    size="sm"
+                    class="h-7 px-2 text-xs"
+                    @click="handlePreviewAnimations"
+                    :disabled="filteredAnimations.length === 0"
+                >
+                    <Eye class="mr-1 h-3 w-3" />
+                    预览{{ filteredAnimations.length }}个动画
+                </Button>
+            </div>
         </div>
 
         <!-- 可滚动内容区域 -->
@@ -197,6 +212,7 @@ defineProps<Props>();
 const emit = defineEmits<{
     'animation-selected': [animation: Animation];
     'animation-preview': [animation: Animation];
+    'batch-animation-preview': [animations: Animation[]];
 }>();
 
 // Toast
@@ -541,6 +557,13 @@ const parseYaml = (text: string) => {
         return JSON.parse(text);
     } catch {
         return {};
+    }
+};
+
+// 批量预览动画
+const handlePreviewAnimations = () => {
+    if (filteredAnimations.value.length > 0) {
+        emit('batch-animation-preview', filteredAnimations.value);
     }
 };
 
