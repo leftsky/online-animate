@@ -175,7 +175,7 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
                 console.log('最终模型位置:', _model.position);
 
                 // 设置模型朝向（面向摄像机）（统一处理）
-                _model.rotation.y = Math.PI; // 旋转180度面向摄像机
+                // _model.rotation.y = Math.PI; // 旋转180度面向摄像机
 
                 // 添加到场景
                 scene.value.add(_model);
@@ -813,9 +813,16 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
             }
 
             console.log('FBX文件加载成功，找到动画数量:', fbx.animations.length);
+            console.log("animation", fbx.animations);
 
             const importedAnimations: Array<{ name: string; duration: number; clip: any }> = [];
             const errors: string[] = [];
+
+            // 确保动画混合器存在
+            if (!mixer && model) {
+                mixer = new THREE.AnimationMixer(model);
+                console.log('创建新的动画混合器');
+            }
 
             // 处理每个动画
             fbx.animations.forEach((animation: any, index: number) => {
@@ -840,10 +847,9 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
                     }
 
                     // 转换骨骼名称
-                    const convertedTracks = animation.tracks;
                     const convertedAnimation = {
                         ...animation,
-                        tracks: convertedTracks
+                        tracks: animation.tracks
                     };
 
                     // 创建动画片段

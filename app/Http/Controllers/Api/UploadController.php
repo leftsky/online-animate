@@ -21,7 +21,7 @@ class UploadController extends WebApiController
         $request->validate([
             'file' => 'required|file|max:51200', // 最大50MB
             'folder' => 'nullable|string|max:100',
-            'type' => 'nullable|string|in:image,document,video,audio,model'
+            'type' => 'nullable|string'
         ]);
 
         if (!$request->hasFile('file') || !$request->file('file')->isValid()) {
@@ -33,7 +33,7 @@ class UploadController extends WebApiController
         $type = $request->input('type', 'image');
 
         // 根据文件类型进行额外验证
-        $this->validateFileType($file, $type);
+        // $this->validateFileType($file, $type);
 
         // 生成唯一文件名
         $extension = $file->getClientOriginalExtension();
@@ -81,7 +81,8 @@ class UploadController extends WebApiController
             'document' => 'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,txt|max:10240', // 10MB
             'video' => 'mimes:mp4,avi,mov,wmv,flv|max:51200', // 50MB
             'audio' => 'mimes:mp3,wav,ogg,m4a|max:10240', // 10MB
-            'model' => 'max:51200' // 50MB，3D模型文件不限制扩展名
+            'model' => 'max:51200', // 50MB，3D模型文件不限制扩展名
+            'animation' => 'mimes:fbx,json,yaml,yml|max:51200' // 50MB，动画文件
         ];
 
         if (isset($rules[$type])) {
@@ -102,7 +103,8 @@ class UploadController extends WebApiController
             'document' => 'documents',
             'video' => 'videos',
             'audio' => 'audios',
-            'model' => 'models'
+            'model' => 'models',
+            'animation' => 'animations'
         ];
 
         return $folders[$type] ?? 'uploads';

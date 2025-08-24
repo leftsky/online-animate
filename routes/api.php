@@ -41,6 +41,13 @@ Route::middleware(['auth', 'verified'])->prefix('web/api')->name('web.api.')->gr
     // 人物资源
     Route::apiResource('media_characters', \App\Http\Controllers\Api\MediaCharacterController::class);
 
+    // 动画资源
+    Route::apiResource('media_animations', \App\Http\Controllers\Api\MediaAnimationController::class);
+    
+    // 动画特殊接口
+    Route::get('/media_animations/system', [\App\Http\Controllers\Api\MediaAnimationController::class, 'system'])->name('media_animations.system');
+    Route::post('/media_animations/batch-import', [\App\Http\Controllers\Api\MediaAnimationController::class, 'batchImport'])->name('media_animations.batch-import');
+
     // 物品资源
     Route::apiResource('media_items', \App\Http\Controllers\Api\MediaItemController::class);
 
