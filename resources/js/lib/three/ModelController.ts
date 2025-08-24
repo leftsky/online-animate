@@ -43,6 +43,7 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
      */
     const load = async (modelFileUrl: string) => {
         if (!modelFileUrl || !scene.value) return;
+        console.log('加载模型', modelFileUrl);
         toggleSkeleton(false);
         try {
             if (modelFileUrl && typeof modelFileUrl === 'string' && modelFileUrl.trim().length > 0) {

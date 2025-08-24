@@ -267,9 +267,7 @@ const handleModelFileUpload = async (event: Event) => {
             let currentResources = {};
             if (character.additional_resources) {
                 try {
-                    const resourcesData = Array.isArray(character.additional_resources)
-                        ? character.additional_resources[0]
-                        : character.additional_resources;
+                    const resourcesData = character.additional_resources;
                     if (typeof resourcesData === 'string') {
                         currentResources = JSON.parse(resourcesData);
                     }
@@ -284,7 +282,7 @@ const handleModelFileUpload = async (event: Event) => {
             };
 
             const updateResult = await mediaApi.updateCharacter(character.id, {
-                additional_resources: [updatedResources],
+                additional_resources: updatedResources,
             });
 
             if (updateResult.success) {

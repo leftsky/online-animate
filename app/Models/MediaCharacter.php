@@ -36,7 +36,7 @@ class MediaCharacter extends Model
      * 应该被转换为原生类型的属性
      */
     protected $casts = [
-        'additional_resources' => 'array',
+        'additional_resources' => 'object',
         'tags' => 'array',
         'gender' => 'integer',
         'age' => 'integer',
