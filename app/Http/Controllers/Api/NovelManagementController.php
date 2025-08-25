@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Models\Novel;
 use App\Models\Chapter;
@@ -101,6 +102,57 @@ class NovelManagementController extends WebApiController
             'limit' => $limit,
             'offset' => $offset
         ]);
+    }
+
+    /**
+     * 获取小说章节列表（内容截取）
+     *
+     * @param Request $request
+     * @param int $novelId
+     * @return JsonResponse
+     */
+    public function getChapters(Request $request, int $novelId): JsonResponse
+    {
+        $limit = $request->get('limit', 20);
+        $offset = $request->get('offset', 0);
+
+        $chapters = Chapter::where('novel_id', $novelId)
+            ->select('id', 'title', 'chapter_number', 'word_count', 'created_at')
+            ->addSelect(\DB::raw('LEFT(content, 200) as content_preview'))
+            ->orderBy('chapter_number', 'asc')
+            ->offset($offset)
+            ->limit($limit)
+            ->get();
+
+        $total = Chapter::where('novel_id', $novelId)->count();
+
+        return $this->success([
+            'chapters' => $chapters,
+            'total' => $total,
+            'limit' => $limit,
+            'offset' => $offset
+        ]);
+    }
+
+    /**
+     * 获取章节详情（完整内容）
+     *
+     * @param int $novelId
+     * @param int $chapterId
+     * @return JsonResponse
+     */
+    public function showChapter(int $novelId, int $chapterId): JsonResponse
+    {
+        $chapter = Chapter::where('novel_id', $novelId)
+            ->where('id', $chapterId)
+            ->select('id', 'title', 'chapter_number', 'word_count', 'content', 'created_at')
+            ->first();
+
+        if (!$chapter) {
+            return $this->notFound('章节不存在');
+        }
+
+        return $this->success($chapter);
     }
 
     /**

@@ -81,12 +81,109 @@ $data = $query->paginate($perPage);
 }
 ```
 
-### 3. 动画脚本规范
+### 3. 前端组件使用规范
+**重要**: 开发前端功能时，必须优先使用 `resources/js/components/ui/` 目录中已有的组件，**禁止重复造轮子**。
+
+#### 3.1 可用UI组件列表
+项目已提供以下UI组件，开发时请优先使用：
+
+**基础组件**:
+- `Button` - 按钮组件（支持多种变体和尺寸）
+- `Input` - 输入框组件
+- `Label` - 标签组件
+- `Textarea` - 文本域组件
+- `Select` - 选择器组件
+- `Checkbox` - 复选框组件
+
+**布局组件**:
+- `Card` - 卡片容器组件
+- `Separator` - 分隔线组件
+- `Skeleton` - 骨架屏组件
+- `Collapsible` - 可折叠组件
+
+**导航组件**:
+- `Breadcrumb` - 面包屑导航
+- `NavigationMenu` - 导航菜单
+- `Sidebar` - 侧边栏组件
+- `DropdownMenu` - 下拉菜单
+
+**反馈组件**:
+- `Dialog` - 对话框组件
+- `Sheet` - 抽屉组件
+- `Toast` - 消息提示组件
+- `Tooltip` - 工具提示组件
+
+**数据展示**:
+- `Avatar` - 头像组件
+- `Pagination` - 分页组件
+
+#### 3.2 组件使用规范
+
+**✅ 正确的使用方式**:
+```vue
+<script setup>
+import Button from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import Pagination from '@/components/ui/pagination/Pagination.vue'
+</script>
+
+<template>
+  <Card>
+    <CardHeader>
+      <CardTitle>标题</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <Input placeholder="请输入内容" />
+      <Button variant="default">确认</Button>
+      <Pagination 
+        :total="100" 
+        :limit="10" 
+        :offset="0"
+        @update:offset="handlePageChange"
+      />
+    </CardContent>
+  </Card>
+</template>
+```
+
+**❌ 禁止的使用方式**:
+```vue
+<!-- 禁止自定义按钮样式 -->
+<button class="bg-blue-500 text-white px-4 py-2 rounded">确认</button>
+
+<!-- 禁止自定义卡片样式 -->
+<div class="bg-white border rounded-lg shadow p-4">内容</div>
+
+<!-- 禁止自定义分页逻辑 -->
+<div class="flex space-x-2">
+  <button @click="prevPage">上一页</button>
+  <span>第 {{ page }} 页</span>
+  <button @click="nextPage">下一页</button>
+</div>
+```
+
+#### 3.3 组件扩展规范
+如果现有组件无法满足需求：
+
+1. **优先考虑组合现有组件**：通过组合多个现有组件实现复杂功能
+2. **扩展现有组件**：在现有组件基础上添加新的 props 或变体
+3. **创建业务组件**：在 `components/` 目录下创建业务相关的复合组件
+4. **最后才考虑新建UI组件**：如果确实需要新的基础UI组件，请在 `components/ui/` 下创建
+
+#### 3.4 组件导入规范
+- 使用相对路径导入：`@/components/ui/组件名`
+- 按需导入：只导入需要的组件，避免全量导入
+- 统一导入方式：
+  - 对于有 `index.ts` 的组件：使用解构导入 `import { Component } from '@/components/ui/component'`
+  - 对于没有 `index.ts` 的组件：直接导入文件 `import Component from '@/components/ui/component/Component.vue'`
+
+### 4. 动画脚本规范
 - 使用YAML格式编写动画脚本
 - 通过 `js-yaml` 库解析
 - 支持多种动画格式（新格式优先，旧格式兼容）
 
-### 4. API接口定义规范
+### 5. API接口定义规范
 **重要**: 前端API调用直接使用 `resources/js/utils/api.ts` 中提供的 `apiGet`、`apiPost`、`apiPut`、`apiDelete` 方法，**禁止在api.ts中定义具体的业务接口**。
 
 ```typescript
@@ -124,7 +221,7 @@ export const getNovels = () => {  // 禁止
 }
 ```
 
-### 5. 文件上传规范
+### 6. 文件上传规范
 **重要**: 所有文件上传必须使用 `resources/js/utils/api.ts` 中的 `uploadApi.uploadFile` 方法。
 
 ```typescript
@@ -143,7 +240,7 @@ if (result.success) {
 }
 ```
 
-### 6. Toast通知使用规范
+### 7. Toast通知使用规范
 **重要**: 所有用户操作反馈必须使用 `useToast` 组合式函数，**禁止使用** `console.log` 或 `alert` 等原生方法。
 
 ```typescript
@@ -173,7 +270,7 @@ alert('操作失败')        // 禁止
 confirm('确认删除?')     // 禁止
 ```
 
-### 7. 确认弹窗使用规范
+### 8. 确认弹窗使用规范
 **重要**: 所有需要用户确认的操作必须使用 `useConfirm` 组合式函数和 `ConfirmDialog` 组件，**禁止使用**原生的 `confirm()` 方法。
 
 ```typescript
@@ -205,7 +302,7 @@ const handleDelete = async (item: any) => {
 if (!confirm('确定要删除吗？')) return  // 禁止
 ```
 
-### 8. 文件生成和修改规范
+### 9. 文件生成和修改规范
 **重要**: 在修改、生成文件时，必须采用分步生成/修改的方式，**禁止一次生成整个文件**，以提高开发效率和代码质量。
 
 ## 项目结构

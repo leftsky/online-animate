@@ -64,5 +64,7 @@ Route::middleware(['auth', 'verified'])->prefix('web/api')->name('web.api.')->gr
     Route::prefix('novels')->group(function () {
         Route::post('/import-url', [NovelManagementController::class, 'importFromUrl'])->name('novels.import-url');
         Route::get('/', [NovelManagementController::class, 'getNovels'])->name('novels.index');
+        Route::get('/{novel}/chapters', [NovelManagementController::class, 'getChapters'])->name('novels.chapters');
+        Route::get('/{novel}/chapters/{chapter}', [NovelManagementController::class, 'showChapter'])->name('novels.chapters.show');
     });
 });

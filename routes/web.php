@@ -28,7 +28,7 @@ Route::get('character-animation-debug', function () {
 })->middleware(['auth', 'verified'])->name('character-animation-debug');
 
 Route::get('novel-management', function () {
-    return Inertia::render('NovelManagement');
+    return Inertia::render('novel/NovelManagement');
 })->middleware(['auth', 'verified'])->name('novel-management');
 
 
