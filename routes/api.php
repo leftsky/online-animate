@@ -66,5 +66,6 @@ Route::middleware(['auth', 'verified'])->prefix('web/api')->name('web.api.')->gr
         Route::get('/', [NovelManagementController::class, 'getNovels'])->name('novels.index');
         Route::get('/{novel}/chapters', [NovelManagementController::class, 'getChapters'])->name('novels.chapters');
         Route::get('/{novel}/chapters/{chapter}', [NovelManagementController::class, 'showChapter'])->name('novels.chapters.show');
+        Route::delete('/{novel}', [NovelManagementController::class, 'destroy'])->name('novels.destroy');
     });
 });

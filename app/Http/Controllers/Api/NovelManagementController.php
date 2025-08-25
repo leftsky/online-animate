@@ -384,4 +384,25 @@ class NovelManagementController extends WebApiController
         
         return trim($text);
     }
+
+    /**
+     * 删除小说
+     *
+     * @param Novel $novel
+     * @return JsonResponse
+     */
+    public function destroy(Novel $novel): JsonResponse
+    {
+        try {
+            // 删除相关的章节
+            $novel->chapters()->delete();
+            
+            // 删除小说
+            $novel->delete();
+            
+            return $this->success(null, '小说删除成功');
+        } catch (\Exception $e) {
+            return $this->serverError('小说删除失败：' . $e->getMessage());
+        }
+    }
 }
