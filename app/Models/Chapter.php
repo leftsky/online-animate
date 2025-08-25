@@ -31,4 +31,20 @@ class Chapter extends Model
     {
         return $this->belongsTo(Novel::class);
     }
+
+    /**
+     * 获取章节的所有视频
+     */
+    public function videos()
+    {
+        return $this->hasMany(Video::class)->orderBy('order');
+    }
+
+    /**
+     * 获取章节的所有分镜（通过视频）
+     */
+    public function scenes()
+    {
+        return $this->hasManyThrough(Scene::class, Video::class, 'chapter_id', 'video_id');
+    }
 }

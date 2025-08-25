@@ -57,9 +57,10 @@ return new class extends Migration
             $table->unsignedBigInteger('video_id')->comment('视频ID');
             $table->string('title')->comment('分镜标题');
             $table->text('description')->nullable()->comment('分镜描述');
+            $table->text('lens_description')->nullable()->comment('镜头师描述');
             $table->decimal('duration', 8, 2)->default(0)->comment('分镜时长(秒)');
-            $table->string('background_image')->nullable()->comment('背景图片路径');
-            $table->string('background_color')->nullable()->comment('背景颜色(hex)');
+            // $table->string('background_image')->nullable()->comment('背景图片路径');
+            // $table->string('background_color')->nullable()->comment('背景颜色(hex)');
             $table->integer('order')->default(0)->comment('分镜顺序');
             $table->tinyInteger('status')->default(0)->comment('状态: 0=草稿, 1=完成');
             $table->timestamps();
