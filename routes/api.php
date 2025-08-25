@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\SceneContentController;
 use App\Http\Controllers\Api\SkeletonAnimationController;
 use App\Http\Controllers\Api\AiSkeletonAnimationController;
 use App\Http\Controllers\Api\NovelManagementController;
+use App\Http\Controllers\Api\VideoManagementController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -67,5 +68,11 @@ Route::middleware(['auth', 'verified'])->prefix('web/api')->name('web.api.')->gr
         Route::get('/{novel}/chapters', [NovelManagementController::class, 'getChapters'])->name('novels.chapters');
         Route::get('/{novel}/chapters/{chapter}', [NovelManagementController::class, 'showChapter'])->name('novels.chapters.show');
         Route::delete('/{novel}', [NovelManagementController::class, 'destroy'])->name('novels.destroy');
+    });
+    
+    // 视频管理
+    Route::prefix('videos')->group(function () {
+        Route::get('/chapters/{chapter}', [VideoManagementController::class, 'getVideosByChapter'])->name('videos.by-chapter');
+        Route::get('/{video}/scenes', [VideoManagementController::class, 'getScenesByVideo'])->name('videos.scenes');
     });
 });
