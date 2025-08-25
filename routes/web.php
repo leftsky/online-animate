@@ -32,11 +32,11 @@ Route::get('novel-management', function () {
 })->middleware(['auth', 'verified'])->name('novel-management');
 
 Route::get('video-management', function () {
-    return Inertia::render('video/VideoManagement');
+    return Inertia::render('novel/VideoManagement');
 })->middleware(['auth', 'verified'])->name('video-management');
 
 Route::get('scene-management', function () {
-    return Inertia::render('scene/SceneManagement');
+    return Inertia::render('novel/SceneManagement');
 })->middleware(['auth', 'verified'])->name('scene-management');
 
 

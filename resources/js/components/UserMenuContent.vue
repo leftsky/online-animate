@@ -19,7 +19,8 @@ defineProps<Props>();
         </div>
     </el-dropdown-item>
     
-    <el-dropdown-item divided />
+    <!-- 分割线 -->
+    <div class="h-px bg-border mx-2 my-1"></div>
     
     <!-- 设置 -->
     <el-dropdown-item>
@@ -29,7 +30,8 @@ defineProps<Props>();
         </Link>
     </el-dropdown-item>
     
-    <el-dropdown-item divided />
+    <!-- 分割线 -->
+    <div class="h-px bg-border mx-2 my-1"></div>
     
     <!-- 退出登录 -->
     <el-dropdown-item>
