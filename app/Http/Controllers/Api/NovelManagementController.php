@@ -113,8 +113,8 @@ class NovelManagementController extends WebApiController
      */
     public function getChapters(Request $request, int $novelId): JsonResponse
     {
-        $limit = $request->get('limit', 20);
-        $offset = $request->get('offset', 0);
+        $perPage = $request->get('per_page', 20);
+        $page = $request->get('page', 1);
         $query = $request->get('q', '');
 
         $chaptersQuery = Chapter::where('novel_id', $novelId);
@@ -127,21 +127,20 @@ class NovelManagementController extends WebApiController
             });
         }
 
+        // 使用 paginate 方法进行分页
         $chapters = $chaptersQuery
             ->select('id', 'title', 'chapter_number', 'word_count', 'created_at')
             ->addSelect(DB::raw('LEFT(content, 200) as content_preview'))
             ->orderBy('chapter_number', 'asc')
-            ->offset($offset)
-            ->limit($limit)
-            ->get();
-
-        $total = $chaptersQuery->count();
+            ->paginate($perPage, ['*'], 'page', $page);
 
         return $this->success([
-            'chapters' => $chapters,
-            'total' => $total,
-            'limit' => $limit,
-            'offset' => $offset
+            'chapters' => $chapters->items(),
+            'total' => $chapters->total(),
+            'per_page' => $chapters->perPage(),
+            'current_page' => $chapters->currentPage(),
+            'last_page' => $chapters->lastPage(),
+            'has_more_pages' => $chapters->hasMorePages()
         ]);
     }
 

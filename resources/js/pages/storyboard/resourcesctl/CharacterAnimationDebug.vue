@@ -1,182 +1,180 @@
 <template>
-    <ToastProvider>
-        <AppLayout :breadcrumbs="breadcrumbs">
-            <div class="min-h-screen bg-background">
-                <div class="container mx-auto p-6">
-                    <!-- 页面标题 -->
-                    <div class="mb-6 flex items-center justify-between">
-                        <div>
-                            <h1 class="text-3xl font-bold text-foreground">人物动作调试</h1>
-                            <p class="mt-2 text-muted-foreground">调试和测试3D人物模型的动画效果</p>
-                        </div>
+    <AppLayout :breadcrumbs="breadcrumbs">
+        <div class="min-h-screen bg-background">
+            <div class="container mx-auto p-6">
+                <!-- 页面标题 -->
+                <div class="mb-6 flex items-center justify-between">
+                    <div>
+                        <h1 class="text-3xl font-bold text-foreground">人物动作调试</h1>
+                        <p class="mt-2 text-muted-foreground">调试和测试3D人物模型的动画效果</p>
+                    </div>
 
-                        <!-- AI动画搜索和选择 -->
-                        <div class="flex items-center gap-3">
-                            <div class="relative">
-                                <Input
-                                    v-model="aiAnimationSearch"
-                                    placeholder="搜索AI动画..."
-                                    class="h-10 w-64"
-                                    @input="searchAiAnimations"
-                                    @focus="handleSearchFocus"
-                                    @blur="handleSearchBlur"
-                                    @keydown.enter="handleSearchEnter"
-                                />
-                                <Search class="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
+                    <!-- AI动画搜索和选择 -->
+                    <div class="flex items-center gap-3">
+                        <div class="relative">
+                            <Input
+                                v-model="aiAnimationSearch"
+                                placeholder="搜索AI动画..."
+                                class="h-10 w-64"
+                                @input="searchAiAnimations"
+                                @focus="handleSearchFocus"
+                                @blur="handleSearchBlur"
+                                @keydown.enter="handleSearchEnter"
+                            />
+                            <Search class="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
 
-                                <!-- 搜索下拉选择窗口 -->
-                                <div
-                                    v-if="showSearchDropdown && (aiAnimations.length > 0 || aiAnimationSearch.trim().length > 0)"
-                                    class="absolute left-0 right-0 top-full z-50 mt-1 max-h-64 overflow-y-auto rounded-md border border-border bg-background shadow-lg"
-                                >
-                                    <div v-if="isLoadingAiAnimations" class="p-3 text-center text-sm text-muted-foreground">
-                                        <Loader2 class="mx-auto mb-2 h-4 w-4 animate-spin" />
-                                        搜索中...
-                                    </div>
-
-                                    <div
-                                        v-else-if="aiAnimations.length === 0 && aiAnimationSearch.trim().length > 0"
-                                        class="p-3 text-center text-sm text-muted-foreground"
-                                    >
-                                        未找到相关动画
-                                    </div>
-
-                                    <div v-else class="py-1">
-                                        <div
-                                            v-for="animation in aiAnimations"
-                                            :key="animation.id"
-                                            @click="selectAnimationFromDropdown(animation)"
-                                            class="cursor-pointer px-3 py-2 transition-colors hover:bg-accent"
-                                        >
-                                            <div class="flex flex-col">
-                                                <span class="text-sm font-medium text-foreground">{{ animation.name }}</span>
-                                                <span class="text-xs text-muted-foreground">
-                                                    {{ animation.duration_formatted }} | {{ animation.confidence_percentage }}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
+                            <!-- 搜索下拉选择窗口 -->
+                            <div
+                                v-if="showSearchDropdown && (aiAnimations.length > 0 || aiAnimationSearch.trim().length > 0)"
+                                class="absolute left-0 right-0 top-full z-50 mt-1 max-h-64 overflow-y-auto rounded-md border border-border bg-background shadow-lg"
+                            >
+                                <div v-if="isLoadingAiAnimations" class="p-3 text-center text-sm text-muted-foreground">
+                                    <Loader2 class="mx-auto mb-2 h-4 w-4 animate-spin" />
+                                    搜索中...
                                 </div>
-                            </div>
 
-                            <Select v-model="selectedAiAnimation" @update:model-value="applyAiAnimation">
-                                <SelectTrigger class="h-10 w-48">
-                                    <SelectValue placeholder="选择AI动画" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem v-for="animation in aiAnimations" :key="animation.id" :value="animation.id">
+                                <div
+                                    v-else-if="aiAnimations.length === 0 && aiAnimationSearch.trim().length > 0"
+                                    class="p-3 text-center text-sm text-muted-foreground"
+                                >
+                                    未找到相关动画
+                                </div>
+
+                                <div v-else class="py-1">
+                                    <div
+                                        v-for="animation in aiAnimations"
+                                        :key="animation.id"
+                                        @click="selectAnimationFromDropdown(animation)"
+                                        class="cursor-pointer px-3 py-2 transition-colors hover:bg-accent"
+                                    >
                                         <div class="flex flex-col">
-                                            <span class="font-medium">{{ animation.name }}</span>
+                                            <span class="text-sm font-medium text-foreground">{{ animation.name }}</span>
                                             <span class="text-xs text-muted-foreground">
                                                 {{ animation.duration_formatted }} | {{ animation.confidence_percentage }}
                                             </span>
                                         </div>
-                                    </SelectItem>
-                                    <SelectItem v-if="aiAnimations.length === 0" value="" disabled> 暂无可用动画 </SelectItem>
-                                </SelectContent>
-                            </Select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                            <Button @click="refreshAiAnimations" variant="outline" size="sm" :disabled="isLoadingAiAnimations">
-                                <RefreshCw v-if="!isLoadingAiAnimations" class="h-4 w-4" />
-                                <Loader2 v-else class="h-4 w-4 animate-spin" />
-                                {{ isLoadingAiAnimations ? '处理中' : '刷新' }}
-                            </Button>
+                        <Select v-model="selectedAiAnimation" @update:model-value="applyAiAnimation">
+                            <SelectTrigger class="h-10 w-48">
+                                <SelectValue placeholder="选择AI动画" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem v-for="animation in aiAnimations" :key="animation.id" :value="animation.id">
+                                    <div class="flex flex-col">
+                                        <span class="font-medium">{{ animation.name }}</span>
+                                        <span class="text-xs text-muted-foreground">
+                                            {{ animation.duration_formatted }} | {{ animation.confidence_percentage }}
+                                        </span>
+                                    </div>
+                                </SelectItem>
+                                <SelectItem v-if="aiAnimations.length === 0" value="" disabled> 暂无可用动画 </SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                        <Button @click="refreshAiAnimations" variant="outline" size="sm" :disabled="isLoadingAiAnimations">
+                            <RefreshCw v-if="!isLoadingAiAnimations" class="h-4 w-4" />
+                            <Loader2 v-else class="h-4 w-4 animate-spin" />
+                            {{ isLoadingAiAnimations ? '处理中' : '刷新' }}
+                        </Button>
+                    </div>
+                </div>
+
+                <div class="flex h-[calc(100vh-200px)] gap-6">
+                    <!-- 左侧动作库面板 -->
+                    <div class="w-80">
+                        <ActionLibraryPanel
+                            ref="actionLibraryRef"
+                            :model-id="modelId"
+                            @animation-selected="handleAnimationSelected"
+                            @animation-preview="handleAnimationPreview"
+                            @batch-animation-preview="handleBatchAnimationPreview"
+                        />
+                    </div>
+
+                    <!-- 中央3D画布区域 -->
+                    <div class="relative flex-1 overflow-hidden rounded-lg border border-border bg-card">
+                        <canvas ref="threeCanvas" class="h-full w-full" :class="{ 'opacity-0': modelStatus === 'loading' }"></canvas>
+
+                        <!-- 覆盖层 -->
+                        <div
+                            v-if="modelStatus === 'loading' || modelStatus === 'created' || modelStatus === 'inited'"
+                            class="absolute inset-0 flex items-center justify-center bg-card text-muted-foreground"
+                        >
+                            <!-- 加载中状态 -->
+                            <div v-if="modelStatus === 'loading'" class="text-center">
+                                <div class="mx-auto mb-4 flex h-16 w-16 animate-spin items-center justify-center rounded-full bg-muted">
+                                    <Package class="h-8 w-8" />
+                                </div>
+                                <h3 class="mb-2 text-lg font-medium">加载模型中...</h3>
+                                <p class="text-sm">请稍候</p>
+                            </div>
+
+                            <!-- 默认状态 -->
+                            <div v-else class="text-center">
+                                <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                                    <Package class="h-8 w-8" />
+                                </div>
+                                <h3 class="mb-2 text-lg font-medium">3D模型画布</h3>
+                                <p class="text-sm">模型加载中，请稍候...</p>
+                            </div>
+                        </div>
+
+                        <!-- 模型信息显示 -->
+                        <div
+                            v-if="modelStatus === 'loaded'"
+                            class="absolute left-4 top-4 rounded-lg border border-border bg-background/80 p-3 text-sm backdrop-blur-sm"
+                        >
+                            <h4 class="font-medium text-foreground">{{ modelName }}</h4>
+                            <p class="text-xs text-muted-foreground">3D模型预览</p>
+                        </div>
+
+                        <!-- 批量预览状态显示 -->
+                        <div
+                            v-if="isBatchPreviewMode"
+                            class="absolute right-4 top-4 rounded-lg border border-border bg-background/80 p-3 text-sm backdrop-blur-sm"
+                        >
+                            <h4 class="font-medium text-foreground">批量预览模式</h4>
+                            <p class="text-xs text-muted-foreground">
+                                {{ isCreatingBatchPreview ? '创建预览中...' : `预览 ${batchPreviewAnimations.length} 个动画` }}
+                            </p>
+                            <div v-if="batchPreviewError" class="mt-2 text-xs text-red-500">错误: {{ batchPreviewError }}</div>
+
+                            <!-- 批量预览控制按钮 -->
+                            <div class="mt-2 flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    class="h-6 px-2 text-xs"
+                                    @click="refreshBatchPreview"
+                                    :disabled="isCreatingBatchPreview"
+                                >
+                                    <RefreshCw class="h-3 w-3" />
+                                    刷新
+                                </Button>
+                                <Button variant="outline" size="sm" class="h-6 px-2 text-xs" @click="stopBatchPreview">
+                                    <Square class="h-3 w-3" />
+                                    停止
+                                </Button>
+                                <Button variant="outline" size="sm" class="h-6 px-2 text-xs" @click="debugBatchPreview">
+                                    <Bug class="h-3 w-3" />
+                                    调试
+                                </Button>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="flex h-[calc(100vh-200px)] gap-6">
-                        <!-- 左侧动作库面板 -->
-                        <div class="w-80">
-                            <ActionLibraryPanel
-                                ref="actionLibraryRef"
-                                :model-id="modelId"
-                                @animation-selected="handleAnimationSelected"
-                                @animation-preview="handleAnimationPreview"
-                                @batch-animation-preview="handleBatchAnimationPreview"
-                            />
-                        </div>
-
-                        <!-- 中央3D画布区域 -->
-                        <div class="relative flex-1 overflow-hidden rounded-lg border border-border bg-card">
-                            <canvas ref="threeCanvas" class="h-full w-full" :class="{ 'opacity-0': modelStatus === 'loading' }"></canvas>
-
-                            <!-- 覆盖层 -->
-                            <div
-                                v-if="modelStatus === 'loading' || modelStatus === 'created' || modelStatus === 'inited'"
-                                class="absolute inset-0 flex items-center justify-center bg-card text-muted-foreground"
-                            >
-                                <!-- 加载中状态 -->
-                                <div v-if="modelStatus === 'loading'" class="text-center">
-                                    <div class="mx-auto mb-4 flex h-16 w-16 animate-spin items-center justify-center rounded-full bg-muted">
-                                        <Package class="h-8 w-8" />
-                                    </div>
-                                    <h3 class="mb-2 text-lg font-medium">加载模型中...</h3>
-                                    <p class="text-sm">请稍候</p>
-                                </div>
-
-                                <!-- 默认状态 -->
-                                <div v-else class="text-center">
-                                    <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-                                        <Package class="h-8 w-8" />
-                                    </div>
-                                    <h3 class="mb-2 text-lg font-medium">3D模型画布</h3>
-                                    <p class="text-sm">模型加载中，请稍候...</p>
-                                </div>
-                            </div>
-
-                            <!-- 模型信息显示 -->
-                            <div
-                                v-if="modelStatus === 'loaded'"
-                                class="absolute left-4 top-4 rounded-lg border border-border bg-background/80 p-3 text-sm backdrop-blur-sm"
-                            >
-                                <h4 class="font-medium text-foreground">{{ modelName }}</h4>
-                                <p class="text-xs text-muted-foreground">3D模型预览</p>
-                            </div>
-
-                            <!-- 批量预览状态显示 -->
-                            <div
-                                v-if="isBatchPreviewMode"
-                                class="absolute right-4 top-4 rounded-lg border border-border bg-background/80 p-3 text-sm backdrop-blur-sm"
-                            >
-                                <h4 class="font-medium text-foreground">批量预览模式</h4>
-                                <p class="text-xs text-muted-foreground">
-                                    {{ isCreatingBatchPreview ? '创建预览中...' : `预览 ${batchPreviewAnimations.length} 个动画` }}
-                                </p>
-                                <div v-if="batchPreviewError" class="mt-2 text-xs text-red-500">错误: {{ batchPreviewError }}</div>
-
-                                <!-- 批量预览控制按钮 -->
-                                <div class="mt-2 flex gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        class="h-6 px-2 text-xs"
-                                        @click="refreshBatchPreview"
-                                        :disabled="isCreatingBatchPreview"
-                                    >
-                                        <RefreshCw class="h-3 w-3" />
-                                        刷新
-                                    </Button>
-                                    <Button variant="outline" size="sm" class="h-6 px-2 text-xs" @click="stopBatchPreview">
-                                        <Square class="h-3 w-3" />
-                                        停止
-                                    </Button>
-                                    <Button variant="outline" size="sm" class="h-6 px-2 text-xs" @click="debugBatchPreview">
-                                        <Bug class="h-3 w-3" />
-                                        调试
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 右侧AI对话面板 -->
-                        <div class="w-80">
-                            <AIChatPanel ref="aiChatPanelRef" @ai-action="handleAIAction" @ai-animation-generated="handleAIAnimationGenerated" />
-                        </div>
+                    <!-- 右侧AI对话面板 -->
+                    <div class="w-80">
+                        <AIChatPanel ref="aiChatPanelRef" @ai-action="handleAIAction" @ai-animation-generated="handleAIAnimationGenerated" />
                     </div>
                 </div>
             </div>
-        </AppLayout>
-    </ToastProvider>
+        </div>
+    </AppLayout>
 </template>
 
 <script setup lang="ts">
@@ -184,16 +182,15 @@ import ActionLibraryPanel from '@/components/ActionLibraryPanel.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/composables/useToast';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { apiGet } from '@/utils/api';
 import { Bug, Loader2, Package, RefreshCw, Search, Square } from 'lucide-vue-next';
 import { onMounted, ref, watch } from 'vue';
 import AIChatPanel from './components/AIChatPanel.vue';
 
-import ToastProvider from '@/components/ui/toast/ToastProvider.vue';
 import { useModelController } from '@/lib/three/ModelController';
 import { useThreeJSManager } from '@/lib/three/ThreeJSBaseManager';
+import { ElMessage } from 'element-plus';
 
 const threeManager = useThreeJSManager();
 const { destroyThreeJS, initThreeJS, handleResize } = threeManager;
@@ -213,7 +210,6 @@ const breadcrumbs = [
 ];
 
 // Toast
-const { toast } = useToast();
 const threeCanvas = ref<HTMLCanvasElement>();
 
 // 动作库面板相关状态
@@ -270,10 +266,10 @@ const handleAnimationSelected = async (animation: any) => {
                     handleAnimationPlay(animationIndex);
                 }
 
-                toast.success(`已载入动画: ${animation.name}`);
+                ElMessage.success(`已载入动画: ${animation.name}`);
                 console.log('动画载入成功:', result);
             } else {
-                toast.error('载入动画失败: ' + (result.errors?.join(', ') || '未知错误'));
+                ElMessage.error('载入动画失败: ' + (result.errors?.join(', ') || '未知错误'));
             }
         } else if (animation.animation_tracks && modelController) {
             // 如果没有源文件，尝试使用预设的动画轨道数据
@@ -302,24 +298,24 @@ const handleAnimationSelected = async (animation: any) => {
                     handleAnimationPlay(animationIndex);
                 }
 
-                toast.success(`已应用动画: ${animation.name}`);
+                ElMessage.success(`已应用动画: ${animation.name}`);
                 console.log('动画应用成功:', animationData);
             } else {
-                toast.error('应用动画失败');
+                ElMessage.error('应用动画失败');
             }
         } else {
-            toast.error('动画数据格式错误或缺少源文件');
+            ElMessage.error('动画数据格式错误或缺少源文件');
         }
     } catch (error) {
         console.error('应用动画失败:', error);
-        toast.error('应用动画失败: ' + (error instanceof Error ? error.message : '未知错误'));
+        ElMessage.error('应用动画失败: ' + (error instanceof Error ? error.message : '未知错误'));
     }
 };
 
 const handleAnimationPreview = (animation: any) => {
     console.log('预览动画:', animation);
     // TODO: 实现动画预览功能
-    toast.info(`预览动画: ${animation.name}`);
+    ElMessage.info(`预览动画: ${animation.name}`);
 };
 
 // 批量预览动画
@@ -335,7 +331,7 @@ const handleBatchAnimationPreview = async (animations: any[]) => {
         const previewAnimations = animations.slice(0, maxPreviewCount);
 
         if (previewAnimations.length === 0) {
-            toast.warning('没有可预览的动画');
+            ElMessage.warning('没有可预览的动画');
             return;
         }
 
@@ -348,11 +344,11 @@ const handleBatchAnimationPreview = async (animations: any[]) => {
         // 创建多个预览控制器
         await createBatchPreviewControllers(previewAnimations);
 
-        toast.success(`开始预览 ${previewAnimations.length} 个动画`);
+        ElMessage.success(`开始预览 ${previewAnimations.length} 个动画`);
     } catch (error) {
         console.error('批量预览失败:', error);
         const errorMessage = error instanceof Error ? error.message : '未知错误';
-        toast.error('批量预览失败: ' + errorMessage);
+        ElMessage.error('批量预览失败: ' + errorMessage);
         batchPreviewError.value = errorMessage;
         isBatchPreviewMode.value = false;
     } finally {
@@ -388,11 +384,11 @@ const searchAiAnimations = async () => {
             if (response.success) {
                 aiAnimations.value = response.data.items;
             } else {
-                toast.error('搜索AI动画失败');
+                ElMessage.error('搜索AI动画失败');
             }
         } catch (error) {
             console.error('搜索AI动画失败:', error);
-            toast.error('搜索AI动画失败');
+            ElMessage.error('搜索AI动画失败');
         } finally {
             isLoadingAiAnimations.value = false;
         }
@@ -443,13 +439,13 @@ const refreshAiAnimations = async () => {
 
         if (response.success) {
             aiAnimations.value = response.data.items;
-            toast.success('刷新成功');
+            ElMessage.success('刷新成功');
         } else {
-            toast.error('刷新失败');
+            ElMessage.error('刷新失败');
         }
     } catch (error) {
         console.error('刷新AI动画失败:', error);
-        toast.error('刷新失败');
+        ElMessage.error('刷新失败');
     } finally {
         isLoadingAiAnimations.value = false;
     }
@@ -471,7 +467,7 @@ const applyAiAnimation = async (animationId: string) => {
         });
 
         if (success) {
-            toast.success(`成功应用动画: ${selectedAnimation.name}`);
+            ElMessage.success(`成功应用动画: ${selectedAnimation.name}`);
             console.log(`应用AI动画: ${selectedAnimation.name}`);
 
             // 自动播放新添加的动画
@@ -480,11 +476,11 @@ const applyAiAnimation = async (animationId: string) => {
                 handleAnimationPlay(animationIndex);
             }
         } else {
-            toast.error('应用动画失败');
+            ElMessage.error('应用动画失败');
         }
     } catch (error) {
         console.error('应用AI动画失败:', error);
-        toast.error('应用动画失败');
+        ElMessage.error('应用动画失败');
     }
 };
 
@@ -515,7 +511,7 @@ const handleAnimationPlay = (animationIndex: number) => {
     if (success) {
         console.log('播放动画成功');
     } else {
-        toast.error('播放动画失败');
+        ElMessage.error('播放动画失败');
     }
 };
 
@@ -561,7 +557,7 @@ const handleAIAnimationGenerated = async (animation: { type: string; data: any; 
         }
     } catch (error) {
         console.error('处理AI动画失败:', error);
-        toast.error('AI动画处理失败');
+        ElMessage.error('AI动画处理失败');
     }
 };
 
@@ -760,7 +756,7 @@ const refreshBatchPreview = async () => {
         await handleBatchAnimationPreview(batchPreviewAnimations.value);
     } catch (error) {
         console.error('刷新批量预览失败:', error);
-        toast.error('刷新批量预览失败');
+        ElMessage.error('刷新批量预览失败');
     }
 };
 
@@ -769,17 +765,17 @@ const stopBatchPreview = async () => {
     try {
         console.log('停止批量预览...');
         await cleanupBatchPreview();
-        toast.success('已停止批量预览');
+        ElMessage.success('已停止批量预览');
     } catch (error) {
         console.error('停止批量预览失败:', error);
-        toast.error('停止批量预览失败');
+        ElMessage.error('停止批量预览失败');
     }
 };
 
 // 调试批量预览
 const debugBatchPreview = () => {
     if (!batchPreviewControllers.value.length) {
-        toast.warning('没有可调试的批量预览');
+        ElMessage.warning('没有可调试的批量预览');
         return;
     }
 
@@ -813,7 +809,7 @@ const debugBatchPreview = () => {
         }
     });
 
-    toast.info('调试信息已输出到控制台');
+    ElMessage.info('调试信息已输出到控制台');
 };
 
 // 加载默认模型
@@ -823,7 +819,7 @@ const loadDefaultModel = async () => {
         modelInitParams.value = modelController.getModelParams();
     } catch (error) {
         console.error('加载默认模型失败:', error);
-        toast.error('加载默认模型失败');
+        ElMessage.error('加载默认模型失败');
     }
 };
 

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import AppSidebar from '@/components/AppSidebar.vue';
 import AppSidebarHeader from '@/components/AppSidebarHeader.vue';
-import ToastProvider from '@/components/ui/toast/ToastProvider.vue';
 import type { BreadcrumbItemType } from '@/types';
 
 interface Props {
@@ -14,7 +13,7 @@ withDefaults(defineProps<Props>(), {
 </script>
 
 <template>
-    <el-container class="h-screen">
+    <el-container class="h-screen overflow-hidden">
         <el-aside width="250px" class="border-r border-border">
             <AppSidebar />
         </el-aside>
@@ -26,6 +25,5 @@ withDefaults(defineProps<Props>(), {
                 <slot />
             </el-main>
         </el-container>
-        <ToastProvider />
     </el-container>
 </template>
