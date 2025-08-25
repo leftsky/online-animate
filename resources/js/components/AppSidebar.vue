@@ -5,7 +5,7 @@ import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { BookOpen, BookText, Clapperboard, Folder, LayoutGrid, Library, PlayCircle, Users } from 'lucide-vue-next';
+import { BookOpen, BookText, Clapperboard, Folder, LayoutGrid, Library, PlayCircle, Users, FileText, Video, Film, Database } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 
 const mainNavItems: NavItem[] = [
@@ -20,24 +20,46 @@ const mainNavItems: NavItem[] = [
         icon: Clapperboard,
     },
     {
-        title: '小说管理',
-        href: '/novel-management',
-        icon: BookText,
+        title: '文案/策划',
+        icon: FileText,
+        children: [
+            {
+                title: '小说管理',
+                href: '/novel-management',
+                icon: BookText,
+            },
+            {
+                title: '视频管理',
+                href: '/video-management',
+                icon: Video,
+            },
+            {
+                title: '分镜管理',
+                href: '/scene-management',
+                icon: Film,
+            },
+        ],
     },
     {
-        title: '资源库',
-        href: '/resource-library',
-        icon: Library,
-    },
-    {
-        title: '人物库',
-        href: '/character-library',
-        icon: Users,
-    },
-    {
-        title: '人物动作调试',
-        href: '/character-animation-debug',
-        icon: PlayCircle,
+        title: '资源',
+        icon: Database,
+        children: [
+            {
+                title: '资源库',
+                href: '/resource-library',
+                icon: Library,
+            },
+            {
+                title: '人物库',
+                href: '/character-library',
+                icon: Users,
+            },
+            {
+                title: '人物动作调试',
+                href: '/character-animation-debug',
+                icon: PlayCircle,
+            },
+        ],
     },
 ];
 
@@ -61,7 +83,7 @@ const footerNavItems: NavItem[] = [
             <SidebarMenu>
                 <SidebarMenuItem>
                     <SidebarMenuButton size="lg" as-child>
-                        <Link :href="route('dashboard')">
+                        <Link href="/dashboard">
                             <AppLogo />
                         </Link>
                     </SidebarMenuButton>
