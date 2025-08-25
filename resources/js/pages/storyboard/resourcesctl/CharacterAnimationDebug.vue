@@ -3,84 +3,9 @@
         <div class="min-h-screen bg-background">
             <div class="container mx-auto p-6">
                 <!-- 页面标题 -->
-                <div class="mb-6 flex items-center justify-between">
-                    <div>
-                        <h1 class="text-3xl font-bold text-foreground">人物动作调试</h1>
-                        <p class="mt-2 text-muted-foreground">调试和测试3D人物模型的动画效果</p>
-                    </div>
-
-                    <!-- AI动画搜索和选择 -->
-                    <div class="flex items-center gap-3">
-                        <div class="relative">
-                            <Input
-                                v-model="aiAnimationSearch"
-                                placeholder="搜索AI动画..."
-                                class="h-10 w-64"
-                                @input="searchAiAnimations"
-                                @focus="handleSearchFocus"
-                                @blur="handleSearchBlur"
-                                @keydown.enter="handleSearchEnter"
-                            />
-                            <Search class="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
-
-                            <!-- 搜索下拉选择窗口 -->
-                            <div
-                                v-if="showSearchDropdown && (aiAnimations.length > 0 || aiAnimationSearch.trim().length > 0)"
-                                class="absolute left-0 right-0 top-full z-50 mt-1 max-h-64 overflow-y-auto rounded-md border border-border bg-background shadow-lg"
-                            >
-                                <div v-if="isLoadingAiAnimations" class="p-3 text-center text-sm text-muted-foreground">
-                                    <Loader2 class="mx-auto mb-2 h-4 w-4 animate-spin" />
-                                    搜索中...
-                                </div>
-
-                                <div
-                                    v-else-if="aiAnimations.length === 0 && aiAnimationSearch.trim().length > 0"
-                                    class="p-3 text-center text-sm text-muted-foreground"
-                                >
-                                    未找到相关动画
-                                </div>
-
-                                <div v-else class="py-1">
-                                    <div
-                                        v-for="animation in aiAnimations"
-                                        :key="animation.id"
-                                        @click="selectAnimationFromDropdown(animation)"
-                                        class="cursor-pointer px-3 py-2 transition-colors hover:bg-accent"
-                                    >
-                                        <div class="flex flex-col">
-                                            <span class="text-sm font-medium text-foreground">{{ animation.name }}</span>
-                                            <span class="text-xs text-muted-foreground">
-                                                {{ animation.duration_formatted }} | {{ animation.confidence_percentage }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <Select v-model="selectedAiAnimation" @update:model-value="applyAiAnimation">
-                            <SelectTrigger class="h-10 w-48">
-                                <SelectValue placeholder="选择AI动画" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem v-for="animation in aiAnimations" :key="animation.id" :value="animation.id">
-                                    <div class="flex flex-col">
-                                        <span class="font-medium">{{ animation.name }}</span>
-                                        <span class="text-xs text-muted-foreground">
-                                            {{ animation.duration_formatted }} | {{ animation.confidence_percentage }}
-                                        </span>
-                                    </div>
-                                </SelectItem>
-                                <SelectItem v-if="aiAnimations.length === 0" value="" disabled> 暂无可用动画 </SelectItem>
-                            </SelectContent>
-                        </Select>
-
-                        <Button @click="refreshAiAnimations" variant="outline" size="sm" :disabled="isLoadingAiAnimations">
-                            <RefreshCw v-if="!isLoadingAiAnimations" class="h-4 w-4" />
-                            <Loader2 v-else class="h-4 w-4 animate-spin" />
-                            {{ isLoadingAiAnimations ? '处理中' : '刷新' }}
-                        </Button>
-                    </div>
+                <div class="mb-6">
+                    <h1 class="text-3xl font-bold text-foreground">人物动作调试</h1>
+                    <p class="mt-2 text-muted-foreground">调试和测试3D人物模型的动画效果</p>
                 </div>
 
                 <div class="flex h-[calc(100vh-200px)] gap-6">
@@ -145,24 +70,18 @@
 
                             <!-- 批量预览控制按钮 -->
                             <div class="mt-2 flex gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    class="h-6 px-2 text-xs"
-                                    @click="refreshBatchPreview"
-                                    :disabled="isCreatingBatchPreview"
-                                >
-                                    <RefreshCw class="h-3 w-3" />
+                                <el-button size="small" @click="refreshBatchPreview" :disabled="isCreatingBatchPreview">
+                                    <el-icon><Refresh /></el-icon>
                                     刷新
-                                </Button>
-                                <Button variant="outline" size="sm" class="h-6 px-2 text-xs" @click="stopBatchPreview">
-                                    <Square class="h-3 w-3" />
+                                </el-button>
+                                <el-button size="small" @click="stopBatchPreview">
+                                    <el-icon><VideoPause /></el-icon>
                                     停止
-                                </Button>
-                                <Button variant="outline" size="sm" class="h-6 px-2 text-xs" @click="debugBatchPreview">
-                                    <Bug class="h-3 w-3" />
+                                </el-button>
+                                <el-button size="small" @click="debugBatchPreview">
+                                    <el-icon><Tools /></el-icon>
                                     调试
-                                </Button>
+                                </el-button>
                             </div>
                         </div>
                     </div>
@@ -177,19 +96,16 @@
     </AppLayout>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import ActionLibraryPanel from '@/components/ActionLibraryPanel.vue';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { apiGet } from '@/utils/api';
-import { Bug, Loader2, Package, RefreshCw, Search, Square } from 'lucide-vue-next';
+import { Package } from 'lucide-vue-next';
 import { onMounted, ref, watch } from 'vue';
 import AIChatPanel from './components/AIChatPanel.vue';
 
 import { useModelController } from '@/lib/three/ModelController';
 import { useThreeJSManager } from '@/lib/three/ThreeJSBaseManager';
+import { Tools, VideoPause } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 
 const threeManager = useThreeJSManager();
@@ -197,7 +113,7 @@ const { destroyThreeJS, initThreeJS, handleResize } = threeManager;
 const modelController = useModelController(threeManager);
 const { load, animations: availableAnimations, status: modelStatus } = modelController;
 
-const modelInitParams = ref<any>({
+const modelInitParams = ref({
     position: { x: 0, y: 0, z: 0 },
     rotation: { x: 0, y: 0, z: 0 },
     scale: 1,
@@ -210,18 +126,18 @@ const breadcrumbs = [
 ];
 
 // Toast
-const threeCanvas = ref<HTMLCanvasElement>();
+const threeCanvas = ref();
 
-// 动作库面板相关状态
-const actionLibraryRef = ref<InstanceType<typeof ActionLibraryPanel> | null>(null);
-const aiChatPanelRef = ref<InstanceType<typeof AIChatPanel> | null>(null);
+// 组件引用
+const actionLibraryRef = ref(null);
+const aiChatPanelRef = ref(null);
 
 // 批量预览相关状态
-const batchPreviewControllers = ref<any[]>([]);
+const batchPreviewControllers = ref([]);
 const isBatchPreviewMode = ref(false);
-const batchPreviewAnimations = ref<any[]>([]);
+const batchPreviewAnimations = ref([]);
 const isCreatingBatchPreview = ref(false);
-const batchPreviewError = ref<string | null>(null);
+const batchPreviewError = ref(null);
 
 // 模型名称和ID
 const modelName = ref('调试模型');
@@ -230,56 +146,28 @@ const modelId = ref('debug-model-001');
 // 默认模型URL
 const defaultModelUrl = 'https://online-animate-qos.leftsky.top/models/2025/08/DY5l9zbaqO_1756016791.fbx';
 
-// AI动画搜索相关状态
-const aiAnimationSearch = ref('');
-const selectedAiAnimation = ref<string>('');
-const aiAnimations = ref<any[]>([]);
-const isLoadingAiAnimations = ref(false);
-let searchTimeout: number | null = null;
-const showSearchDropdown = ref(false); // 控制搜索下拉窗口的显示
-
 // 动作库相关方法
-const handleAnimationSelected = async (animation: any) => {
-    console.log('选择动画:', animation);
-
+const handleAnimationSelected = async (animation) => {
     try {
-        // 检查是否有源文件URL
         if (animation.source_file_url && modelController) {
-            console.log('从文件URL载入动画:', animation.source_file_url);
-            console.log('当前可用动画数量:', availableAnimations.value.length);
-
-            // 使用ModelController的importFBXAnimations方法载入动画文件
             const result = await modelController.importFBXAnimations(animation.source_file_url, {
                 prefix: `${animation.name}_`,
                 replaceExisting: false,
             });
 
-            console.log('载入结果:', result);
-            console.log('载入后的动画数量:', availableAnimations.value.length);
-
             if (result.success && result.importedCount > 0) {
-                // 载入成功，自动播放第一个载入的动画
                 const animationIndex = availableAnimations.value.length - 1;
-                console.log('准备播放动画索引:', animationIndex);
-
                 if (animationIndex >= 0) {
                     handleAnimationPlay(animationIndex);
                 }
-
                 ElMessage.success(`已载入动画: ${animation.name}`);
-                console.log('动画载入成功:', result);
             } else {
                 ElMessage.error('载入动画失败: ' + (result.errors?.join(', ') || '未知错误'));
             }
         } else if (animation.animation_tracks && modelController) {
-            // 如果没有源文件，尝试使用预设的动画轨道数据
-            console.log('使用预设动画轨道数据');
-
-            // 解析动画轨道数据
             const animationTracks =
                 typeof animation.animation_tracks === 'string' ? JSON.parse(animation.animation_tracks) : animation.animation_tracks;
 
-            // 创建动画数据
             const animationData = {
                 name: animation.name,
                 duration: typeof animation.duration === 'string' ? parseFloat(animation.duration) : animation.duration,
@@ -288,18 +176,14 @@ const handleAnimationSelected = async (animation: any) => {
                 tracks: animationTracks.tracks || [],
             };
 
-            // 添加到模型控制器
             const success = await modelController.addCustomAnimation(animationData);
 
             if (success) {
-                // 自动播放新添加的动画
                 const animationIndex = availableAnimations.value.length - 1;
                 if (animationIndex >= 0) {
                     handleAnimationPlay(animationIndex);
                 }
-
                 ElMessage.success(`已应用动画: ${animation.name}`);
-                console.log('动画应用成功:', animationData);
             } else {
                 ElMessage.error('应用动画失败');
             }
@@ -307,27 +191,20 @@ const handleAnimationSelected = async (animation: any) => {
             ElMessage.error('动画数据格式错误或缺少源文件');
         }
     } catch (error) {
-        console.error('应用动画失败:', error);
         ElMessage.error('应用动画失败: ' + (error instanceof Error ? error.message : '未知错误'));
     }
 };
 
-const handleAnimationPreview = (animation: any) => {
-    console.log('预览动画:', animation);
-    // TODO: 实现动画预览功能
+const handleAnimationPreview = (animation) => {
     ElMessage.info(`预览动画: ${animation.name}`);
 };
 
 // 批量预览动画
-const handleBatchAnimationPreview = async (animations: any[]) => {
-    console.log('批量预览动画:', animations);
-
+const handleBatchAnimationPreview = async (animations) => {
     try {
-        // 清理之前的预览
         await cleanupBatchPreview();
 
-        // 限制预览数量，避免性能问题
-        const maxPreviewCount = 100; // 最多9个（3x3网格）
+        const maxPreviewCount = 100;
         const previewAnimations = animations.slice(0, maxPreviewCount);
 
         if (previewAnimations.length === 0) {
@@ -335,18 +212,14 @@ const handleBatchAnimationPreview = async (animations: any[]) => {
             return;
         }
 
-        // 设置批量预览模式
         isBatchPreviewMode.value = true;
         batchPreviewAnimations.value = previewAnimations;
         isCreatingBatchPreview.value = true;
         batchPreviewError.value = null;
 
-        // 创建多个预览控制器
         await createBatchPreviewControllers(previewAnimations);
-
         ElMessage.success(`开始预览 ${previewAnimations.length} 个动画`);
     } catch (error) {
-        console.error('批量预览失败:', error);
         const errorMessage = error instanceof Error ? error.message : '未知错误';
         ElMessage.error('批量预览失败: ' + errorMessage);
         batchPreviewError.value = errorMessage;
@@ -356,190 +229,30 @@ const handleBatchAnimationPreview = async (animations: any[]) => {
     }
 };
 
-// 防抖搜索AI动画
-const searchAiAnimations = async () => {
-    // 清除之前的定时器
-    if (searchTimeout) {
-        clearTimeout(searchTimeout);
-    }
-
-    // 设置新的定时器，500ms后执行搜索
-    searchTimeout = setTimeout(async () => {
-        if (aiAnimationSearch.value.trim().length < 2) {
-            // 如果搜索词少于2个字符，显示最近的动画
-            await loadRecentAnimations();
-            return;
-        }
-
-        try {
-            isLoadingAiAnimations.value = true;
-            const params = new URLSearchParams({
-                search: aiAnimationSearch.value.trim(),
-                successful_only: 'true',
-                per_page: '20',
-            });
-
-            const response = await apiGet(`ai-skeleton-animations?${params.toString()}`);
-
-            if (response.success) {
-                aiAnimations.value = response.data.items;
-            } else {
-                ElMessage.error('搜索AI动画失败');
-            }
-        } catch (error) {
-            console.error('搜索AI动画失败:', error);
-            ElMessage.error('搜索AI动画失败');
-        } finally {
-            isLoadingAiAnimations.value = false;
-        }
-    }, 500);
-};
-
-// 加载最近的动画
-const loadRecentAnimations = async () => {
-    try {
-        isLoadingAiAnimations.value = true;
-        const params = new URLSearchParams({
-            successful_only: 'true',
-            per_page: '10',
-            sort_by: 'created_at',
-            sort_direction: 'desc',
-        });
-
-        const response = await apiGet(`ai-skeleton-animations?${params.toString()}`);
-
-        if (response.success) {
-            aiAnimations.value = response.data.items;
-        }
-    } catch (error) {
-        console.error('加载最近动画失败:', error);
-    } finally {
-        isLoadingAiAnimations.value = false;
-    }
-};
-
-// 搜索框聚焦时加载数据
-const handleSearchFocus = async () => {
-    showSearchDropdown.value = true;
-    if (aiAnimations.value.length === 0) {
-        await loadRecentAnimations();
-    }
-};
-
-// 刷新AI动画列表
-const refreshAiAnimations = async () => {
-    try {
-        isLoadingAiAnimations.value = true;
-        const params = new URLSearchParams({
-            successful_only: 'true',
-            per_page: '20',
-        });
-
-        const response = await apiGet(`ai-skeleton-animations?${params.toString()}`);
-
-        if (response.success) {
-            aiAnimations.value = response.data.items;
-            ElMessage.success('刷新成功');
-        } else {
-            ElMessage.error('刷新失败');
-        }
-    } catch (error) {
-        console.error('刷新AI动画失败:', error);
-        ElMessage.error('刷新失败');
-    } finally {
-        isLoadingAiAnimations.value = false;
-    }
-};
-
-// 应用选中的AI动画
-const applyAiAnimation = async (animationId: string) => {
-    if (!animationId) return;
-
-    const selectedAnimation = aiAnimations.value.find((a) => a.id === animationId);
-    if (!selectedAnimation) return;
-
-    try {
-        // 调用ModelController的addCustomAnimation方法
-        const success = await modelController.addCustomAnimation({
-            name: selectedAnimation.name,
-            duration: selectedAnimation.duration,
-            tracks: selectedAnimation.animation_data.tracks || [],
-        });
-
-        if (success) {
-            ElMessage.success(`成功应用动画: ${selectedAnimation.name}`);
-            console.log(`应用AI动画: ${selectedAnimation.name}`);
-
-            // 自动播放新添加的动画
-            const animationIndex = availableAnimations.value.length - 1;
-            if (animationIndex >= 0) {
-                handleAnimationPlay(animationIndex);
-            }
-        } else {
-            ElMessage.error('应用动画失败');
-        }
-    } catch (error) {
-        console.error('应用AI动画失败:', error);
-        ElMessage.error('应用动画失败');
-    }
-};
-
-// 从搜索下拉选择动画
-const selectAnimationFromDropdown = (animation: any) => {
-    selectedAiAnimation.value = animation.id;
-    applyAiAnimation(animation.id);
-    showSearchDropdown.value = false; // 关闭下拉窗口
-};
-
-// 搜索框失去焦点时关闭下拉窗口
-const handleSearchBlur = () => {
-    setTimeout(() => {
-        showSearchDropdown.value = false;
-    }, 100); // 延迟关闭，避免误触发
-};
-
-// 搜索框回车键处理
-const handleSearchEnter = async () => {
-    if (aiAnimations.value.length > 0) {
-        selectAnimationFromDropdown(aiAnimations.value[0]);
-    }
-};
-
 // 动画控制方法
-const handleAnimationPlay = (animationIndex: number) => {
+const handleAnimationPlay = (animationIndex) => {
     const success = modelController.play(animationIndex);
-    if (success) {
-        console.log('播放动画成功');
-    } else {
+    if (!success) {
         ElMessage.error('播放动画失败');
     }
 };
 
 // AI动作处理
-const handleAIAction = (action: string) => {
-    // 这里可以根据AI指令执行相应的模型控制操作
-    // 例如：解析自然语言指令并转换为模型动作
-    console.log('AI指令:', action);
-
-    // 示例：简单的关键词匹配
+const handleAIAction = (action) => {
     if (action.includes('走路') || action.includes('走')) {
-        // 播放走路动画
         if (availableAnimations.value.length > 0) {
-            handleAnimationPlay(0); // 假设第一个动画是走路
+            handleAnimationPlay(0);
         }
     } else if (action.includes('挥手')) {
-        // 播放挥手动画
         if (availableAnimations.value.length > 1) {
-            handleAnimationPlay(1); // 假设第二个动画是挥手
+            handleAnimationPlay(1);
         }
-    } else {
     }
 };
 
 // AI动画生成处理
-const handleAIAnimationGenerated = async (animation: { type: string; data: any; name: string; duration: number }) => {
+const handleAIAnimationGenerated = async (animation) => {
     try {
-        // 调用ModelController的addCustomAnimation方法
         const success = await modelController.addCustomAnimation({
             name: animation.name,
             duration: animation.data.animation_data.duration,
@@ -547,7 +260,6 @@ const handleAIAnimationGenerated = async (animation: { type: string; data: any; 
         });
 
         if (success) {
-            // 自动播放新添加的动画
             const animationIndex = availableAnimations.value.length - 1;
             if (animationIndex >= 0) {
                 handleAnimationPlay(animationIndex);
@@ -555,14 +267,13 @@ const handleAIAnimationGenerated = async (animation: { type: string; data: any; 
         } else {
             throw new Error('添加动画失败');
         }
-    } catch (error) {
-        console.error('处理AI动画失败:', error);
+    } catch {
         ElMessage.error('AI动画处理失败');
     }
 };
 
 // 创建批量预览控制器
-const createBatchPreviewControllers = async (animations: any[]) => {
+const createBatchPreviewControllers = async (animations) => {
     try {
         const controllers = [];
 
@@ -630,7 +341,7 @@ const createBatchPreviewControllers = async (animations: any[]) => {
                 if (animation.source_file_url) {
                     const animations = newController.animations?.value || [];
                     // 找到以动画名称为前缀的动画
-                    const fbxAnimationIndex = animations.findIndex((a: any) => a.name && a.name.includes(animation.name));
+                    const fbxAnimationIndex = animations.findIndex((a) => a.name && a.name.includes(animation.name));
                     if (fbxAnimationIndex !== -1) {
                         animationIndex = fbxAnimationIndex;
                         console.log(`模型 ${i + 1} 找到FBX动画: ${animations[animationIndex]?.name} 在索引 ${animationIndex}`);
@@ -694,7 +405,7 @@ const cleanupBatchPreview = async () => {
 };
 
 // 验证批量预览控制器
-const validateBatchPreviewControllers = async (controllers: any[]) => {
+const validateBatchPreviewControllers = async (controllers) => {
     try {
         console.log('开始验证批量预览控制器...');
 
@@ -716,7 +427,7 @@ const validateBatchPreviewControllers = async (controllers: any[]) => {
             if (animations && animations.length > 0) {
                 console.log(
                     `控制器 ${i + 1} 动画列表:`,
-                    animations.map((a: any) => a.name),
+                    animations.map((a) => a.name),
                 );
 
                 // 检查当前播放的动画
@@ -790,13 +501,13 @@ const debugBatchPreview = () => {
             status,
             isPlaying,
             animationCount: animations?.length || 0,
-            animations: animations?.map((a: any) => a.name) || [],
+            animations: animations?.map((a) => a.name) || [],
         });
 
         // 尝试播放不同的动画
         if (animations && animations.length > 0) {
             // 找到FBX动画（通常包含动画名称）
-            const fbxAnimationIndex = animations.findIndex((a: any) => a.name && a.name.includes('_mixamocom'));
+            const fbxAnimationIndex = animations.findIndex((a) => a.name && a.name.includes('_mixamocom'));
 
             if (fbxAnimationIndex !== -1) {
                 console.log(`控制器 ${index + 1} 尝试播放FBX动画: ${animations[fbxAnimationIndex].name} (索引: ${fbxAnimationIndex})`);
@@ -831,9 +542,6 @@ onMounted(async () => {
 
         // 加载默认模型
         await loadDefaultModel();
-
-        // 初始化AI动画列表
-        await refreshAiAnimations();
     }
 });
 

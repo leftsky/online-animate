@@ -10,23 +10,16 @@
             <!-- 按钮组 -->
             <div class="flex gap-2">
                 <!-- 上传按钮 -->
-                <Button variant="outline" size="sm" class="h-7 px-2 text-xs" @click="handleUploadClick" :disabled="isUploading">
-                    <Loader2 v-if="isUploading" class="mr-1 h-3 w-3 animate-spin" />
-                    <Upload v-else class="mr-1 h-3 w-3" />
+                <el-button type="primary" size="small" @click="handleUploadClick" :loading="isUploading">
+                    <el-icon><Upload /></el-icon>
                     {{ isUploading ? '批量上传中...' : '批量上传动作' }}
-                </Button>
+                </el-button>
 
                 <!-- 预览动画按钮 -->
-                <Button
-                    variant="outline"
-                    size="sm"
-                    class="h-7 px-2 text-xs"
-                    @click="handlePreviewAnimations"
-                    :disabled="filteredAnimations.length === 0"
-                >
-                    <Eye class="mr-1 h-3 w-3" />
+                <el-button type="info" size="small" @click="handlePreviewAnimations" :disabled="filteredAnimations.length === 0">
+                    <el-icon><View /></el-icon>
                     预览{{ filteredAnimations.length }}个动画
-                </Button>
+                </el-button>
             </div>
         </div>
 
@@ -34,27 +27,17 @@
         <div class="flex-1 space-y-3 overflow-y-auto p-3">
             <!-- 搜索栏 -->
             <div class="relative">
-                <Input v-model="searchQuery" placeholder="搜索动画..." class="h-8 text-sm" @input="handleSearch" />
-                <Search class="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
-            </div>
-
-            <!-- 分类筛选 -->
-            <div class="flex flex-wrap gap-2">
-                <Button
-                    v-for="filter in filters"
-                    :key="filter.value"
-                    :variant="activeFilter === filter.value ? 'default' : 'outline'"
-                    size="sm"
-                    class="h-7 px-2 text-xs"
-                    @click="setFilter(filter.value)"
-                >
-                    {{ filter.label }}
-                </Button>
+                <el-input v-model="searchQuery" placeholder="搜索动画..." size="small" @input="handleSearch" />
+                <el-icon class="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground">
+                    <Search />
+                </el-icon>
             </div>
 
             <!-- 加载状态 -->
             <div v-if="isLoading" class="flex items-center justify-center py-8">
-                <Loader2 class="h-6 w-6 animate-spin text-muted-foreground" />
+                <el-icon class="h-6 w-6 animate-spin text-muted-foreground">
+                    <Loading />
+                </el-icon>
                 <span class="ml-2 text-sm text-muted-foreground">加载中...</span>
             </div>
 
@@ -76,35 +59,33 @@
                     <!-- 动画属性 -->
                     <div class="mb-3 flex items-center gap-4 text-xs text-muted-foreground">
                         <span class="flex items-center gap-1">
-                            <Clock class="h-3 w-3" />
+                            <el-icon><Clock /></el-icon>
                             {{ formatDuration(animation.duration) }}
                         </span>
                         <span class="flex items-center gap-1">
-                            <Film class="h-3 w-3" />
+                            <el-icon><VideoPlay /></el-icon>
                             {{ typeof animation.frame_count === 'string' ? parseInt(animation.frame_count) || 0 : animation.frame_count }}帧
-                        </span>
-                        <span class="flex items-center gap-1">
-                            <Repeat class="h-3 w-3" />
-                            {{ getLoopTypeLabel(animation.loop_type) }}
                         </span>
                     </div>
 
                     <!-- 操作按钮 -->
                     <div class="flex items-center gap-2">
-                        <Button size="sm" class="h-7 flex-1 text-xs" @click="applyAnimation(animation)">
-                            <Play class="mr-1 h-3 w-3" />
+                        <el-button type="primary" size="small" class="flex-1" @click="applyAnimation(animation)">
+                            <el-icon><VideoPlay /></el-icon>
                             应用动画
-                        </Button>
-                        <Button variant="outline" size="sm" class="h-7 px-2 text-xs" @click="previewAnimation(animation)">
-                            <Eye class="h-3 w-3" />
-                        </Button>
+                        </el-button>
+                        <el-button type="info" size="small" @click="previewAnimation(animation)">
+                            <el-icon><View /></el-icon>
+                        </el-button>
                     </div>
                 </div>
             </div>
 
             <!-- 空状态 -->
             <div v-else class="flex flex-col items-center justify-center py-8 text-center">
-                <Package class="h-12 w-12 text-muted-foreground/50" />
+                <el-icon class="h-12 w-12 text-muted-foreground/50">
+                    <Box />
+                </el-icon>
                 <p class="mt-2 text-sm text-muted-foreground">
                     {{ searchQuery ? '未找到相关动画' : '暂无可用动画' }}
                 </p>
@@ -114,101 +95,51 @@
             <div v-if="total > limit" class="flex items-center justify-between border-t border-border pt-3">
                 <span class="text-xs text-muted-foreground"> 共 {{ total }} 个动画 </span>
                 <div class="flex items-center gap-2">
-                    <Button variant="outline" size="sm" class="h-7 px-2 text-xs" :disabled="offset === 0" @click="loadPage(offset - limit)">
-                        <ChevronLeft class="h-3 w-3" />
-                    </Button>
+                    <el-button type="default" size="small" :disabled="offset === 0" @click="loadPage(offset - limit)">
+                        <el-icon><ArrowLeft /></el-icon>
+                    </el-button>
                     <span class="text-xs text-muted-foreground"> {{ Math.floor(offset / limit) + 1 }} / {{ Math.ceil(total / limit) }} </span>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        class="h-7 px-2 text-xs"
-                        :disabled="offset + limit >= total"
-                        @click="loadPage(offset + limit)"
-                    >
-                        <ChevronRight class="h-3 w-3" />
-                    </Button>
+                    <el-button type="default" size="small" :disabled="offset + limit >= total" @click="loadPage(offset + limit)">
+                        <el-icon><ArrowRight /></el-icon>
+                    </el-button>
                 </div>
             </div>
         </div>
     </div>
 </template>
 
-<script setup lang="ts">
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { useToast } from '@/composables/useToast';
+<script setup>
 import { apiGet, apiPost, uploadApi } from '@/utils/api';
-import { ChevronLeft, ChevronRight, Clock, Eye, Film, Loader2, Package, Play, Repeat, Search, Upload } from 'lucide-vue-next';
+import { ArrowLeft, ArrowRight, Box, Clock, Loading, VideoPlay, View } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
+import { Search, Upload } from 'lucide-vue-next';
 import { computed, onMounted, ref, watch } from 'vue';
 
-// 动画数据接口
-interface Animation {
-    id: number;
-    name: string;
-    description?: string;
-    duration: number | string; // 可能是数字或字符串
-    frame_count: number | string; // 可能是数字或字符串
-    loop_type: string;
-    animation_tracks: any;
-    status: number;
-    user_id?: number | null;
-    created_at: string;
-    updated_at: string;
-}
-
 // Props
-interface Props {
-    modelId?: string | number;
-}
-
-defineProps<Props>();
+defineProps({
+    modelId: {
+        type: [String, Number],
+        default: null,
+    },
+});
 
 // Emits
-const emit = defineEmits<{
-    'animation-selected': [animation: Animation];
-    'animation-preview': [animation: Animation];
-    'batch-animation-preview': [animations: Animation[]];
-}>();
-
-// Toast
-const { toast } = useToast();
+const emit = defineEmits(['animation-selected', 'animation-preview', 'batch-animation-preview']);
 
 // 响应式数据
 const searchQuery = ref('');
 const isLoading = ref(false);
-const animations = ref<Animation[]>([]);
+const animations = ref([]);
 const total = ref(0);
 const limit = ref(20);
 const offset = ref(0);
-const activeFilter = ref('all');
 
 // 上传相关状态
 const isUploading = ref(false);
 
-// 筛选选项
-const filters = [
-    { label: '全部', value: 'all' },
-    { label: '循环', value: 'loop' },
-    { label: '单次', value: 'none' },
-    { label: '往返', value: 'pingpong' },
-    { label: '系统', value: 'system' },
-];
-
 // 计算属性
 const filteredAnimations = computed(() => {
-    let filtered = animations.value;
-
-    // 按循环类型筛选
-    if (activeFilter.value !== 'all' && activeFilter.value !== 'system') {
-        filtered = filtered.filter((anim) => anim.loop_type === activeFilter.value);
-    }
-
-    // 系统动画筛选
-    if (activeFilter.value === 'system') {
-        filtered = filtered.filter((anim) => !anim.user_id);
-    }
-
-    return filtered;
+    return animations.value;
 });
 
 // 方法
@@ -216,7 +147,7 @@ const loadAnimations = async () => {
     try {
         isLoading.value = true;
 
-        const params: any = {
+        const params = {
             limit: limit.value,
             offset: offset.value,
         };
@@ -226,27 +157,10 @@ const loadAnimations = async () => {
             params.search = searchQuery.value.trim();
         }
 
-        // 系统动画筛选
-        if (activeFilter.value === 'system') {
-            const response = await apiGet('/media_animations/system');
-            if (response.success) {
-                animations.value = response.data || [];
-                total.value = animations.value.length;
-            }
-            return;
-        }
-
         const response = await apiGet('/media_animations', { params });
         if (response.success) {
             animations.value = response.data.items || [];
             total.value = response.data.total || 0;
-
-            // 调试信息：检查数据类型
-            if (animations.value.length > 0) {
-                console.log('动画数据示例:', animations.value[0]);
-                console.log('duration类型:', typeof animations.value[0].duration);
-                console.log('frame_count类型:', typeof animations.value[0].frame_count);
-            }
         }
     } catch (error) {
         console.error('加载动画失败:', error);
@@ -262,26 +176,20 @@ const handleSearch = () => {
     loadAnimations();
 };
 
-const setFilter = (filter: string) => {
-    activeFilter.value = filter;
-    offset.value = 0;
-    loadAnimations();
-};
-
-const loadPage = (newOffset: number) => {
+const loadPage = (newOffset) => {
     offset.value = Math.max(0, newOffset);
     loadAnimations();
 };
 
-const applyAnimation = (animation: Animation) => {
+const applyAnimation = (animation) => {
     emit('animation-selected', animation);
 };
 
-const previewAnimation = (animation: Animation) => {
+const previewAnimation = (animation) => {
     emit('animation-preview', animation);
 };
 
-const formatDuration = (duration: number | string): string => {
+const formatDuration = (duration) => {
     // 确保 duration 是数字类型
     const numDuration = typeof duration === 'string' ? parseFloat(duration) : duration;
 
@@ -295,15 +203,6 @@ const formatDuration = (duration: number | string): string => {
     return `${numDuration.toFixed(1)}s`;
 };
 
-const getLoopTypeLabel = (loopType: string): string => {
-    const labels: Record<string, string> = {
-        none: '单次',
-        loop: '循环',
-        pingpong: '往返',
-    };
-    return labels[loopType] || loopType;
-};
-
 // 上传相关方法
 const handleUploadClick = () => {
     // 创建隐藏的文件输入，支持多选
@@ -313,8 +212,8 @@ const handleUploadClick = () => {
     input.multiple = true; // 支持多选
     input.style.display = 'none';
 
-    input.onchange = async (event: Event) => {
-        const target = event.target as HTMLInputElement;
+    input.onchange = async (event) => {
+        const target = event.target;
         if (target.files && target.files.length > 0) {
             const files = Array.from(target.files);
             console.log(
@@ -334,14 +233,14 @@ const handleUploadClick = () => {
     input.click();
 };
 
-const processBatchUpload = async (files: File[]) => {
+const processBatchUpload = async (files) => {
     try {
         isUploading.value = true;
 
         const results = {
             success: 0,
             failed: 0,
-            errors: [] as string[],
+            errors: [],
         };
 
         console.log(`开始批量上传 ${files.length} 个文件...`);
@@ -381,36 +280,35 @@ const processBatchUpload = async (files: File[]) => {
         // 显示批量上传结果
         if (results.success > 0) {
             await loadAnimations(); // 刷新动画列表
-            toast.success(`批量上传完成！成功: ${results.success} 个，失败: ${results.failed} 个`);
+            ElMessage.success(`批量上传完成！成功: ${results.success} 个，失败: ${results.failed} 个`);
         }
 
         if (results.failed > 0) {
             console.error('批量上传错误:', results.errors);
             // 可以选择是否显示详细错误信息
             if (results.errors.length <= 5) {
-                results.errors.forEach((error) => toast.error(error));
+                results.errors.forEach((error) => ElMessage.error(error));
             } else {
-                toast.error(`有 ${results.failed} 个文件上传失败，请查看控制台了解详情`);
+                ElMessage.error(`有 ${results.failed} 个文件上传失败，请查看控制台了解详情`);
             }
         }
 
         console.log('批量上传完成:', results);
     } catch (error) {
         console.error('批量上传过程出错:', error);
-        toast.error('批量上传过程出错: ' + (error instanceof Error ? error.message : '未知错误'));
+        ElMessage.error('批量上传过程出错: ' + (error instanceof Error ? error.message : '未知错误'));
     } finally {
         isUploading.value = false;
     }
 };
 
-const processSingleFile = async (file: File) => {
+const processSingleFile = async (file) => {
     // 解析文件名获取基本信息
     const fileName = file.name.replace(/\.[^/.]+$/, ''); // 移除文件扩展名
     const fileExtension = file.name.split('.').pop()?.toLowerCase();
 
     // 先上传文件
     const uploadResponse = await uploadApi.uploadFile(file, {
-        type: 'animation',
         folder: 'animations',
     });
 
@@ -421,7 +319,7 @@ const processSingleFile = async (file: File) => {
     const sourceFileUrl = uploadResponse.data.url || uploadResponse.data.path;
 
     // 根据文件类型解析动画数据
-    let animationData: any = {};
+    let animationData = {};
 
     if (fileExtension === 'fbx') {
         // FBX文件：使用默认值
@@ -508,7 +406,7 @@ const processSingleFile = async (file: File) => {
 };
 
 // 简单的YAML解析函数（如果需要的话）
-const parseYaml = (text: string) => {
+const parseYaml = (text) => {
     // 这里可以集成js-yaml库，或者使用简单的解析逻辑
     // 暂时返回空对象，让JSON解析处理
     try {
@@ -525,8 +423,18 @@ const handlePreviewAnimations = () => {
     }
 };
 
+// 刷新方法
+const refresh = async () => {
+    await loadAnimations();
+};
+
+// 暴露刷新方法给父组件
+defineExpose({
+    refresh,
+});
+
 // 监听器
-watch([searchQuery, activeFilter], () => {
+watch(searchQuery, () => {
     offset.value = 0;
 });
 
