@@ -115,16 +115,27 @@ class NovelManagementController extends WebApiController
     {
         $limit = $request->get('limit', 20);
         $offset = $request->get('offset', 0);
+        $query = $request->get('q', '');
 
-        $chapters = Chapter::where('novel_id', $novelId)
+        $chaptersQuery = Chapter::where('novel_id', $novelId);
+
+        // 如果提供了搜索查询，添加搜索条件
+        if (!empty($query)) {
+            $chaptersQuery->where(function($q) use ($query) {
+                $q->where('title', 'like', "%{$query}%")
+                  ->orWhere('chapter_number', 'like', "%{$query}%");
+            });
+        }
+
+        $chapters = $chaptersQuery
             ->select('id', 'title', 'chapter_number', 'word_count', 'created_at')
-            ->addSelect(\DB::raw('LEFT(content, 200) as content_preview'))
+            ->addSelect(DB::raw('LEFT(content, 200) as content_preview'))
             ->orderBy('chapter_number', 'asc')
             ->offset($offset)
             ->limit($limit)
             ->get();
 
-        $total = Chapter::where('novel_id', $novelId)->count();
+        $total = $chaptersQuery->count();
 
         return $this->success([
             'chapters' => $chapters,

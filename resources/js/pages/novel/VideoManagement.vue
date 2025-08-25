@@ -32,32 +32,17 @@
                         </el-select>
                     </div>
                     <div class="flex-1">
-                        <label for="chapter-search" class="block text-sm font-medium text-foreground mb-2">搜索章节</label>
-                        <el-input 
-                            id="chapter-search"
-                            v-model="chapterSearchQuery" 
+                        <label for="chapter-search" class="block text-sm font-medium text-foreground mb-2">选择章节</label>
+                        <el-autocomplete
+                            v-model="chapterSearchQuery"
+                            :fetch-suggestions="querySearch"
                             placeholder="输入章节标题或序号搜索"
-                            @input="onChapterSearch"
                             :disabled="!selectedNovelId || isLoading"
                             clearable
+                            class="w-full"
+                            @select="handleChapterSelect"
+                            :trigger-on-focus="true"
                         />
-                        <!-- 章节选择下拉框 -->
-                        <div v-if="selectedNovelId && filteredChapters.length > 0" class="mt-2">
-                            <el-select 
-                                v-model="selectedChapterId" 
-                                @change="onChapterSelect" 
-                                :disabled="isLoading"
-                                placeholder="选择章节"
-                                class="w-full"
-                            >
-                                <el-option 
-                                    v-for="chapter in filteredChapters" 
-                                    :key="chapter.id" 
-                                    :label="`第${chapter.chapter_number}章 ${chapter.title}`"
-                                    :value="chapter.id"
-                                />
-                            </el-select>
-                        </div>
                     </div>
                 </div>
                 
@@ -75,10 +60,6 @@
                     <template #header>
                         <div class="flex items-center justify-between">
                             <span class="text-lg font-semibold">视频列表</span>
-                            <el-button type="primary" size="small">
-                                <Video class="mr-1 w-4 h-4" />
-                                新建视频
-                            </el-button>
                         </div>
                     </template>
                     
@@ -274,7 +255,6 @@ const breadcrumbs = [
 
 // 响应式数据
 const novels = ref([]);
-const chapters = ref([]);
 const videos = ref([]);
 const scenes = ref([]);
 
@@ -295,19 +275,6 @@ const sceneCurrentPage = ref(1);
 const scenePageSize = ref(10);
 
 // 计算属性
-const filteredChapters = computed(() => {
-    if (!selectedNovelId.value) return [];
-    if (!chapterSearchQuery.value) {
-        return chapters.value.filter(chapter => chapter.novel_id === selectedNovelId.value);
-    }
-    const query = chapterSearchQuery.value.toLowerCase();
-    return chapters.value.filter(chapter => 
-        chapter.novel_id === selectedNovelId.value && 
-        (chapter.title.toLowerCase().includes(query) || 
-         chapter.chapter_number.toString().includes(query))
-    );
-});
-
 const currentVideos = computed(() => {
     if (!selectedChapterId.value) return [];
     return videos.value.filter(video => video.chapter_id === selectedChapterId.value);
@@ -316,19 +283,6 @@ const currentVideos = computed(() => {
 const currentScenes = computed(() => {
     if (!selectedVideoId.value) return [];
     return scenes.value.filter(scene => scene.video_id === selectedVideoId.value);
-});
-
-// 分页后的数据
-const paginatedVideos = computed(() => {
-    const start = (currentPage.value - 1) * pageSize.value;
-    const end = start + pageSize.value;
-    return currentVideos.value.slice(start, end);
-});
-
-const paginatedScenes = computed(() => {
-    const start = (sceneCurrentPage.value - 1) * scenePageSize.value;
-    const end = start + scenePageSize.value;
-    return currentScenes.value.slice(start, end);
 });
 
 // API调用方法
@@ -341,7 +295,8 @@ const loadNovels = async () => {
             // 默认选择第一个小说
             if (novels.value.length > 0) {
                 selectedNovelId.value = novels.value[0].id;
-                await loadChapters();
+                // 自动加载并选择第一个章节
+                await loadChaptersAndSelectFirst();
             }
         }
     } catch (error) {
@@ -352,19 +307,19 @@ const loadNovels = async () => {
     }
 };
 
-const loadChapters = async () => {
+// 加载章节并自动选择第一个
+const loadChaptersAndSelectFirst = async () => {
     if (!selectedNovelId.value) return;
     
     try {
         isLoading.value = true;
-        const response = await apiGet(`/novels/${selectedNovelId.value}/chapters`);
-        if (response.success) {
-            chapters.value = response.data.chapters || [];
-            // 默认选择第一个章节
-            if (chapters.value.length > 0) {
-                selectedChapterId.value = chapters.value[0].id;
-                await loadVideos();
-            }
+        // 加载前20个章节，选择第一个
+        const response = await apiGet(`/novels/${selectedNovelId.value}/chapters?limit=20`);
+        if (response.success && response.data.chapters && response.data.chapters.length > 0) {
+            const firstChapter = response.data.chapters[0];
+            selectedChapterId.value = firstChapter.id;
+            // 自动加载该章节的视频
+            await loadVideos();
         }
     } catch (error) {
         console.error('加载章节失败:', error);
@@ -423,14 +378,11 @@ const onNovelChange = async () => {
     selectedVideoId.value = null;
     selectedSceneId.value = null;
     chapterSearchQuery.value = '';
+    // 不再需要清空章节列表，因为使用远程搜索
     currentPage.value = 1;
     sceneCurrentPage.value = 1;
-    await loadChapters();
-};
-
-const onChapterSelect = async () => {
-    currentPage.value = 1;
-    await loadVideos();
+    // 自动加载并选择第一个章节
+    await loadChaptersAndSelectFirst();
 };
 
 const selectVideo = async (video) => {
@@ -444,11 +396,40 @@ const selectScene = (scene) => {
     selectedSceneId.value = scene.id;
 };
 
-const onChapterSearch = () => {
-    // 搜索逻辑已在计算属性中实现
-    // 当用户输入搜索关键词时，自动过滤章节
-    // 用户可以从过滤结果中看到可选的章节
-    console.log('Searching chapters for query:', chapterSearchQuery.value);
+// 自动补全搜索建议
+const querySearch = async (queryString, cb) => {
+    if (!selectedNovelId.value) {
+        cb([]);
+        return;
+    }
+    
+    try {
+        // 使用现有的章节列表接口，通过查询参数过滤
+        // 如果 queryString 为空，返回所有章节；否则进行搜索
+        const queryParam = queryString ? `&q=${encodeURIComponent(queryString)}` : '';
+        const response = await apiGet(`/novels/${selectedNovelId.value}/chapters?limit=20${queryParam}`);
+        
+        if (response.success) {
+            const suggestions = (response.data.chapters || []).map(chapter => ({
+                value: `第${chapter.chapter_number}章 ${chapter.title}`,
+                chapter: chapter
+            }));
+            cb(suggestions);
+        } else {
+            cb([]);
+        }
+    } catch (error) {
+        console.error('搜索章节失败:', error);
+        cb([]);
+    }
+};
+
+// 处理章节选择
+const handleChapterSelect = (item) => {
+    if (item && item.chapter) {
+        selectedChapterId.value = item.chapter.id;
+        loadVideos(); // 直接加载视频，不再调用onChapterSelect
+    }
 };
 
 // 分页处理方法
@@ -548,18 +529,13 @@ const formatDuration = (seconds) => {
 // 生命周期
 onMounted(async () => {
     await loadNovels();
+    // 不再自动加载章节，用户需要手动选择小说后点击"加载章节"按钮
 });
 
 // 监听选择变化
 watch(selectedNovelId, () => {
     if (selectedNovelId.value) {
-        loadChapters();
-    }
-});
-
-watch(selectedChapterId, () => {
-    if (selectedChapterId.value) {
-        loadVideos();
+        // 不再自动加载章节，用户需要手动输入搜索
     }
 });
 
