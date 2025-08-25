@@ -87,7 +87,7 @@ class NovelManagementController extends WebApiController
         $limit = $request->get('limit', 20);
         $offset = $request->get('offset', 0);
 
-        $novels = Novel::with('chapters')
+        $novels = Novel::withCount('chapters')
             ->orderBy('created_at', 'desc')
             ->offset($offset)
             ->limit($limit)

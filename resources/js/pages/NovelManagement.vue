@@ -93,7 +93,7 @@
                     <div class="flex-1 min-w-0">
                       <h4 class="font-medium truncate">{{ novel.title }}</h4>
                       <p class="text-sm text-muted-foreground truncate">
-                        章节数: {{ novel.chapters?.length || 0 }} | 
+                        章节数: {{ novel.chapters_count || 0 }} | 
                         {{ formatDate(novel.created_at) }}
                       </p>
                     </div>
@@ -195,13 +195,16 @@
         </div>
       </div>
     </div>
+    <ConfirmDialog />
   </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
 import AppLayout from '@/layouts/AppLayout.vue'
+import ConfirmDialog from '@/pages/storyboard/components/ConfirmDialog.vue'
 import { apiGet, apiPost, apiDelete, uploadApi } from '@/utils/api'
 
 interface Chapter {
@@ -223,6 +226,7 @@ interface Novel {
   created_at: string
   updated_at: string
   chapters?: Chapter[]
+  chapters_count?: number // Added chapters_count
 }
 
 interface ImportResult {
@@ -237,6 +241,7 @@ interface ImportResult {
 }
 
 const { toast } = useToast()
+const { confirm } = useConfirm()
 
 const isImporting = ref(false)
 const importResult = ref<ImportResult | null>(null)
@@ -374,9 +379,15 @@ const loadChapters = async (novelId: number) => {
 
 // 删除小说
 const deleteNovel = async (novel: Novel) => {
-  if (!confirm(`确定要删除小说 "${novel.title}" 吗？此操作不可逆。`)) {
-    return
-  }
+  const confirmed = await confirm({
+    title: '确认删除',
+    message: `确定要删除小说"${novel.title}"吗？此操作不可逆。`,
+    confirmText: '删除',
+    cancelText: '取消',
+    variant: 'destructive'
+  })
+  
+  if (!confirmed) return
 
   try {
     const result = await apiDelete(`/novels/${novel.id}`)

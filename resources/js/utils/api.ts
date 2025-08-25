@@ -527,7 +527,6 @@ export default {
     upload: uploadApi,
     media: mediaApi,
     sceneContent: sceneContentApi,
-    novel: novelApi,
     utils: apiUtils,
     // 直接方法
     get: apiGet,
