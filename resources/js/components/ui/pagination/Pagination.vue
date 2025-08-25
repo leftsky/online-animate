@@ -1,11 +1,11 @@
 <template>
-  <div class="flex items-center justify-between px-2">
-    <div class="flex-1 text-sm text-muted-foreground">
+  <div class="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+    <div class="text-sm text-muted-foreground">
       显示第 {{ startItem }} - {{ endItem }} 项，共 {{ total }} 项
     </div>
-    <div class="flex items-center space-x-6 lg:space-x-8">
+    <div class="flex flex-col space-y-4 sm:flex-row sm:items-center sm:space-x-6 sm:space-y-0 lg:space-x-8">
       <div class="flex items-center space-x-2">
-        <p class="text-sm font-medium">每页显示</p>
+        <p class="text-sm font-medium whitespace-nowrap">每页显示</p>
         <Select v-model="currentLimit" @update:model-value="handleLimitChange">
           <SelectTrigger class="h-8 w-[70px]">
             <SelectContent>
@@ -16,7 +16,7 @@
           </SelectTrigger>
         </Select>
       </div>
-      <div class="flex w-[100px] items-center justify-center text-sm font-medium">
+      <div class="flex w-[100px] items-center justify-center text-sm font-medium whitespace-nowrap">
         第 {{ currentPage }} 页，共 {{ totalPages }} 页
       </div>
       <div class="flex items-center space-x-2">
