@@ -27,6 +27,9 @@ Route::get('character-animation-debug', function () {
     return Inertia::render('storyboard/resourcesctl/CharacterAnimationDebug');
 })->middleware(['auth', 'verified'])->name('character-animation-debug');
 
+Route::get('novel-management', function () {
+    return Inertia::render('NovelManagement');
+})->middleware(['auth', 'verified'])->name('novel-management');
 
 
 // 包含 API 路由

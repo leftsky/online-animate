@@ -1,3 +1,4 @@
+
 # 在线动画项目开发规则
 
 ## 项目概述
@@ -220,7 +221,79 @@ $data = $query->paginate($perPage);
 }
 ```
 
-### 4. 动画脚本规范
+### 4. 前端API调用规范
+
+#### API工具使用规范
+**重要**: 前端API调用直接使用 `resources/js/utils/api.ts` 中提供的 `apiGet`、`apiPost`、`apiPut`、`apiDelete` 方法，**禁止在api.ts中定义具体的业务接口**。
+
+```typescript
+// ✅ 正确的API调用方式
+import { apiGet, apiPost, apiPut, apiDelete } from '@/utils/api'
+
+// 获取小说列表
+const getNovels = async (params: { limit?: number; offset?: number } = {}) => {
+  const queryParams = new URLSearchParams()
+  if (params.limit) queryParams.append('limit', String(params.limit))
+  if (params.offset) queryParams.append('offset', String(params.offset))
+  
+  const url = `/novels${queryParams.toString() ? '?' + queryParams.toString() : ''}`
+  return apiGet(url)
+}
+
+// 创建小说
+const createNovel = async (data: any) => {
+  return apiPost('/novels', data)
+}
+
+// 更新小说
+const updateNovel = async (id: number, data: any) => {
+  return apiPut(`/novels/${id}`, data)
+}
+
+// 删除小说
+const deleteNovel = async (id: number) => {
+  return apiDelete(`/novels/${id}`)
+}
+```
+
+#### 文件上传规范
+**重要**: 所有文件上传必须使用 `resources/js/utils/api.ts` 中的 `uploadApi.uploadFile` 方法。
+
+```typescript
+// ✅ 正确的文件上传方式
+import { uploadApi } from '@/utils/api'
+
+// 上传文件
+const uploadFile = async (file: File, options: { folder?: string } = {}) => {
+  return uploadApi.uploadFile(file, options)
+}
+
+// 使用示例
+const result = await uploadFile(file, { folder: 'novels' })
+if (result.success) {
+  console.log('上传成功:', result.data.url)
+}
+```
+
+#### 禁止的API定义方式
+```typescript
+// ❌ 禁止在api.ts中定义具体业务接口
+export const novelApi = {
+  getList(): Promise<ApiResponse> {
+    return apiGet('/novels')  // 禁止
+  },
+  create(data: any): Promise<ApiResponse> {
+    return apiPost('/novels', data)  // 禁止
+  }
+}
+
+// ❌ 禁止在api.ts中定义具体的API方法
+export const getNovels = () => {  // 禁止
+  return apiGet('/novels')
+}
+```
+
+### 5. 动画脚本规范
 
 #### YAML格式动画脚本
 项目使用YAML格式编写动画脚本，通过 `js-yaml` 库解析。
@@ -248,7 +321,7 @@ animations:
 - 提供完整的类型定义
 - 错误处理和验证
 
-### 5. 组件开发规范
+### 6. 组件开发规范
 
 #### Vue组件规范
 - 使用 `<script setup lang="ts">` 语法
@@ -294,7 +367,7 @@ animations:
 - 对于特定功能需要的颜色（如成功/警告状态），可以使用语义化的Tailwind颜色类
 - 但必须同时提供暗色模式适配，如：`text-green-600 dark:text-green-400`
 
-### 6. 状态管理规范
+### 7. 状态管理规范
 
 #### 数据状态定义
 ```typescript
@@ -312,175 +385,6 @@ enum VideoStatus {
     COMPLETED = 2     // 完成
 }
 ```
-
-### 7. 文件上传规范
-
-#### 统一上传接口规范
-**重要**: 项目统一使用 `UploadController` 进行所有文件上传操作，**禁止使用**其他上传接口。
-
-**接口路径**: `/web/api/upload`
-**控制器**: `App\Http\Controllers\Api\UploadController`
-**基类**: 继承自 `WebApiController`，统一响应格式
-
-#### 单文件上传实现
-```php
-// UploadController.php - 必须继承WebApiController
-class UploadController extends WebApiController
-{
-    public function upload(Request $request): JsonResponse
-    {
-        // 验证请求
-        $request->validate([
-            'file' => 'required|file|max:51200', // 最大50MB
-            'folder' => 'nullable|string|max:100',
-            'type' => 'nullable|string|in:image,document,video,audio'
-        ]);
-
-        // 文件处理逻辑...
-        
-        // 使用WebApiController统一响应格式
-        return $this->success($fileInfo, '文件上传成功');
-    }
-}
-```
-
-#### 批量上传实现规范
-**重要**: 批量上传**不使用**后端批量处理，而是前端循环调用单文件上传接口。
-
-**前端实现方式**:
-```typescript
-// 批量上传实现
-async function batchUpload(files: File[]): Promise<MediaFile[]> {
-  const uploadedFiles: MediaFile[] = [];
-  const errors: string[] = [];
-
-  // 循环调用单文件上传接口
-  for (const file of files) {
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('type', 'image');
-      formData.append('folder', 'media/scenario');
-
-      const response = await axios.post('/web/api/upload', formData);
-      
-      if (response.data.success) {
-        uploadedFiles.push(response.data.data);
-      } else {
-        errors.push(`文件 ${file.name}: ${response.data.message}`);
-      }
-    } catch (error) {
-      errors.push(`文件 ${file.name}: 上传失败`);
-    }
-  }
-
-  // 处理错误信息
-  if (errors.length > 0) {
-    console.error('批量上传错误:', errors);
-  }
-
-  return uploadedFiles;
-}
-```
-
-**优势**:
-- 统一错误处理和进度显示
-- 支持断点续传和重试机制
-- 更好的用户体验和错误反馈
-- 避免后端大文件并发处理问题
-
-#### 文件上传响应格式
-所有上传接口必须使用 `WebApiController` 的统一响应格式：
-
-```json
-{
-    "success": true,
-    "code": 200,
-    "message": "文件上传成功",
-    "data": {
-        "url": "https://example.com/storage/path/file.jpg",
-        "path": "uploads/images/2024/01/file.jpg",
-        "name": "original_filename.jpg",
-        "size": 1024000,
-        "type": "image/jpeg",
-        "extension": "jpg"
-    }
-}
-```
-
-#### 支持的文件类型和大小限制
-- **图片**: jpeg, jpg, png, gif, webp (最大50MB)
-- **视频**: mp4, avi, mov, wmv, flv (最大50MB)
-- **音频**: mp3, wav, ogg, m4a (最大10MB)
-- **文档**: pdf, doc, docx, xls, xlsx, ppt, pptx, txt (最大10MB)
-
-#### 存储路径规范
-```
-storage/app/public/
-├── uploads/
-│   ├── images/
-│   │   └── YYYY/MM/
-│   ├── videos/
-│   │   └── YYYY/MM/
-│   ├── audio/
-│   │   └── YYYY/MM/
-│   └── documents/
-│       └── YYYY/MM/
-├── media/
-│   ├── scenario/YYYY/MM/DD/
-│   ├── character/YYYY/MM/DD/
-│   └── item/YYYY/MM/DD/
-```
-
-#### 文件命名规范
-- 使用 `Str::random(10) . '_' . time() . '.' . $extension` 格式
-- 避免文件名冲突和特殊字符问题
-- 按年月日分目录存储，便于管理和清理
-
-#### 安全规范
-- 文件类型白名单验证
-- 文件大小限制
-- 文件名安全处理
-- 存储路径验证
-- 用户权限检查
-
-#### 错误处理规范
-使用 `WebApiController` 的统一错误响应：
-
-```php
-// 验证失败
-return $this->validationError($validator->errors());
-
-// 文件类型不支持
-return $this->error('不支持的文件类型', 400);
-
-// 文件过大
-return $this->error('文件大小超过限制', 400);
-
-// 上传失败
-return $this->serverError('文件上传失败：' . $e->getMessage());
-
-// 权限不足
-return $this->unauthorized('无权访问此资源');
-
-// 资源未找到
-return $this->notFound('文件不存在');
-```
-
-#### 前端组件使用规范
-所有文件上传组件必须：
-1. 使用 `/web/api/upload` 接口
-2. 处理统一的响应格式
-3. 支持进度显示和错误反馈
-4. 实现拖拽上传和文件选择
-5. 支持文件类型和大小验证
-
-#### 媒体资源上传特殊处理
-对于场景、人物、物品等媒体资源：
-- 使用 `media/{type}/YYYY/MM/DD/` 存储路径
-- 支持自动创建资源记录
-- 批量上传使用前端循环调用
-- 统一错误处理和用户反馈
 
 ### 8. 测试规范
 

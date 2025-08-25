@@ -19,6 +19,7 @@ return new class extends Migration
             $table->text('description')->nullable()->comment('小说描述');
             $table->string('author')->comment('作者');
             $table->string('cover_image')->nullable()->comment('封面图片路径');
+            $table->string('source_file_url')->nullable()->comment('源文件地址');
             $table->tinyInteger('status')->default(0)->comment('状态: 0=草稿, 1=发布, 2=归档');
             $table->timestamps();
         });
@@ -29,6 +30,8 @@ return new class extends Migration
             $table->unsignedBigInteger('novel_id')->comment('小说ID');
             $table->string('title')->comment('章节标题');
             $table->longText('content')->nullable()->comment('章节文本内容');
+            $table->integer('word_count')->default(0)->comment('章节字数');
+            $table->integer('chapter_number')->default(0)->comment('章节序号');
             $table->integer('order')->default(0)->comment('章节顺序');
             $table->tinyInteger('status')->default(0)->comment('状态: 0=草稿, 1=发布');
             $table->timestamps();

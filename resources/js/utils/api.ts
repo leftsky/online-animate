@@ -111,10 +111,9 @@ export const uploadApi = {
     /**
      * 单文件上传
      */
-    uploadFile(file: File, options: { type?: string; folder?: string } = {}): Promise<ApiResponse> {
+    uploadFile(file: File, options: { folder?: string } = {}): Promise<ApiResponse> {
         const formData = new FormData();
         formData.append('file', file);
-        if (options.type) formData.append('type', options.type);
         if (options.folder) formData.append('folder', options.folder);
 
         return apiPost('/upload', formData, {
@@ -448,6 +447,7 @@ export const sceneContentApi = {
     },
 };
 
+
 /**
  * 错误处理工具
  */
@@ -527,6 +527,7 @@ export default {
     upload: uploadApi,
     media: mediaApi,
     sceneContent: sceneContentApi,
+    novel: novelApi,
     utils: apiUtils,
     // 直接方法
     get: apiGet,
