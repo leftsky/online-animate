@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { ref, onMounted, watch } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 
 const props = defineProps<{
     items: NavItem[];
@@ -27,13 +27,16 @@ onMounted(() => {
 });
 
 // 监听页面变化，自动展开对应的母菜单
-watch(() => page.url, (newUrl) => {
-    props.items.forEach((item: NavItem) => {
-        if (item.children && item.children.some((child: NavItem) => child.href === newUrl)) {
-            expandedMenus.value.add(item.title);
-        }
-    });
-});
+watch(
+    () => page.url,
+    (newUrl) => {
+        props.items.forEach((item: NavItem) => {
+            if (item.children && item.children.some((child: NavItem) => child.href === newUrl)) {
+                expandedMenus.value.add(item.title);
+            }
+        });
+    },
+);
 
 // 获取当前激活的菜单项
 const getActiveIndex = () => {
@@ -59,9 +62,9 @@ const getActiveIndex = () => {
 </script>
 
 <template>
-    <el-menu 
-        :default-active="getActiveIndex()" 
-        class="border-0 h-full"
+    <el-menu
+        :default-active="getActiveIndex()"
+        class="h-full border-0"
         @open="(key: string) => expandedMenus.add(key)"
         @close="(key: string) => expandedMenus.delete(key)"
     >
@@ -72,21 +75,17 @@ const getActiveIndex = () => {
                     <component :is="item.icon" class="mr-2 h-4 w-4" />
                     <span>{{ item.title }}</span>
                 </template>
-                <el-menu-item 
-                    v-for="(child, childIndex) in item.children" 
-                    :key="child.title"
-                    :index="`${index + 1}-${childIndex + 1}`"
-                >
-                    <Link v-if="child.href" :href="child.href" class="flex items-center w-full">
+                <el-menu-item v-for="(child, childIndex) in item.children" :key="child.title" :index="`${index + 1}-${childIndex + 1}`">
+                    <Link v-if="child.href" :href="child.href" class="flex w-full items-center">
                         <component :is="child.icon" class="mr-2 h-4 w-4" />
                         <span>{{ child.title }}</span>
                     </Link>
                 </el-menu-item>
             </el-sub-menu>
-            
+
             <!-- 没有子菜单的项目 -->
             <el-menu-item v-else :index="String(index + 1)">
-                <Link v-if="item.href" :href="item.href" class="flex items-center w-full">
+                <Link v-if="item.href" :href="item.href" class="flex w-full items-center">
                     <component :is="item.icon" class="mr-2 h-4 w-4" />
                     <span>{{ item.title }}</span>
                 </Link>

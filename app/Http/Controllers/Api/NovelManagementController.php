@@ -95,7 +95,7 @@ class NovelManagementController extends WebApiController
             ->get();
 
         $total = Novel::count();
-
+        
         return $this->success([
             'novels' => $novels,
             'total' => $total,

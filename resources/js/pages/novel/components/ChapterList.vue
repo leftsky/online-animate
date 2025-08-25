@@ -24,10 +24,10 @@
             <div v-else-if="chapters.length === 0" class="py-8 text-center text-muted-foreground">暂无章节数据</div>
 
             <div v-else class="space-y-3">
-                <div 
-                    v-for="chapter in chapters" 
-                    :key="chapter.id" 
-                    class="rounded-lg border bg-background p-4 transition-colors hover:bg-accent/50 cursor-pointer"
+                <div
+                    v-for="chapter in chapters"
+                    :key="chapter.id"
+                    class="cursor-pointer rounded-lg border bg-background p-4 transition-colors hover:bg-accent/50"
                     @click="showChapterDetail(chapter)"
                 >
                     <div class="flex items-start justify-between">
@@ -57,7 +57,7 @@
 
         <!-- 章节详情弹窗 -->
         <Dialog v-model:open="isChapterDialogOpen">
-            <DialogContent class="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+            <DialogContent class="flex max-h-[85vh] max-w-4xl flex-col overflow-hidden">
                 <DialogHeader class="flex-shrink-0">
                     <DialogTitle class="text-xl font-semibold">
                         {{ selectedChapter?.title }}
@@ -66,9 +66,9 @@
                         第{{ selectedChapter?.chapter_number }}章 | 字数: {{ selectedChapter?.word_count }}
                     </DialogDescription>
                 </DialogHeader>
-                <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-0">
+                <div class="custom-scrollbar min-h-0 flex-1 overflow-y-auto pr-2">
                     <div v-if="isLoadingChapter" class="flex items-center justify-center py-8">
-                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        <div class="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
                         <span class="ml-2 text-muted-foreground">加载中...</span>
                     </div>
                     <div v-else-if="selectedChapter?.content" class="prose prose-sm max-w-none py-2">
@@ -77,18 +77,23 @@
                         </div>
                     </div>
                 </div>
-                <DialogFooter class="flex-shrink-0 mt-4">
-                    <Button 
-                        variant="outline" 
-                        @click="copyChapterContent" 
-                        class="mr-2"
-                        :disabled="isCopying || !selectedChapter?.content"
-                    >
-                        <svg v-if="isCopying" class="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                <DialogFooter class="mt-4 flex-shrink-0">
+                    <Button variant="outline" @click="copyChapterContent" class="mr-2" :disabled="isCopying || !selectedChapter?.content">
+                        <svg v-if="isCopying" class="mr-2 h-4 w-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                            ></path>
                         </svg>
-                        <svg v-else class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                        <svg v-else class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                            ></path>
                         </svg>
                         {{ isCopying ? '复制中...' : '复制全文' }}
                     </Button>
@@ -100,12 +105,12 @@
 </template>
 
 <script setup>
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import Pagination from '@/components/ui/pagination/Pagination.vue';
+import { useToast } from '@/composables/useToast';
 import { apiGet } from '@/utils/api';
 import { ref, watch } from 'vue';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/composables/useToast';
 
 // 定义props
 const props = defineProps({
@@ -130,7 +135,8 @@ const isLoadingChapter = ref(false);
 const isCopying = ref(false);
 
 // 加载章节列表
-const loadChapters = async (novelId, offset = 0, limit = 10) => { // 改为10
+const loadChapters = async (novelId, offset = 0, limit = 10) => {
+    // 改为10
     if (!novelId) return;
 
     isLoading.value = true;
@@ -220,10 +226,10 @@ const copyChapterContent = async () => {
             document.body.appendChild(textArea);
             textArea.focus();
             textArea.select();
-            
+
             const successful = document.execCommand('copy');
             document.body.removeChild(textArea);
-            
+
             if (successful) {
                 toast.success('章节内容已复制到剪贴板！');
             } else {

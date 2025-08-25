@@ -9,14 +9,14 @@ export function updateTheme(value: Appearance) {
     } else {
         document.documentElement.classList.toggle('dark', value === 'dark');
     }
-    
+
     // 新增：同步 Element Plus 主题
     updateElementPlusTheme(value);
 }
 
 function updateElementPlusTheme(value: Appearance) {
     const html = document.documentElement;
-    
+
     if (value === 'dark') {
         html.classList.add('dark');
     } else if (value === 'light') {

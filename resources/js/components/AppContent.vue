@@ -16,5 +16,5 @@ const className = computed(() => props.class);
     </el-main>
     <main v-else class="mx-auto flex h-full w-full max-w-7xl flex-1 flex-col gap-4 rounded-xl" :class="className">
         <slot />
-    </el-main>
+    </main>
 </template>

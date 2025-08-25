@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import AppContent from '@/components/AppContent.vue';
 import AppSidebar from '@/components/AppSidebar.vue';
 import AppSidebarHeader from '@/components/AppSidebarHeader.vue';
 import ToastProvider from '@/components/ui/toast/ToastProvider.vue';

@@ -18,24 +18,24 @@ defineProps<Props>();
             <UserInfo :user="user" :show-email="true" />
         </div>
     </el-dropdown-item>
-    
+
     <!-- 分割线 -->
-    <div class="h-px bg-border mx-2 my-1"></div>
-    
+    <div class="mx-2 my-1 h-px bg-border"></div>
+
     <!-- 设置 -->
     <el-dropdown-item>
-        <Link class="flex items-center w-full" :href="route('profile.edit')">
+        <Link class="flex w-full items-center" :href="route('profile.edit')">
             <Settings class="mr-2 h-4 w-4" />
             设置
         </Link>
     </el-dropdown-item>
-    
+
     <!-- 分割线 -->
-    <div class="h-px bg-border mx-2 my-1"></div>
-    
+    <div class="mx-2 my-1 h-px bg-border"></div>
+
     <!-- 退出登录 -->
     <el-dropdown-item>
-        <Link class="flex items-center w-full" method="post" :href="route('logout')">
+        <Link class="flex w-full items-center" method="post" :href="route('logout')">
             <LogOut class="mr-2 h-4 w-4" />
             退出登录
         </Link>

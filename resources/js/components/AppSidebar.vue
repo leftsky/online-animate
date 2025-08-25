@@ -3,7 +3,7 @@ import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { BookText, Clapperboard, LayoutGrid, Library, PlayCircle, Users, FileText, Video, Film, Database } from 'lucide-vue-next';
+import { BookText, Clapperboard, Database, FileText, Film, LayoutGrid, Library, PlayCircle, Users, Video } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 
 const mainNavItems: NavItem[] = [
@@ -63,9 +63,9 @@ const mainNavItems: NavItem[] = [
 </script>
 
 <template>
-    <div class="h-full flex flex-col">
+    <div class="flex h-full flex-col">
         <!-- 侧边栏头部 -->
-        <div class="p-4 border-b border-border">
+        <div class="border-b border-border p-4">
             <Link href="/dashboard" class="flex items-center">
                 <AppLogo />
             </Link>

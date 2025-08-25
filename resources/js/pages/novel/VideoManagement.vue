@@ -5,9 +5,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <h1 class="text-3xl font-bold tracking-tight">视频管理</h1>
-                    <p class="text-muted-foreground">
-                        管理已创建的视频，查看分镜内容，支持视频制作和导出
-                    </p>
+                    <p class="text-muted-foreground">管理已创建的视频，查看分镜内容，支持视频制作和导出</p>
                 </div>
             </div>
 
@@ -15,24 +13,13 @@
             <el-card class="p-4">
                 <div class="flex items-center space-x-4">
                     <div class="flex-1">
-                        <label for="novel-select" class="block text-sm font-medium text-foreground mb-2">选择小说</label>
-                        <el-select 
-                            v-model="selectedNovelId" 
-                            @change="onNovelChange" 
-                            :disabled="isLoading"
-                            placeholder="请选择小说"
-                            class="w-full"
-                        >
-                            <el-option 
-                                v-for="novel in novels" 
-                                :key="novel.id" 
-                                :label="novel.title"
-                                :value="novel.id"
-                            />
+                        <label for="novel-select" class="mb-2 block text-sm font-medium text-foreground">选择小说</label>
+                        <el-select v-model="selectedNovelId" @change="onNovelChange" :disabled="isLoading" placeholder="请选择小说" class="w-full">
+                            <el-option v-for="novel in novels" :key="novel.id" :label="novel.title" :value="novel.id" />
                         </el-select>
                     </div>
                     <div class="flex-1">
-                        <label for="chapter-search" class="block text-sm font-medium text-foreground mb-2">选择章节</label>
+                        <label for="chapter-search" class="mb-2 block text-sm font-medium text-foreground">选择章节</label>
                         <el-autocomplete
                             v-model="chapterSearchQuery"
                             :fetch-suggestions="querySearch"
@@ -45,16 +32,10 @@
                         />
                     </div>
                 </div>
-                
-                <!-- 加载状态 -->
-                <div v-if="isLoading" class="mt-4 flex items-center justify-center py-2">
-                    <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
-                    <span class="ml-2 text-sm text-muted-foreground">加载中...</span>
-                </div>
             </el-card>
 
             <!-- 主要内容区域 -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <!-- 左侧：视频列表 -->
                 <el-card>
                     <template #header>
@@ -62,20 +43,18 @@
                             <span class="text-lg font-semibold">视频列表</span>
                         </div>
                     </template>
-                    
-                    <div v-if="!selectedChapterId" class="text-center py-8 text-muted-foreground">
-                        请先选择章节
-                    </div>
-                    <div v-else-if="currentVideos.length === 0" class="text-center py-8">
-                        <Video class="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+
+                    <div v-if="!selectedChapterId" class="py-8 text-center text-muted-foreground">请先选择章节</div>
+                    <div v-else-if="currentVideos.length === 0" class="py-8 text-center">
+                        <Video class="mx-auto mb-4 h-16 w-16 text-muted-foreground" />
                         <p class="text-muted-foreground">暂无视频数据</p>
                         <p class="text-sm text-muted-foreground">点击"新建视频"开始创建</p>
                     </div>
                     <div v-else>
                         <!-- 视频列表 -->
-                        <el-table 
+                        <el-table
                             v-loading="isLoading"
-                            :data="paginatedVideos" 
+                            :data="paginatedVideos"
                             @row-click="selectVideo"
                             :row-class-name="getVideoRowClass"
                             stripe
@@ -84,24 +63,24 @@
                             <el-table-column prop="title" label="标题" min-width="120">
                                 <template #default="{ row }">
                                     <div class="flex items-center space-x-2">
-                                        <Video class="text-primary w-4 h-4" />
+                                        <Video class="h-4 w-4 text-primary" />
                                         <span class="font-medium">{{ row.title || '未命名视频' }}</span>
                                     </div>
                                 </template>
                             </el-table-column>
-                            
+
                             <el-table-column prop="created_at" label="创建时间" width="120">
                                 <template #default="{ row }">
                                     {{ formatDate(row.created_at) }}
                                 </template>
                             </el-table-column>
-                            
+
                             <el-table-column prop="duration" label="时长" width="80">
                                 <template #default="{ row }">
                                     {{ formatDuration(row.duration) }}
                                 </template>
                             </el-table-column>
-                            
+
                             <el-table-column prop="status" label="状态" width="100">
                                 <template #default="{ row }">
                                     <el-tag :type="getVideoStatusType(row.status)" size="small">
@@ -109,20 +88,14 @@
                                     </el-tag>
                                 </template>
                             </el-table-column>
-                            
+
                             <el-table-column label="操作" width="120" fixed="right">
                                 <template #default="{ row }">
-                                    <el-button 
-                                        type="primary" 
-                                        size="small" 
-                                        @click.stop="selectVideo(row)"
-                                    >
-                                        选择
-                                    </el-button>
+                                    <el-button type="primary" size="small" @click.stop="selectVideo(row)"> 选择 </el-button>
                                 </template>
                             </el-table-column>
                         </el-table>
-                        
+
                         <!-- 分页器 -->
                         <div class="mt-4 flex justify-center">
                             <el-pagination
@@ -144,25 +117,23 @@
                         <div class="flex items-center justify-between">
                             <span class="text-lg font-semibold">分镜列表</span>
                             <el-button type="primary" size="small" :disabled="!selectedVideoId">
-                                <Film class="mr-1 w-4 h-4" />
+                                <Film class="mr-1 h-4 w-4" />
                                 新建分镜
                             </el-button>
                         </div>
                     </template>
-                    
-                    <div v-if="!selectedVideoId" class="text-center py-8 text-muted-foreground">
-                        请先选择视频
-                    </div>
-                    <div v-else-if="currentScenes.length === 0" class="text-center py-8">
-                        <Film class="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+
+                    <div v-if="!selectedVideoId" class="py-8 text-center text-muted-foreground">请先选择视频</div>
+                    <div v-else-if="currentScenes.length === 0" class="py-8 text-center">
+                        <Film class="mx-auto mb-4 h-16 w-16 text-muted-foreground" />
                         <p class="text-muted-foreground">暂无分镜数据</p>
                         <p class="text-sm text-muted-foreground">该视频还没有分镜内容</p>
                     </div>
                     <div v-else>
                         <!-- 分镜列表 -->
-                        <el-table 
+                        <el-table
                             v-loading="isLoading"
-                            :data="paginatedScenes" 
+                            :data="paginatedScenes"
                             @row-click="selectScene"
                             :row-class-name="getSceneRowClass"
                             stripe
@@ -170,33 +141,31 @@
                         >
                             <el-table-column prop="order" label="序号" width="80">
                                 <template #default="{ row }">
-                                    <span class="text-sm font-medium text-muted-foreground">
-                                        #{{ row.order || row.id }}
-                                    </span>
+                                    <span class="text-sm font-medium text-muted-foreground"> #{{ row.order || row.id }} </span>
                                 </template>
                             </el-table-column>
-                            
+
                             <el-table-column prop="title" label="标题" min-width="120">
                                 <template #default="{ row }">
                                     <div class="flex items-center space-x-2">
-                                        <Film class="text-primary w-4 h-4" />
+                                        <Film class="h-4 w-4 text-primary" />
                                         <span class="font-medium">{{ row.title || '未命名分镜' }}</span>
                                     </div>
                                 </template>
                             </el-table-column>
-                            
+
                             <el-table-column prop="created_at" label="创建时间" width="120">
                                 <template #default="{ row }">
                                     {{ formatDate(row.created_at) }}
                                 </template>
                             </el-table-column>
-                            
+
                             <el-table-column prop="duration" label="时长" width="80">
                                 <template #default="{ row }">
                                     {{ formatDuration(row.duration) }}
                                 </template>
                             </el-table-column>
-                            
+
                             <el-table-column prop="status" label="状态" width="100">
                                 <template #default="{ row }">
                                     <el-tag :type="getSceneStatusType(row.status)" size="small">
@@ -204,20 +173,14 @@
                                     </el-tag>
                                 </template>
                             </el-table-column>
-                            
+
                             <el-table-column label="操作" width="120" fixed="right">
                                 <template #default="{ row }">
-                                    <el-button 
-                                        type="primary" 
-                                        size="small" 
-                                        @click.stop="selectScene(row)"
-                                    >
-                                        选择
-                                    </el-button>
+                                    <el-button type="primary" size="small" @click.stop="selectScene(row)"> 选择 </el-button>
                                 </template>
                             </el-table-column>
                         </el-table>
-                        
+
                         <!-- 分页器 -->
                         <div class="mt-4 flex justify-center">
                             <el-pagination
@@ -238,13 +201,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
-import { Video, Film } from 'lucide-vue-next';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { apiGet } from '@/utils/api';
-import { useToast } from '@/composables/useToast';
-
-const { toast } = useToast();
+import { ElMessage } from 'element-plus';
+import { Film, Video } from 'lucide-vue-next';
+import { computed, onMounted, ref, watch } from 'vue';
 
 // 面包屑导航
 const breadcrumbs = [
@@ -277,12 +238,25 @@ const scenePageSize = ref(10);
 // 计算属性
 const currentVideos = computed(() => {
     if (!selectedChapterId.value) return [];
-    return videos.value.filter(video => video.chapter_id === selectedChapterId.value);
+    return videos.value.filter((video) => video.chapter_id === selectedChapterId.value);
 });
 
 const currentScenes = computed(() => {
     if (!selectedVideoId.value) return [];
-    return scenes.value.filter(scene => scene.video_id === selectedVideoId.value);
+    return scenes.value.filter((scene) => scene.video_id === selectedVideoId.value);
+});
+
+// 分页后的数据
+const paginatedVideos = computed(() => {
+    const start = (currentPage.value - 1) * pageSize.value;
+    const end = start + pageSize.value;
+    return currentVideos.value.slice(start, end);
+});
+
+const paginatedScenes = computed(() => {
+    const start = (sceneCurrentPage.value - 1) * scenePageSize.value;
+    const end = start + scenePageSize.value;
+    return currentScenes.value.slice(start, end);
 });
 
 // API调用方法
@@ -301,7 +275,7 @@ const loadNovels = async () => {
         }
     } catch (error) {
         console.error('加载小说失败:', error);
-        toast.error('加载小说失败');
+        ElMessage.error('加载小说失败');
     } finally {
         isLoading.value = false;
     }
@@ -310,7 +284,7 @@ const loadNovels = async () => {
 // 加载章节并自动选择第一个
 const loadChaptersAndSelectFirst = async () => {
     if (!selectedNovelId.value) return;
-    
+
     try {
         isLoading.value = true;
         // 加载前20个章节，选择第一个
@@ -318,12 +292,14 @@ const loadChaptersAndSelectFirst = async () => {
         if (response.success && response.data.chapters && response.data.chapters.length > 0) {
             const firstChapter = response.data.chapters[0];
             selectedChapterId.value = firstChapter.id;
+            // 更新章节搜索框显示选中的章节
+            chapterSearchQuery.value = `第${firstChapter.chapter_number}章 ${firstChapter.title}`;
             // 自动加载该章节的视频
             await loadVideos();
         }
     } catch (error) {
         console.error('加载章节失败:', error);
-        toast.error('加载章节失败');
+        ElMessage.error('加载章节失败');
     } finally {
         isLoading.value = false;
     }
@@ -331,7 +307,7 @@ const loadChaptersAndSelectFirst = async () => {
 
 const loadVideos = async () => {
     if (!selectedChapterId.value) return;
-    
+
     try {
         isLoading.value = true;
         const response = await apiGet(`/videos/chapters/${selectedChapterId.value}`);
@@ -345,7 +321,7 @@ const loadVideos = async () => {
         }
     } catch (error) {
         console.error('加载视频失败:', error);
-        toast.error('加载视频失败');
+        ElMessage.error('加载视频失败');
     } finally {
         isLoading.value = false;
     }
@@ -353,7 +329,7 @@ const loadVideos = async () => {
 
 const loadScenes = async () => {
     if (!selectedVideoId.value) return;
-    
+
     try {
         isLoading.value = true;
         const response = await apiGet(`/videos/${selectedVideoId.value}/scenes`);
@@ -366,7 +342,7 @@ const loadScenes = async () => {
         }
     } catch (error) {
         console.error('加载分镜失败:', error);
-        toast.error('加载分镜失败');
+        ElMessage.error('加载分镜失败');
     } finally {
         isLoading.value = false;
     }
@@ -402,17 +378,17 @@ const querySearch = async (queryString, cb) => {
         cb([]);
         return;
     }
-    
+
     try {
         // 使用现有的章节列表接口，通过查询参数过滤
         // 如果 queryString 为空，返回所有章节；否则进行搜索
         const queryParam = queryString ? `&q=${encodeURIComponent(queryString)}` : '';
         const response = await apiGet(`/novels/${selectedNovelId.value}/chapters?limit=20${queryParam}`);
-        
+
         if (response.success) {
-            const suggestions = (response.data.chapters || []).map(chapter => ({
+            const suggestions = (response.data.chapters || []).map((chapter) => ({
                 value: `第${chapter.chapter_number}章 ${chapter.title}`,
-                chapter: chapter
+                chapter: chapter,
             }));
             cb(suggestions);
         } else {
@@ -428,6 +404,8 @@ const querySearch = async (queryString, cb) => {
 const handleChapterSelect = (item) => {
     if (item && item.chapter) {
         selectedChapterId.value = item.chapter.id;
+        // 更新章节搜索框显示选中的章节
+        chapterSearchQuery.value = `第${item.chapter.chapter_number}章 ${item.chapter.title}`;
         loadVideos(); // 直接加载视频，不再调用onChapterSelect
     }
 };

@@ -5,9 +5,9 @@ import UserMenuContent from '@/components/UserMenuContent.vue';
 import { getInitials } from '@/composables/useInitials';
 import type { BreadcrumbItem, NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { route } from 'ziggy-js';
 import { BookOpen, Folder, LayoutGrid, Menu, Search } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
+import { route } from 'ziggy-js';
 
 interface Props {
     breadcrumbs?: BreadcrumbItem[];
@@ -67,24 +67,14 @@ const getActiveIndex = () => {
             <div class="mx-auto flex h-16 items-center px-4 md:max-w-7xl">
                 <!-- Mobile Menu -->
                 <div class="lg:hidden">
-                    <el-button 
-                        type="text" 
-                        size="small" 
-                        class="mr-2 h-9 w-9 p-0" 
-                        @click="mobileMenuVisible = true"
-                    >
+                    <el-button type="text" size="small" class="mr-2 h-9 w-9 p-0" @click="mobileMenuVisible = true">
                         <Menu class="h-5 w-5" />
                     </el-button>
-                    
+
                     <!-- 移动端抽屉菜单 -->
-                    <el-drawer
-                        v-model="mobileMenuVisible"
-                        direction="ltr"
-                        size="300px"
-                        :with-header="false"
-                    >
+                    <el-drawer v-model="mobileMenuVisible" direction="ltr" size="300px" :with-header="false">
                         <div class="p-6">
-                            <div class="flex justify-start text-left mb-6">
+                            <div class="mb-6 flex justify-start text-left">
                                 <AppLogoIcon class="size-6 fill-current text-black dark:text-white" />
                             </div>
                             <div class="flex h-full flex-1 flex-col justify-between space-y-4 py-6">
@@ -125,18 +115,9 @@ const getActiveIndex = () => {
 
                 <!-- Desktop Menu - 使用 Element Plus -->
                 <div class="hidden h-full lg:flex lg:flex-1">
-                    <el-menu 
-                        :default-active="getActiveIndex()" 
-                        mode="horizontal"
-                        class="ml-10 border-0 h-full"
-                    >
-                        <el-menu-item 
-                            v-for="(item, index) in mainNavItems" 
-                            :key="index"
-                            :index="String(index + 1)"
-                            class="h-full flex items-center"
-                        >
-                            <Link :href="item.href || '#'" class="flex items-center h-full">
+                    <el-menu :default-active="getActiveIndex()" mode="horizontal" class="ml-10 h-full border-0">
+                        <el-menu-item v-for="(item, index) in mainNavItems" :key="index" :index="String(index + 1)" class="flex h-full items-center">
+                            <Link :href="item.href || '#'" class="flex h-full items-center">
                                 <component v-if="item.icon" :is="item.icon" class="mr-2 h-4 w-4" />
                                 {{ item.title }}
                             </Link>
@@ -146,22 +127,14 @@ const getActiveIndex = () => {
 
                 <div class="ml-auto flex items-center space-x-2">
                     <div class="relative flex items-center space-x-1">
-                        <el-button 
-                            type="text" 
-                            size="small" 
-                            class="group h-9 w-9 p-0 cursor-pointer"
-                        >
+                        <el-button type="text" size="small" class="group h-9 w-9 cursor-pointer p-0">
                             <Search class="size-5 opacity-80 group-hover:opacity-100" />
                         </el-button>
 
                         <div class="hidden space-x-1 lg:flex">
                             <template v-for="item in rightNavItems" :key="item.title">
                                 <el-tooltip :content="item.title" placement="bottom">
-                                    <el-button 
-                                        type="text" 
-                                        size="small" 
-                                        class="group h-9 w-9 p-0 cursor-pointer"
-                                    >
+                                    <el-button type="text" size="small" class="group h-9 w-9 cursor-pointer p-0">
                                         <a :href="item.href || '#'" target="_blank" rel="noopener noreferrer">
                                             <span class="sr-only">{{ item.title }}</span>
                                             <component :is="item.icon" class="size-5 opacity-80 group-hover:opacity-100" />
@@ -174,16 +147,12 @@ const getActiveIndex = () => {
 
                     <!-- 用户菜单 - 使用 Element Plus -->
                     <el-dropdown trigger="click" placement="bottom-end">
-                        <el-button 
-                            type="text" 
-                            size="small" 
+                        <el-button
+                            type="text"
+                            size="small"
                             class="relative size-10 w-auto rounded-full p-1 focus-within:ring-2 focus-within:ring-primary"
                         >
-                            <el-avatar 
-                                :size="32" 
-                                :src="auth.user?.avatar" 
-                                class="overflow-hidden rounded-full"
-                            >
+                            <el-avatar :size="32" :src="auth.user?.avatar" class="overflow-hidden rounded-full">
                                 {{ getInitials(auth.user?.name) }}
                             </el-avatar>
                         </el-button>
@@ -202,7 +171,11 @@ const getActiveIndex = () => {
             <div class="mx-auto flex h-12 w-full items-center justify-start px-4 text-neutral-500 md:max-w-7xl">
                 <el-breadcrumb separator="/">
                     <el-breadcrumb-item v-for="(item, index) in breadcrumbs" :key="index">
-                        <Link v-if="index < breadcrumbs.length - 1 && item.href" :href="item.href" class="text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100">
+                        <Link
+                            v-if="index < breadcrumbs.length - 1 && item.href"
+                            :href="item.href"
+                            class="text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100"
+                        >
                             {{ item.title }}
                         </Link>
                         <span v-else class="text-neutral-900 dark:text-neutral-100">{{ item.title }}</span>

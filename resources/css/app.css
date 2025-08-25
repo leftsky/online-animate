@@ -102,26 +102,26 @@ html {
         --el-color-primary-light-8: hsl(var(--primary) / 0.3);
         --el-color-primary-light-9: hsl(var(--primary) / 0.1);
         --el-color-primary-dark-2: hsl(var(--primary) / 1.2);
-        
+
         /* 背景色 */
         --el-bg-color: hsl(var(--background));
         --el-bg-color-overlay: hsl(var(--card));
-        
+
         /* 文字色 */
         --el-text-color-primary: hsl(var(--foreground));
         --el-text-color-regular: hsl(var(--foreground));
         --el-text-color-secondary: hsl(var(--muted-foreground));
-        
+
         /* 边框色 */
         --el-border-color: hsl(var(--border));
         --el-border-color-light: hsl(var(--border));
-        
+
         /* 填充色 */
         --el-fill-color: hsl(var(--muted));
         --el-fill-color-light: hsl(var(--accent));
         --el-fill-color-blank: hsl(var(--background));
     }
-    
+
     .dark {
         /* 深色模式下的主题色调整 */
         --el-color-primary: hsl(var(--primary));
@@ -131,20 +131,20 @@ html {
         --el-color-primary-light-8: hsl(var(--primary) / 0.3);
         --el-color-primary-light-9: hsl(var(--primary) / 0.1);
         --el-color-primary-dark-2: hsl(var(--primary) / 1.2);
-        
+
         /* 背景色 */
         --el-bg-color: hsl(var(--background));
         --el-bg-color-overlay: hsl(var(--card));
-        
+
         /* 文字色 */
         --el-text-color-primary: hsl(var(--foreground));
         --el-text-color-regular: hsl(var(--foreground));
         --el-text-color-secondary: hsl(var(--muted-foreground));
-        
+
         /* 边框色 */
         --el-border-color: hsl(var(--border));
         --el-border-color-light: hsl(var(--border));
-        
+
         /* 填充色 */
         --el-fill-color: hsl(var(--muted));
         --el-fill-color-light: hsl(var(--accent));

@@ -12,7 +12,7 @@ const user = page.props.auth.user as User;
 <template>
     <div class="p-4">
         <el-dropdown trigger="click" placement="top">
-            <div class="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-accent hover:text-accent-foreground">
+            <div class="flex cursor-pointer items-center gap-3 rounded-lg p-2 hover:bg-accent hover:text-accent-foreground">
                 <UserInfo :user="user" />
                 <ChevronsUpDown class="size-4 text-muted-foreground" />
             </div>
