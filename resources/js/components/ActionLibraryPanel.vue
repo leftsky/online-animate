@@ -6,17 +6,11 @@
                 <h3 class="text-sm font-medium text-foreground">动作库</h3>
                 <div class="text-xs text-muted-foreground">选择和应用动画</div>
             </div>
-            
+
             <!-- 按钮组 -->
             <div class="flex gap-2">
                 <!-- 上传按钮 -->
-                <Button
-                    variant="outline"
-                    size="sm"
-                    class="h-7 px-2 text-xs"
-                    @click="handleUploadClick"
-                    :disabled="isUploading"
-                >
+                <Button variant="outline" size="sm" class="h-7 px-2 text-xs" @click="handleUploadClick" :disabled="isUploading">
                     <Loader2 v-if="isUploading" class="mr-1 h-3 w-3 animate-spin" />
                     <Upload v-else class="mr-1 h-3 w-3" />
                     {{ isUploading ? '批量上传中...' : '批量上传动作' }}
@@ -40,13 +34,8 @@
         <div class="flex-1 space-y-3 overflow-y-auto p-3">
             <!-- 搜索栏 -->
             <div class="relative">
-                <Input
-                    v-model="searchQuery"
-                    placeholder="搜索动画..."
-                    class="h-8 text-sm"
-                    @input="handleSearch"
-                />
-                <Search class="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input v-model="searchQuery" placeholder="搜索动画..." class="h-8 text-sm" @input="handleSearch" />
+                <Search class="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
             </div>
 
             <!-- 分类筛选 -->
@@ -78,8 +67,8 @@
                 >
                     <!-- 动画信息 -->
                     <div class="mb-2">
-                        <h4 class="font-medium text-sm text-foreground">{{ animation.name }}</h4>
-                        <p v-if="animation.description" class="mt-1 text-xs text-muted-foreground line-clamp-2">
+                        <h4 class="text-sm font-medium text-foreground">{{ animation.name }}</h4>
+                        <p v-if="animation.description" class="mt-1 line-clamp-2 text-xs text-muted-foreground">
                             {{ animation.description }}
                         </p>
                     </div>
@@ -102,20 +91,11 @@
 
                     <!-- 操作按钮 -->
                     <div class="flex items-center gap-2">
-                        <Button
-                            size="sm"
-                            class="h-7 flex-1 text-xs"
-                            @click="applyAnimation(animation)"
-                        >
+                        <Button size="sm" class="h-7 flex-1 text-xs" @click="applyAnimation(animation)">
                             <Play class="mr-1 h-3 w-3" />
                             应用动画
                         </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            class="h-7 px-2 text-xs"
-                            @click="previewAnimation(animation)"
-                        >
+                        <Button variant="outline" size="sm" class="h-7 px-2 text-xs" @click="previewAnimation(animation)">
                             <Eye class="h-3 w-3" />
                         </Button>
                     </div>
@@ -131,23 +111,13 @@
             </div>
 
             <!-- 分页控制 -->
-            <div v-if="total > limit" class="flex items-center justify-between pt-3 border-t border-border">
-                <span class="text-xs text-muted-foreground">
-                    共 {{ total }} 个动画
-                </span>
+            <div v-if="total > limit" class="flex items-center justify-between border-t border-border pt-3">
+                <span class="text-xs text-muted-foreground"> 共 {{ total }} 个动画 </span>
                 <div class="flex items-center gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        class="h-7 px-2 text-xs"
-                        :disabled="offset === 0"
-                        @click="loadPage(offset - limit)"
-                    >
+                    <Button variant="outline" size="sm" class="h-7 px-2 text-xs" :disabled="offset === 0" @click="loadPage(offset - limit)">
                         <ChevronLeft class="h-3 w-3" />
                     </Button>
-                    <span class="text-xs text-muted-foreground">
-                        {{ Math.floor(offset / limit) + 1 }} / {{ Math.ceil(total / limit) }}
-                    </span>
+                    <span class="text-xs text-muted-foreground"> {{ Math.floor(offset / limit) + 1 }} / {{ Math.ceil(total / limit) }} </span>
                     <Button
                         variant="outline"
                         size="sm"
@@ -160,31 +130,16 @@
                 </div>
             </div>
         </div>
-        
-
-
     </div>
 </template>
 
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ref, computed, onMounted, watch } from 'vue';
-import { 
-    Search, 
-    Loader2, 
-    Clock, 
-    Film, 
-    Repeat, 
-    Play, 
-    Eye, 
-    Package,
-    ChevronLeft,
-    ChevronRight,
-    Upload
-} from 'lucide-vue-next';
-import { apiGet, apiPost, uploadApi } from '@/utils/api';
 import { useToast } from '@/composables/useToast';
+import { apiGet, apiPost, uploadApi } from '@/utils/api';
+import { ChevronLeft, ChevronRight, Clock, Eye, Film, Loader2, Package, Play, Repeat, Search, Upload } from 'lucide-vue-next';
+import { computed, onMounted, ref, watch } from 'vue';
 
 // 动画数据接口
 interface Animation {
@@ -236,43 +191,41 @@ const filters = [
     { label: '循环', value: 'loop' },
     { label: '单次', value: 'none' },
     { label: '往返', value: 'pingpong' },
-    { label: '系统', value: 'system' }
+    { label: '系统', value: 'system' },
 ];
 
 // 计算属性
 const filteredAnimations = computed(() => {
     let filtered = animations.value;
-    
+
     // 按循环类型筛选
     if (activeFilter.value !== 'all' && activeFilter.value !== 'system') {
-        filtered = filtered.filter(anim => anim.loop_type === activeFilter.value);
+        filtered = filtered.filter((anim) => anim.loop_type === activeFilter.value);
     }
-    
+
     // 系统动画筛选
     if (activeFilter.value === 'system') {
-        filtered = filtered.filter(anim => !anim.user_id);
+        filtered = filtered.filter((anim) => !anim.user_id);
     }
-    
+
     return filtered;
 });
-
-
 
 // 方法
 const loadAnimations = async () => {
     try {
         isLoading.value = true;
-        
+
         const params: any = {
             limit: limit.value,
-            offset: offset.value
+            offset: offset.value,
         };
-        
+
         // 添加搜索参数
         if (searchQuery.value.trim()) {
             params.search = searchQuery.value.trim();
         }
-        
+
         // 系统动画筛选
         if (activeFilter.value === 'system') {
             const response = await apiGet('/media_animations/system');
@@ -282,12 +235,12 @@ const loadAnimations = async () => {
             }
             return;
         }
-        
+
         const response = await apiGet('/media_animations', { params });
         if (response.success) {
             animations.value = response.data.items || [];
             total.value = response.data.total || 0;
-            
+
             // 调试信息：检查数据类型
             if (animations.value.length > 0) {
                 console.log('动画数据示例:', animations.value[0]);
@@ -331,11 +284,11 @@ const previewAnimation = (animation: Animation) => {
 const formatDuration = (duration: number | string): string => {
     // 确保 duration 是数字类型
     const numDuration = typeof duration === 'string' ? parseFloat(duration) : duration;
-    
+
     if (isNaN(numDuration)) {
         return '0s';
     }
-    
+
     if (numDuration < 1) {
         return `${Math.round(numDuration * 1000)}ms`;
     }
@@ -344,9 +297,9 @@ const formatDuration = (duration: number | string): string => {
 
 const getLoopTypeLabel = (loopType: string): string => {
     const labels: Record<string, string> = {
-        'none': '单次',
-        'loop': '循环',
-        'pingpong': '往返'
+        none: '单次',
+        loop: '循环',
+        pingpong: '往返',
     };
     return labels[loopType] || loopType;
 };
@@ -359,21 +312,24 @@ const handleUploadClick = () => {
     input.accept = '.fbx,.json,.yaml,.yml';
     input.multiple = true; // 支持多选
     input.style.display = 'none';
-    
+
     input.onchange = async (event: Event) => {
         const target = event.target as HTMLInputElement;
         if (target.files && target.files.length > 0) {
             const files = Array.from(target.files);
-            console.log(`选择了 ${files.length} 个文件:`, files.map(f => f.name));
-            
+            console.log(
+                `选择了 ${files.length} 个文件:`,
+                files.map((f) => f.name),
+            );
+
             // 批量处理文件
             await processBatchUpload(files);
         }
-        
+
         // 清理DOM
         document.body.removeChild(input);
     };
-    
+
     document.body.appendChild(input);
     input.click();
 };
@@ -381,21 +337,24 @@ const handleUploadClick = () => {
 const processBatchUpload = async (files: File[]) => {
     try {
         isUploading.value = true;
-        
+
         const results = {
             success: 0,
             failed: 0,
-            errors: [] as string[]
+            errors: [] as string[],
         };
-        
+
         console.log(`开始批量上传 ${files.length} 个文件...`);
-        
+
         // 并发处理所有文件，但限制并发数量避免过载
         const batchSize = 3; // 每次处理3个文件
         for (let i = 0; i < files.length; i += batchSize) {
             const batch = files.slice(i, i + batchSize);
-            console.log(`处理批次 ${Math.floor(i / batchSize) + 1}:`, batch.map(f => f.name));
-            
+            console.log(
+                `处理批次 ${Math.floor(i / batchSize) + 1}:`,
+                batch.map((f) => f.name),
+            );
+
             // 并发处理当前批次
             const batchPromises = batch.map(async (file) => {
                 try {
@@ -409,34 +368,33 @@ const processBatchUpload = async (files: File[]) => {
                     console.error(errorMsg);
                 }
             });
-            
+
             // 等待当前批次完成
             await Promise.all(batchPromises);
-            
+
             // 批次间短暂延迟，避免服务器过载
             if (i + batchSize < files.length) {
-                await new Promise(resolve => setTimeout(resolve, 500));
+                await new Promise((resolve) => setTimeout(resolve, 500));
             }
         }
-        
+
         // 显示批量上传结果
         if (results.success > 0) {
             await loadAnimations(); // 刷新动画列表
             toast.success(`批量上传完成！成功: ${results.success} 个，失败: ${results.failed} 个`);
         }
-        
+
         if (results.failed > 0) {
             console.error('批量上传错误:', results.errors);
             // 可以选择是否显示详细错误信息
             if (results.errors.length <= 5) {
-                results.errors.forEach(error => toast.error(error));
+                results.errors.forEach((error) => toast.error(error));
             } else {
                 toast.error(`有 ${results.failed} 个文件上传失败，请查看控制台了解详情`);
             }
         }
-        
+
         console.log('批量上传完成:', results);
-        
     } catch (error) {
         console.error('批量上传过程出错:', error);
         toast.error('批量上传过程出错: ' + (error instanceof Error ? error.message : '未知错误'));
@@ -449,22 +407,22 @@ const processSingleFile = async (file: File) => {
     // 解析文件名获取基本信息
     const fileName = file.name.replace(/\.[^/.]+$/, ''); // 移除文件扩展名
     const fileExtension = file.name.split('.').pop()?.toLowerCase();
-    
+
     // 先上传文件
     const uploadResponse = await uploadApi.uploadFile(file, {
         type: 'animation',
-        folder: 'animations'
+        folder: 'animations',
     });
-    
+
     if (!uploadResponse.success || !uploadResponse.data) {
         throw new Error('文件上传失败: ' + uploadResponse.message);
     }
-    
+
     const sourceFileUrl = uploadResponse.data.url || uploadResponse.data.path;
-    
+
     // 根据文件类型解析动画数据
     let animationData: any = {};
-    
+
     if (fileExtension === 'fbx') {
         // FBX文件：使用默认值
         animationData = {
@@ -480,19 +438,19 @@ const processSingleFile = async (file: File) => {
                         type: 'position',
                         keyframes: [
                             { time: 0, value: [0, 0, 0] },
-                            { time: 1.0, value: [0, 0, 0] }
-                        ]
-                    }
-                ]
+                            { time: 1.0, value: [0, 0, 0] },
+                        ],
+                    },
+                ],
             },
-            source_file_url: sourceFileUrl
+            source_file_url: sourceFileUrl,
         };
     } else if (fileExtension === 'json' || fileExtension === 'yaml' || fileExtension === 'yml') {
         // JSON/YAML文件：尝试解析内容
         try {
             const text = await file.text();
             const parsed = fileExtension === 'json' ? JSON.parse(text) : parseYaml(text);
-            
+
             animationData = {
                 name: fileName,
                 description: parsed.description || `从${fileExtension.toUpperCase()}文件导入: ${fileName}`,
@@ -506,12 +464,12 @@ const processSingleFile = async (file: File) => {
                             type: 'position',
                             keyframes: [
                                 { time: 0, value: [0, 0, 0] },
-                                { time: parsed.duration || 1.0, value: [0, 0, 0] }
-                            ]
-                        }
-                    ]
+                                { time: parsed.duration || 1.0, value: [0, 0, 0] },
+                            ],
+                        },
+                    ],
                 },
-                source_file_url: sourceFileUrl
+                source_file_url: sourceFileUrl,
             };
         } catch (parseError) {
             console.warn('文件解析失败，使用默认值:', parseError);
@@ -529,23 +487,23 @@ const processSingleFile = async (file: File) => {
                             type: 'position',
                             keyframes: [
                                 { time: 0, value: [0, 0, 0] },
-                                { time: 1.0, value: [0, 0, 0] }
-                            ]
-                        }
-                    ]
+                                { time: 1.0, value: [0, 0, 0] },
+                            ],
+                        },
+                    ],
                 },
-                source_file_url: sourceFileUrl
+                source_file_url: sourceFileUrl,
             };
         }
     }
-    
+
     // 调用API创建动画
     const response = await apiPost('/media_animations', animationData);
-    
+
     if (!response.success) {
         throw new Error(response.message || '创建动画记录失败');
     }
-    
+
     return response.data;
 };
 

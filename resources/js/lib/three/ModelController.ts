@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { v4 as uuid } from 'uuid';
 import { markRaw, ref } from 'vue';
 import { useThreeJSManager } from './ThreeJSBaseManager';
@@ -58,8 +58,7 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
 
                 // 检测文件类型
                 const isFBX = modelFileUrl.toLowerCase().endsWith('.fbx');
-                const isGLTF = modelFileUrl.toLowerCase().endsWith('.glb') ||
-                    modelFileUrl.toLowerCase().endsWith('.gltf');
+                const isGLTF = modelFileUrl.toLowerCase().endsWith('.glb') || modelFileUrl.toLowerCase().endsWith('.gltf');
 
                 let _model: THREE.Group;
                 let modelAnimations: any[] = [];
@@ -75,9 +74,7 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
                     // 过滤FBX加载时的常见警告
                     console.warn = (...args) => {
                         const message = args.join(' ');
-                        if (message.includes('ShininessExponent') ||
-                            message.includes('skinning weights') ||
-                            message.includes('FBXLoader:')) {
+                        if (message.includes('ShininessExponent') || message.includes('skinning weights') || message.includes('FBXLoader:')) {
                             // 过滤掉这些常见的FBX警告
                             return;
                         }
@@ -94,7 +91,6 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
                         _model = fbx;
                         modelAnimations = fbx.animations || [];
                         console.log('FBX模型加载成功，找到动画数量:', modelAnimations.length);
-
                     } catch (loadError) {
                         console.error('FBX模型加载失败:', loadError);
                         throw loadError;
@@ -103,7 +99,6 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
                         console.warn = originalWarn;
                         console.error = originalError;
                     }
-
                 } else if (isGLTF) {
                     // 使用GLTFLoader加载GLTF模型
                     console.log('检测到GLTF格式，使用GLTFLoader加载');
@@ -117,12 +112,10 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
                         _model = gltf.scene;
                         modelAnimations = gltf.animations || [];
                         console.log('GLTF模型加载成功，找到动画数量:', modelAnimations.length);
-
                     } catch (loadError) {
                         console.error('GLTF模型加载失败:', loadError);
                         throw loadError;
                     }
-
                 } else {
                     throw new Error('不支持的文件格式，请使用.fbx、.glb或.gltf文件');
                 }
@@ -200,7 +193,6 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
 
                 console.log('模型加载成功:', modelFileUrl);
                 status.value = ModelStatus.LOADED;
-
             }
         } catch (error) {
             console.error('解析模型文件失败:', error);
@@ -762,10 +754,10 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
     const importFBXAnimations = async (
         fbxFileUrl: string,
         options?: {
-            prefix?: string;           // 动画名称前缀，避免冲突
+            prefix?: string; // 动画名称前缀，避免冲突
             replaceExisting?: boolean; // 是否替换同名动画
             onProgress?: (progress: number) => void; // 加载进度回调
-        }
+        },
     ): Promise<{
         success: boolean;
         importedCount: number;
@@ -777,7 +769,7 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
                 success: false,
                 importedCount: 0,
                 animations: [],
-                errors: ['场景未初始化或文件URL无效']
+                errors: ['场景未初始化或文件URL无效'],
             };
         }
 
@@ -799,7 +791,7 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
                             options.onProgress(percent);
                         }
                     },
-                    reject
+                    reject,
                 );
             });
 
@@ -808,12 +800,12 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
                     success: false,
                     importedCount: 0,
                     animations: [],
-                    errors: ['FBX文件中未找到动画数据']
+                    errors: ['FBX文件中未找到动画数据'],
                 };
             }
 
             console.log('FBX文件加载成功，找到动画数量:', fbx.animations.length);
-            console.log("animation", fbx.animations);
+            console.log('animation', fbx.animations);
 
             const importedAnimations: Array<{ name: string; duration: number; clip: any }> = [];
             const errors: string[] = [];
@@ -832,7 +824,7 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
                     const normalizedName = normalizeAnimationName(originalName, prefix);
 
                     // 检查是否已存在同名动画
-                    const existingIndex = animations.value.findIndex(anim => anim.name === normalizedName);
+                    const existingIndex = animations.value.findIndex((anim) => anim.name === normalizedName);
 
                     if (existingIndex !== -1 && !replaceExisting) {
                         // 如果存在同名动画且不允许替换，则跳过
@@ -849,7 +841,7 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
                     // 转换骨骼名称
                     const convertedAnimation = {
                         ...animation,
-                        tracks: animation.tracks
+                        tracks: animation.tracks,
                     };
 
                     // 创建动画片段
@@ -859,7 +851,7 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
                     const animationData = {
                         name: normalizedName,
                         duration: duration,
-                        clip: clip
+                        clip: clip,
                     };
 
                     if (existingIndex !== -1 && replaceExisting) {
@@ -873,7 +865,6 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
                     }
 
                     importedAnimations.push(animationData);
-
                 } catch (error) {
                     console.error(`处理动画 ${index} 失败:`, error);
                     errors.push(`动画 ${index} 处理失败: ${error}`);
@@ -898,16 +889,15 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
                 success: importedAnimations.length > 0,
                 importedCount: importedAnimations.length,
                 animations: importedAnimations,
-                errors: errors.length > 0 ? errors : undefined
+                errors: errors.length > 0 ? errors : undefined,
             };
-
         } catch (error) {
             console.error('导入FBX动画失败:', error);
             return {
                 success: false,
                 importedCount: 0,
                 animations: [],
-                errors: [`导入失败: ${error}`]
+                errors: [`导入失败: ${error}`],
             };
         }
     };
@@ -924,7 +914,7 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
         let finalName = normalized;
         let counter = 1;
 
-        while (animations.value.some(anim => anim.name === finalName)) {
+        while (animations.value.some((anim) => anim.name === finalName)) {
             finalName = `${normalized}_${counter}`;
             counter++;
         }
@@ -978,30 +968,30 @@ export function useModelController(threeManager: ReturnType<typeof useThreeJSMan
 
 /*
  * 新增功能说明：
- * 
+ *
  * importFBXAnimations(fbxFileUrl, options?)
- * 
+ *
  * 功能：导入FBX文件中的所有动画，并将其添加到现有的动画组中
- * 
+ *
  * 参数：
  * - fbxFileUrl: string - FBX文件的URL地址
  * - options: object - 可选配置
  *   - prefix: string - 动画名称前缀，默认为 'FBX_'
  *   - replaceExisting: boolean - 是否替换同名动画，默认为 false
  *   - onProgress: function - 加载进度回调函数
- * 
+ *
  * 返回值：
  * - success: boolean - 是否成功
  * - importedCount: number - 成功导入的动画数量
  * - animations: array - 导入的动画列表
  * - errors: array - 错误信息列表（如果有）
- * 
+ *
  * 使用示例：
  * const result = await importFBXAnimations('path/to/animations.fbx', {
  *     prefix: 'FBX_',
  *     replaceExisting: false
  * });
- * 
+ *
  * if (result.success) {
  *     console.log(`成功导入 ${result.importedCount} 个动画`);
  * }

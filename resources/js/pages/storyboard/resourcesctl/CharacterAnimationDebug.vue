@@ -9,45 +9,47 @@
                             <h1 class="text-3xl font-bold text-foreground">人物动作调试</h1>
                             <p class="mt-2 text-muted-foreground">调试和测试3D人物模型的动画效果</p>
                         </div>
-                        
+
                         <!-- AI动画搜索和选择 -->
                         <div class="flex items-center gap-3">
-                            
                             <div class="relative">
                                 <Input
                                     v-model="aiAnimationSearch"
                                     placeholder="搜索AI动画..."
-                                    class="w-64 h-10"
+                                    class="h-10 w-64"
                                     @input="searchAiAnimations"
                                     @focus="handleSearchFocus"
                                     @blur="handleSearchBlur"
                                     @keydown.enter="handleSearchEnter"
                                 />
-                                <Search class="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                
+                                <Search class="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
+
                                 <!-- 搜索下拉选择窗口 -->
-                                <div 
+                                <div
                                     v-if="showSearchDropdown && (aiAnimations.length > 0 || aiAnimationSearch.trim().length > 0)"
-                                    class="absolute top-full left-0 right-0 mt-1 max-h-64 overflow-y-auto rounded-md border border-border bg-background shadow-lg z-50"
+                                    class="absolute left-0 right-0 top-full z-50 mt-1 max-h-64 overflow-y-auto rounded-md border border-border bg-background shadow-lg"
                                 >
                                     <div v-if="isLoadingAiAnimations" class="p-3 text-center text-sm text-muted-foreground">
-                                        <Loader2 class="h-4 w-4 animate-spin mx-auto mb-2" />
+                                        <Loader2 class="mx-auto mb-2 h-4 w-4 animate-spin" />
                                         搜索中...
                                     </div>
-                                    
-                                    <div v-else-if="aiAnimations.length === 0 && aiAnimationSearch.trim().length > 0" class="p-3 text-center text-sm text-muted-foreground">
+
+                                    <div
+                                        v-else-if="aiAnimations.length === 0 && aiAnimationSearch.trim().length > 0"
+                                        class="p-3 text-center text-sm text-muted-foreground"
+                                    >
                                         未找到相关动画
                                     </div>
-                                    
+
                                     <div v-else class="py-1">
-                                        <div 
-                                            v-for="animation in aiAnimations" 
+                                        <div
+                                            v-for="animation in aiAnimations"
                                             :key="animation.id"
                                             @click="selectAnimationFromDropdown(animation)"
-                                            class="px-3 py-2 hover:bg-accent cursor-pointer transition-colors"
+                                            class="cursor-pointer px-3 py-2 transition-colors hover:bg-accent"
                                         >
                                             <div class="flex flex-col">
-                                                <span class="font-medium text-sm text-foreground">{{ animation.name }}</span>
+                                                <span class="text-sm font-medium text-foreground">{{ animation.name }}</span>
                                                 <span class="text-xs text-muted-foreground">
                                                     {{ animation.duration_formatted }} | {{ animation.confidence_percentage }}
                                                 </span>
@@ -56,17 +58,13 @@
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <Select v-model="selectedAiAnimation" @update:model-value="applyAiAnimation">
-                                <SelectTrigger class="w-48 h-10">
+                                <SelectTrigger class="h-10 w-48">
                                     <SelectValue placeholder="选择AI动画" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem 
-                                        v-for="animation in aiAnimations" 
-                                        :key="animation.id" 
-                                        :value="animation.id"
-                                    >
+                                    <SelectItem v-for="animation in aiAnimations" :key="animation.id" :value="animation.id">
                                         <div class="flex flex-col">
                                             <span class="font-medium">{{ animation.name }}</span>
                                             <span class="text-xs text-muted-foreground">
@@ -74,18 +72,11 @@
                                             </span>
                                         </div>
                                     </SelectItem>
-                                    <SelectItem v-if="aiAnimations.length === 0" value="" disabled>
-                                        暂无可用动画
-                                    </SelectItem>
+                                    <SelectItem v-if="aiAnimations.length === 0" value="" disabled> 暂无可用动画 </SelectItem>
                                 </SelectContent>
                             </Select>
-                            
-                            <Button 
-                                @click="refreshAiAnimations" 
-                                variant="outline" 
-                                size="sm"
-                                :disabled="isLoadingAiAnimations"
-                            >
+
+                            <Button @click="refreshAiAnimations" variant="outline" size="sm" :disabled="isLoadingAiAnimations">
                                 <RefreshCw v-if="!isLoadingAiAnimations" class="h-4 w-4" />
                                 <Loader2 v-else class="h-4 w-4 animate-spin" />
                                 {{ isLoadingAiAnimations ? '处理中' : '刷新' }}
@@ -151,10 +142,8 @@
                                 <p class="text-xs text-muted-foreground">
                                     {{ isCreatingBatchPreview ? '创建预览中...' : `预览 ${batchPreviewAnimations.length} 个动画` }}
                                 </p>
-                                <div v-if="batchPreviewError" class="mt-2 text-xs text-red-500">
-                                    错误: {{ batchPreviewError }}
-                                </div>
-                                
+                                <div v-if="batchPreviewError" class="mt-2 text-xs text-red-500">错误: {{ batchPreviewError }}</div>
+
                                 <!-- 批量预览控制按钮 -->
                                 <div class="mt-2 flex gap-2">
                                     <Button
@@ -167,21 +156,11 @@
                                         <RefreshCw class="h-3 w-3" />
                                         刷新
                                     </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        class="h-6 px-2 text-xs"
-                                        @click="stopBatchPreview"
-                                    >
+                                    <Button variant="outline" size="sm" class="h-6 px-2 text-xs" @click="stopBatchPreview">
                                         <Square class="h-3 w-3" />
                                         停止
                                     </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        class="h-6 px-2 text-xs"
-                                        @click="debugBatchPreview"
-                                    >
+                                    <Button variant="outline" size="sm" class="h-6 px-2 text-xs" @click="debugBatchPreview">
                                         <Bug class="h-3 w-3" />
                                         调试
                                     </Button>
@@ -202,28 +181,24 @@
 
 <script setup lang="ts">
 import ActionLibraryPanel from '@/components/ActionLibraryPanel.vue';
-import { useToast } from '@/composables/useToast';
-import AppLayout from '@/layouts/AppLayout.vue';
-import { Package, Search, RefreshCw, Loader2, Square, Bug } from 'lucide-vue-next';
-import { onMounted, ref, watch } from 'vue';
-import AIChatPanel from './components/AIChatPanel.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/composables/useToast';
+import AppLayout from '@/layouts/AppLayout.vue';
 import { apiGet } from '@/utils/api';
+import { Bug, Loader2, Package, RefreshCw, Search, Square } from 'lucide-vue-next';
+import { onMounted, ref, watch } from 'vue';
+import AIChatPanel from './components/AIChatPanel.vue';
 
+import ToastProvider from '@/components/ui/toast/ToastProvider.vue';
 import { useModelController } from '@/lib/three/ModelController';
 import { useThreeJSManager } from '@/lib/three/ThreeJSBaseManager';
-import ToastProvider from '@/components/ui/toast/ToastProvider.vue';
 
 const threeManager = useThreeJSManager();
 const { destroyThreeJS, initThreeJS, handleResize } = threeManager;
 const modelController = useModelController(threeManager);
-const {
-    load,
-    animations: availableAnimations,
-    status: modelStatus,
-} = modelController;
+const { load, animations: availableAnimations, status: modelStatus } = modelController;
 
 const modelInitParams = ref<any>({
     position: { x: 0, y: 0, z: 0 },
@@ -270,31 +245,31 @@ const showSearchDropdown = ref(false); // 控制搜索下拉窗口的显示
 // 动作库相关方法
 const handleAnimationSelected = async (animation: any) => {
     console.log('选择动画:', animation);
-    
+
     try {
         // 检查是否有源文件URL
         if (animation.source_file_url && modelController) {
             console.log('从文件URL载入动画:', animation.source_file_url);
             console.log('当前可用动画数量:', availableAnimations.value.length);
-            
+
             // 使用ModelController的importFBXAnimations方法载入动画文件
             const result = await modelController.importFBXAnimations(animation.source_file_url, {
                 prefix: `${animation.name}_`,
-                replaceExisting: false
+                replaceExisting: false,
             });
-            
+
             console.log('载入结果:', result);
             console.log('载入后的动画数量:', availableAnimations.value.length);
-            
+
             if (result.success && result.importedCount > 0) {
                 // 载入成功，自动播放第一个载入的动画
                 const animationIndex = availableAnimations.value.length - 1;
                 console.log('准备播放动画索引:', animationIndex);
-                
+
                 if (animationIndex >= 0) {
                     handleAnimationPlay(animationIndex);
                 }
-                
+
                 toast.success(`已载入动画: ${animation.name}`);
                 console.log('动画载入成功:', result);
             } else {
@@ -303,31 +278,30 @@ const handleAnimationSelected = async (animation: any) => {
         } else if (animation.animation_tracks && modelController) {
             // 如果没有源文件，尝试使用预设的动画轨道数据
             console.log('使用预设动画轨道数据');
-            
+
             // 解析动画轨道数据
-            const animationTracks = typeof animation.animation_tracks === 'string' 
-                ? JSON.parse(animation.animation_tracks) 
-                : animation.animation_tracks;
-            
+            const animationTracks =
+                typeof animation.animation_tracks === 'string' ? JSON.parse(animation.animation_tracks) : animation.animation_tracks;
+
             // 创建动画数据
             const animationData = {
                 name: animation.name,
                 duration: typeof animation.duration === 'string' ? parseFloat(animation.duration) : animation.duration,
                 frameCount: typeof animation.frame_count === 'string' ? parseInt(animation.frame_count) : animation.frame_count,
                 loopType: animation.loop_type,
-                tracks: animationTracks.tracks || []
+                tracks: animationTracks.tracks || [],
             };
-            
+
             // 添加到模型控制器
             const success = await modelController.addCustomAnimation(animationData);
-            
+
             if (success) {
                 // 自动播放新添加的动画
                 const animationIndex = availableAnimations.value.length - 1;
                 if (animationIndex >= 0) {
                     handleAnimationPlay(animationIndex);
                 }
-                
+
                 toast.success(`已应用动画: ${animation.name}`);
                 console.log('动画应用成功:', animationData);
             } else {
@@ -351,31 +325,30 @@ const handleAnimationPreview = (animation: any) => {
 // 批量预览动画
 const handleBatchAnimationPreview = async (animations: any[]) => {
     console.log('批量预览动画:', animations);
-    
+
     try {
         // 清理之前的预览
         await cleanupBatchPreview();
-        
+
         // 限制预览数量，避免性能问题
         const maxPreviewCount = 100; // 最多9个（3x3网格）
         const previewAnimations = animations.slice(0, maxPreviewCount);
-        
+
         if (previewAnimations.length === 0) {
             toast.warning('没有可预览的动画');
             return;
         }
-        
+
         // 设置批量预览模式
         isBatchPreviewMode.value = true;
         batchPreviewAnimations.value = previewAnimations;
         isCreatingBatchPreview.value = true;
         batchPreviewError.value = null;
-        
+
         // 创建多个预览控制器
         await createBatchPreviewControllers(previewAnimations);
-        
+
         toast.success(`开始预览 ${previewAnimations.length} 个动画`);
-        
     } catch (error) {
         console.error('批量预览失败:', error);
         const errorMessage = error instanceof Error ? error.message : '未知错误';
@@ -393,7 +366,7 @@ const searchAiAnimations = async () => {
     if (searchTimeout) {
         clearTimeout(searchTimeout);
     }
-    
+
     // 设置新的定时器，500ms后执行搜索
     searchTimeout = setTimeout(async () => {
         if (aiAnimationSearch.value.trim().length < 2) {
@@ -401,17 +374,17 @@ const searchAiAnimations = async () => {
             await loadRecentAnimations();
             return;
         }
-        
+
         try {
             isLoadingAiAnimations.value = true;
             const params = new URLSearchParams({
                 search: aiAnimationSearch.value.trim(),
                 successful_only: 'true',
-                per_page: '20'
+                per_page: '20',
             });
-            
+
             const response = await apiGet(`ai-skeleton-animations?${params.toString()}`);
-            
+
             if (response.success) {
                 aiAnimations.value = response.data.items;
             } else {
@@ -434,11 +407,11 @@ const loadRecentAnimations = async () => {
             successful_only: 'true',
             per_page: '10',
             sort_by: 'created_at',
-            sort_direction: 'desc'
+            sort_direction: 'desc',
         });
-        
+
         const response = await apiGet(`ai-skeleton-animations?${params.toString()}`);
-        
+
         if (response.success) {
             aiAnimations.value = response.data.items;
         }
@@ -463,11 +436,11 @@ const refreshAiAnimations = async () => {
         isLoadingAiAnimations.value = true;
         const params = new URLSearchParams({
             successful_only: 'true',
-            per_page: '20'
+            per_page: '20',
         });
-        
+
         const response = await apiGet(`ai-skeleton-animations?${params.toString()}`);
- 
+
         if (response.success) {
             aiAnimations.value = response.data.items;
             toast.success('刷新成功');
@@ -485,22 +458,22 @@ const refreshAiAnimations = async () => {
 // 应用选中的AI动画
 const applyAiAnimation = async (animationId: string) => {
     if (!animationId) return;
-    
-    const selectedAnimation = aiAnimations.value.find(a => a.id === animationId);
+
+    const selectedAnimation = aiAnimations.value.find((a) => a.id === animationId);
     if (!selectedAnimation) return;
-    
+
     try {
         // 调用ModelController的addCustomAnimation方法
         const success = await modelController.addCustomAnimation({
             name: selectedAnimation.name,
             duration: selectedAnimation.duration,
-            tracks: selectedAnimation.animation_data.tracks || []
+            tracks: selectedAnimation.animation_data.tracks || [],
         });
-        
+
         if (success) {
             toast.success(`成功应用动画: ${selectedAnimation.name}`);
             console.log(`应用AI动画: ${selectedAnimation.name}`);
-            
+
             // 自动播放新添加的动画
             const animationIndex = availableAnimations.value.length - 1;
             if (animationIndex >= 0) {
@@ -596,104 +569,98 @@ const handleAIAnimationGenerated = async (animation: { type: string; data: any; 
 const createBatchPreviewControllers = async (animations: any[]) => {
     try {
         const controllers = [];
-        
+
         // 计算网格布局
         const gridSize = Math.ceil(Math.sqrt(animations.length));
         const spacing = 4; // 增加模型之间的间距，避免重叠
-        
+
         for (let i = 0; i < animations.length; i++) {
             const animation = animations[i];
             const row = Math.floor(i / gridSize);
             const col = i % gridSize;
-            
+
             // 计算位置偏移
             const x = (col - (gridSize - 1) / 2) * spacing;
             const z = (row - (gridSize - 1) / 2) * spacing;
-            
+
             console.log(`创建预览控制器 ${i + 1}: ${animation.name} 在位置 (${x}, 0, ${z})`);
-            
+
             // 创建新的控制器实例
             const newController = useModelController(threeManager);
-            
+
             // 加载相同的模型但应用不同的动画
             await newController.load(defaultModelUrl);
-            
+
             // 等待一帧，确保模型完全加载
-            await new Promise(resolve => setTimeout(resolve, 100));
-            
+            await new Promise((resolve) => setTimeout(resolve, 100));
+
             // 应用对应的动画
             if (animation.source_file_url) {
                 await newController.importFBXAnimations(animation.source_file_url, {
                     prefix: `${animation.name}_`,
-                    replaceExisting: true
+                    replaceExisting: true,
                 });
             } else if (animation.animation_tracks) {
-                const animationTracks = typeof animation.animation_tracks === 'string' 
-                    ? JSON.parse(animation.animation_tracks) 
-                    : animation.animation_tracks;
-                
+                const animationTracks =
+                    typeof animation.animation_tracks === 'string' ? JSON.parse(animation.animation_tracks) : animation.animation_tracks;
+
                 const animationData = {
                     name: animation.name,
                     duration: typeof animation.duration === 'string' ? parseFloat(animation.duration) : animation.duration,
                     frameCount: typeof animation.frame_count === 'string' ? parseInt(animation.frame_count) : animation.frame_count,
                     loopType: animation.loop_type,
-                    tracks: animationTracks.tracks || []
+                    tracks: animationTracks.tracks || [],
                 };
-                
+
                 await newController.addCustomAnimation(animationData);
             }
-            
+
             // 设置模型位置 - 通过 updateParams 方法分别设置
             try {
                 newController.updateParams({ type: 'position', value: { x, y: 0, z } });
                 console.log(`设置模型 ${i + 1} 位置: (${x}, 0, ${z})`);
-                
+
                 // 等待位置设置生效
-                await new Promise(resolve => setTimeout(resolve, 50));
-                
+                await new Promise((resolve) => setTimeout(resolve, 50));
             } catch (posError) {
                 console.warn(`设置模型 ${i + 1} 位置失败:`, posError);
             }
-            
+
             // 开始播放动画 - 播放最新导入的FBX动画
             try {
                 let animationIndex = 0; // 默认播放第一个动画
-                
+
                 // 如果有FBX动画，播放最后一个（最新导入的）
                 if (animation.source_file_url) {
                     const animations = newController.animations?.value || [];
                     // 找到以动画名称为前缀的动画
-                    const fbxAnimationIndex = animations.findIndex((a: any) => 
-                        a.name && a.name.includes(animation.name)
-                    );
+                    const fbxAnimationIndex = animations.findIndex((a: any) => a.name && a.name.includes(animation.name));
                     if (fbxAnimationIndex !== -1) {
                         animationIndex = fbxAnimationIndex;
                         console.log(`模型 ${i + 1} 找到FBX动画: ${animations[animationIndex]?.name} 在索引 ${animationIndex}`);
                     }
                 }
-                
+
                 const playResult = newController.play(animationIndex);
                 console.log(`模型 ${i + 1} 播放动画索引 ${animationIndex} 结果:`, playResult);
-                
+
                 // 验证动画是否真的在播放
                 setTimeout(() => {
                     const isPlaying = newController.isPlaying?.value;
                     console.log(`模型 ${i + 1} 播放状态验证:`, isPlaying);
                 }, 100);
-                
             } catch (playError) {
                 console.warn(`模型 ${i + 1} 播放动画失败:`, playError);
             }
-            
+
             controllers.push(newController);
         }
-        
+
         batchPreviewControllers.value = controllers;
         console.log(`创建了 ${controllers.length} 个预览控制器，网格大小: ${gridSize}x${gridSize}`);
-        
+
         // 验证所有控制器是否正常工作
         await validateBatchPreviewControllers(controllers);
-        
     } catch (error) {
         console.error('创建批量预览控制器失败:', error);
         throw error;
@@ -713,19 +680,18 @@ const cleanupBatchPreview = async () => {
                     console.warn('清理控制器时出错:', error);
                 }
             }
-            
+
             // 清空数组
             batchPreviewControllers.value = [];
         }
-        
+
         // 重置状态
         isBatchPreviewMode.value = false;
         batchPreviewAnimations.value = [];
         isCreatingBatchPreview.value = false;
         batchPreviewError.value = null;
-        
+
         console.log('批量预览清理完成');
-        
     } catch (error) {
         console.error('清理批量预览失败:', error);
     }
@@ -735,25 +701,28 @@ const cleanupBatchPreview = async () => {
 const validateBatchPreviewControllers = async (controllers: any[]) => {
     try {
         console.log('开始验证批量预览控制器...');
-        
+
         for (let i = 0; i < controllers.length; i++) {
             const controller = controllers[i];
-            
+
             // 检查控制器状态
             const status = controller.status?.value;
             const isPlaying = controller.isPlaying?.value;
             const animations = controller.animations?.value;
-            
+
             console.log(`控制器 ${i + 1} 状态:`, {
                 status,
                 isPlaying,
-                animationCount: animations?.length || 0
+                animationCount: animations?.length || 0,
             });
-            
+
             // 检查是否有动画
             if (animations && animations.length > 0) {
-                console.log(`控制器 ${i + 1} 动画列表:`, animations.map((a: any) => a.name));
-                
+                console.log(
+                    `控制器 ${i + 1} 动画列表:`,
+                    animations.map((a: any) => a.name),
+                );
+
                 // 检查当前播放的动画
                 if (isPlaying && animations.length > 0) {
                     // 尝试获取当前播放的动画信息
@@ -766,9 +735,9 @@ const validateBatchPreviewControllers = async (controllers: any[]) => {
                 }
             }
         }
-        
+
         console.log('批量预览控制器验证完成');
-        
+
         // 延迟验证，确保动画有时间开始播放
         setTimeout(() => {
             console.log('延迟验证动画播放状态...');
@@ -777,7 +746,6 @@ const validateBatchPreviewControllers = async (controllers: any[]) => {
                 console.log(`延迟验证 - 控制器 ${index + 1} 播放状态:`, isPlaying);
             });
         }, 500);
-        
     } catch (error) {
         console.error('验证批量预览控制器失败:', error);
     }
@@ -786,7 +754,7 @@ const validateBatchPreviewControllers = async (controllers: any[]) => {
 // 刷新批量预览
 const refreshBatchPreview = async () => {
     if (!batchPreviewAnimations.value.length) return;
-    
+
     try {
         console.log('刷新批量预览...');
         await handleBatchAnimationPreview(batchPreviewAnimations.value);
@@ -814,28 +782,26 @@ const debugBatchPreview = () => {
         toast.warning('没有可调试的批量预览');
         return;
     }
-    
+
     console.log('=== 批量预览调试信息 ===');
-    
+
     batchPreviewControllers.value.forEach((controller, index) => {
         const status = controller.status?.value;
         const isPlaying = controller.isPlaying?.value;
         const animations = controller.animations?.value;
-        
+
         console.log(`控制器 ${index + 1}:`, {
             status,
             isPlaying,
             animationCount: animations?.length || 0,
-            animations: animations?.map((a: any) => a.name) || []
+            animations: animations?.map((a: any) => a.name) || [],
         });
-        
+
         // 尝试播放不同的动画
         if (animations && animations.length > 0) {
             // 找到FBX动画（通常包含动画名称）
-            const fbxAnimationIndex = animations.findIndex((a: any) => 
-                a.name && a.name.includes('_mixamocom')
-            );
-            
+            const fbxAnimationIndex = animations.findIndex((a: any) => a.name && a.name.includes('_mixamocom'));
+
             if (fbxAnimationIndex !== -1) {
                 console.log(`控制器 ${index + 1} 尝试播放FBX动画: ${animations[fbxAnimationIndex].name} (索引: ${fbxAnimationIndex})`);
                 try {
@@ -846,7 +812,7 @@ const debugBatchPreview = () => {
             }
         }
     });
-    
+
     toast.info('调试信息已输出到控制台');
 };
 
@@ -861,9 +827,6 @@ const loadDefaultModel = async () => {
     }
 };
 
-
-
-
 // 生命周期
 onMounted(async () => {
     if (threeCanvas.value) {
@@ -872,7 +835,7 @@ onMounted(async () => {
 
         // 加载默认模型
         await loadDefaultModel();
-        
+
         // 初始化AI动画列表
         await refreshAiAnimations();
     }

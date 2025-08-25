@@ -42,18 +42,8 @@
         <!-- 固定在底部的聊天输入 -->
         <div class="sticky bottom-0 border-t border-border bg-background/95 p-3">
             <div class="flex gap-2">
-                <Input 
-                    v-model="newMessage" 
-                    placeholder="输入自然语言指令，如：让模型走路..." 
-                    class="h-8 text-xs flex-1" 
-                    @keyup.enter="sendMessage" 
-                />
-                <Button 
-                    @click="sendMessage" 
-                    :disabled="!newMessage.trim() || isProcessing" 
-                    size="sm" 
-                    class="h-8 px-3 text-xs"
-                >
+                <Input v-model="newMessage" placeholder="输入自然语言指令，如：让模型走路..." class="h-8 flex-1 text-xs" @keyup.enter="sendMessage" />
+                <Button @click="sendMessage" :disabled="!newMessage.trim() || isProcessing" size="sm" class="h-8 px-3 text-xs">
                     <Send v-if="!isProcessing" class="h-3 w-3" />
                     <Loader2 v-else class="h-3 w-3 animate-spin" />
                     {{ isProcessing ? '处理中' : '发送' }}
