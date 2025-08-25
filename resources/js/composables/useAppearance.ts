@@ -9,6 +9,23 @@ export function updateTheme(value: Appearance) {
     } else {
         document.documentElement.classList.toggle('dark', value === 'dark');
     }
+    
+    // 新增：同步 Element Plus 主题
+    updateElementPlusTheme(value);
+}
+
+function updateElementPlusTheme(value: Appearance) {
+    const html = document.documentElement;
+    
+    if (value === 'dark') {
+        html.classList.add('dark');
+    } else if (value === 'light') {
+        html.classList.remove('dark');
+    } else {
+        // system 模式，根据系统偏好自动切换
+        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        html.classList.toggle('dark', systemTheme === 'dark');
+    }
 }
 
 const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');

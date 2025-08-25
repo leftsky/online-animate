@@ -1,24 +1,13 @@
 <script setup lang="ts">
 import AppLogo from '@/components/AppLogo.vue';
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import {
-    NavigationMenu,
-    NavigationMenuItem,
-    NavigationMenuLink,
-    NavigationMenuList,
-    navigationMenuTriggerStyle,
-} from '@/components/ui/navigation-menu';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import UserMenuContent from '@/components/UserMenuContent.vue';
 import { getInitials } from '@/composables/useInitials';
 import type { BreadcrumbItem, NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
+import { route } from 'ziggy-js';
 import { BookOpen, Folder, LayoutGrid, Menu, Search } from 'lucide-vue-next';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 interface Props {
     breadcrumbs?: BreadcrumbItem[];
@@ -29,7 +18,8 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const page = usePage();
-const auth = computed(() => page.props.auth);
+const auth = computed(() => page.props.auth as any);
+const mobileMenuVisible = ref(false);
 
 const isCurrentRoute = (url: string) => {
     return page.url === url;
@@ -57,6 +47,18 @@ const rightNavItems: NavItem[] = [
         icon: BookOpen,
     },
 ];
+
+// 获取当前激活的菜单项
+const getActiveIndex = () => {
+    const currentUrl = page.url;
+    for (let i = 0; i < mainNavItems.length; i++) {
+        const item = mainNavItems[i];
+        if (item.href === currentUrl) {
+            return String(i + 1);
+        }
+    }
+    return '1';
+};
 </script>
 
 <template>
@@ -65,25 +67,35 @@ const rightNavItems: NavItem[] = [
             <div class="mx-auto flex h-16 items-center px-4 md:max-w-7xl">
                 <!-- Mobile Menu -->
                 <div class="lg:hidden">
-                    <Sheet>
-                        <SheetTrigger :as-child="true">
-                            <Button variant="ghost" size="icon" class="mr-2 h-9 w-9">
-                                <Menu class="h-5 w-5" />
-                            </Button>
-                        </SheetTrigger>
-                        <SheetContent side="left" class="w-[300px] p-6">
-                            <SheetTitle class="sr-only">导航菜单</SheetTitle>
-                            <SheetHeader class="flex justify-start text-left">
+                    <el-button 
+                        type="text" 
+                        size="small" 
+                        class="mr-2 h-9 w-9 p-0" 
+                        @click="mobileMenuVisible = true"
+                    >
+                        <Menu class="h-5 w-5" />
+                    </el-button>
+                    
+                    <!-- 移动端抽屉菜单 -->
+                    <el-drawer
+                        v-model="mobileMenuVisible"
+                        direction="ltr"
+                        size="300px"
+                        :with-header="false"
+                    >
+                        <div class="p-6">
+                            <div class="flex justify-start text-left mb-6">
                                 <AppLogoIcon class="size-6 fill-current text-black dark:text-white" />
-                            </SheetHeader>
+                            </div>
                             <div class="flex h-full flex-1 flex-col justify-between space-y-4 py-6">
                                 <nav class="-mx-3 space-y-1">
                                     <Link
                                         v-for="item in mainNavItems"
                                         :key="item.title"
-                                        :href="item.href"
+                                        :href="item.href || '#'"
                                         class="flex items-center gap-x-3 rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent"
-                                        :class="activeItemStyles(item.href)"
+                                        :class="activeItemStyles(item.href || '')"
+                                        @click="mobileMenuVisible = false"
                                     >
                                         <component v-if="item.icon" :is="item.icon" class="h-5 w-5" />
                                         {{ item.title }}
@@ -93,7 +105,7 @@ const rightNavItems: NavItem[] = [
                                     <a
                                         v-for="item in rightNavItems"
                                         :key="item.title"
-                                        :href="item.href"
+                                        :href="item.href || '#'"
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         class="flex items-center space-x-2 text-sm font-medium"
@@ -103,86 +115,99 @@ const rightNavItems: NavItem[] = [
                                     </a>
                                 </div>
                             </div>
-                        </SheetContent>
-                    </Sheet>
+                        </div>
+                    </el-drawer>
                 </div>
 
                 <Link :href="route('dashboard')" class="flex items-center gap-x-2">
                     <AppLogo class="hidden h-6 xl:block" />
                 </Link>
 
-                <!-- Desktop Menu -->
+                <!-- Desktop Menu - 使用 Element Plus -->
                 <div class="hidden h-full lg:flex lg:flex-1">
-                    <NavigationMenu class="ml-10 flex h-full items-stretch">
-                        <NavigationMenuList class="flex h-full items-stretch space-x-2">
-                            <NavigationMenuItem v-for="(item, index) in mainNavItems" :key="index" class="relative flex h-full items-center">
-                                <Link :href="item.href">
-                                    <NavigationMenuLink
-                                        :class="[navigationMenuTriggerStyle(), activeItemStyles(item.href), 'h-9 cursor-pointer px-3']"
-                                    >
-                                        <component v-if="item.icon" :is="item.icon" class="mr-2 h-4 w-4" />
-                                        {{ item.title }}
-                                    </NavigationMenuLink>
-                                </Link>
-                                <div class="absolute bottom-0 left-0 h-0.5 w-full translate-y-px bg-black dark:bg-white"></div>
-                            </NavigationMenuItem>
-                        </NavigationMenuList>
-                    </NavigationMenu>
+                    <el-menu 
+                        :default-active="getActiveIndex()" 
+                        mode="horizontal"
+                        class="ml-10 border-0 h-full"
+                    >
+                        <el-menu-item 
+                            v-for="(item, index) in mainNavItems" 
+                            :key="index"
+                            :index="String(index + 1)"
+                            class="h-full flex items-center"
+                        >
+                            <Link :href="item.href || '#'" class="flex items-center h-full">
+                                <component v-if="item.icon" :is="item.icon" class="mr-2 h-4 w-4" />
+                                {{ item.title }}
+                            </Link>
+                        </el-menu-item>
+                    </el-menu>
                 </div>
 
                 <div class="ml-auto flex items-center space-x-2">
                     <div class="relative flex items-center space-x-1">
-                        <Button variant="ghost" size="icon" class="group h-9 w-9 cursor-pointer">
+                        <el-button 
+                            type="text" 
+                            size="small" 
+                            class="group h-9 w-9 p-0 cursor-pointer"
+                        >
                             <Search class="size-5 opacity-80 group-hover:opacity-100" />
-                        </Button>
+                        </el-button>
 
                         <div class="hidden space-x-1 lg:flex">
                             <template v-for="item in rightNavItems" :key="item.title">
-                                <TooltipProvider :delay-duration="0">
-                                    <Tooltip>
-                                        <TooltipTrigger>
-                                            <Button variant="ghost" size="icon" as-child class="group h-9 w-9 cursor-pointer">
-                                                <a :href="item.href" target="_blank" rel="noopener noreferrer">
-                                                    <span class="sr-only">{{ item.title }}</span>
-                                                    <component :is="item.icon" class="size-5 opacity-80 group-hover:opacity-100" />
-                                                </a>
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p>{{ item.title }}</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
+                                <el-tooltip :content="item.title" placement="bottom">
+                                    <el-button 
+                                        type="text" 
+                                        size="small" 
+                                        class="group h-9 w-9 p-0 cursor-pointer"
+                                    >
+                                        <a :href="item.href || '#'" target="_blank" rel="noopener noreferrer">
+                                            <span class="sr-only">{{ item.title }}</span>
+                                            <component :is="item.icon" class="size-5 opacity-80 group-hover:opacity-100" />
+                                        </a>
+                                    </el-button>
+                                </el-tooltip>
                             </template>
                         </div>
                     </div>
 
-                    <DropdownMenu>
-                        <DropdownMenuTrigger :as-child="true">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                class="relative size-10 w-auto rounded-full p-1 focus-within:ring-2 focus-within:ring-primary"
+                    <!-- 用户菜单 - 使用 Element Plus -->
+                    <el-dropdown trigger="click" placement="bottom-end">
+                        <el-button 
+                            type="text" 
+                            size="small" 
+                            class="relative size-10 w-auto rounded-full p-1 focus-within:ring-2 focus-within:ring-primary"
+                        >
+                            <el-avatar 
+                                :size="32" 
+                                :src="auth.user?.avatar" 
+                                class="overflow-hidden rounded-full"
                             >
-                                <Avatar class="size-8 overflow-hidden rounded-full">
-                                    <AvatarImage :src="auth.user.avatar" :alt="auth.user.name" />
-                                    <AvatarFallback class="rounded-lg bg-neutral-200 font-semibold text-black dark:bg-neutral-700 dark:text-white">
-                                        {{ getInitials(auth.user?.name) }}
-                                    </AvatarFallback>
-                                </Avatar>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" class="w-56">
-                            <UserMenuContent :user="auth.user" />
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                                {{ getInitials(auth.user?.name) }}
+                            </el-avatar>
+                        </el-button>
+                        <template #dropdown>
+                            <el-dropdown-menu class="w-56">
+                                <UserMenuContent :user="auth.user" />
+                            </el-dropdown-menu>
+                        </template>
+                    </el-dropdown>
                 </div>
             </div>
         </div>
 
+        <!-- 面包屑导航 - 使用 Element Plus -->
         <div v-if="props.breadcrumbs.length > 1" class="flex w-full border-b border-sidebar-border/70">
             <div class="mx-auto flex h-12 w-full items-center justify-start px-4 text-neutral-500 md:max-w-7xl">
-                <Breadcrumbs :breadcrumbs="breadcrumbs" />
+                <el-breadcrumb separator="/">
+                    <el-breadcrumb-item v-for="(item, index) in breadcrumbs" :key="index">
+                        <Link v-if="index < breadcrumbs.length - 1 && item.href" :href="item.href" class="text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100">
+                            {{ item.title }}
+                        </Link>
+                        <span v-else class="text-neutral-900 dark:text-neutral-100">{{ item.title }}</span>
+                    </el-breadcrumb-item>
+                </el-breadcrumb>
             </div>
         </div>
     </div>

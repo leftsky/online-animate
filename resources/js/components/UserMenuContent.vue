@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import UserInfo from '@/components/UserInfo.vue';
-import { DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import type { User } from '@/types';
 import { Link } from '@inertiajs/vue3';
 import { LogOut, Settings } from 'lucide-vue-next';
@@ -13,25 +12,30 @@ defineProps<Props>();
 </script>
 
 <template>
-    <DropdownMenuLabel class="p-0 font-normal">
+    <!-- 用户信息 -->
+    <el-dropdown-item disabled>
         <div class="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
             <UserInfo :user="user" :show-email="true" />
         </div>
-    </DropdownMenuLabel>
-    <DropdownMenuSeparator />
-    <DropdownMenuGroup>
-        <DropdownMenuItem :as-child="true">
-            <Link class="block w-full" :href="route('profile.edit')" as="button">
-                <Settings class="mr-2 h-4 w-4" />
-                设置
-            </Link>
-        </DropdownMenuItem>
-    </DropdownMenuGroup>
-    <DropdownMenuSeparator />
-    <DropdownMenuItem :as-child="true">
-        <Link class="block w-full" method="post" :href="route('logout')" as="button">
+    </el-dropdown-item>
+    
+    <el-dropdown-item divided />
+    
+    <!-- 设置 -->
+    <el-dropdown-item>
+        <Link class="flex items-center w-full" :href="route('profile.edit')">
+            <Settings class="mr-2 h-4 w-4" />
+            设置
+        </Link>
+    </el-dropdown-item>
+    
+    <el-dropdown-item divided />
+    
+    <!-- 退出登录 -->
+    <el-dropdown-item>
+        <Link class="flex items-center w-full" method="post" :href="route('logout')">
             <LogOut class="mr-2 h-4 w-4" />
             退出登录
         </Link>
-    </DropdownMenuItem>
+    </el-dropdown-item>
 </template>

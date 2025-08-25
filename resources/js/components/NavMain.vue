@@ -1,10 +1,7 @@
 <script setup lang="ts">
-import { SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSubButton, SidebarMenuSubItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { ChevronDown } from 'lucide-vue-next';
-import { ref, computed, onMounted, watch } from 'vue';
-import { useSidebar } from '@/components/ui/sidebar';
+import { ref, onMounted, watch } from 'vue';
 
 const props = defineProps<{
     items: NavItem[];
@@ -12,7 +9,6 @@ const props = defineProps<{
 
 const page = usePage();
 const expandedMenus = ref<Set<string>>(new Set());
-const { state: sidebarState } = useSidebar();
 
 // 初始化展开状态：如果当前页面是子菜单，则展开对应的母菜单
 const initializeExpandedMenus = () => {
@@ -39,69 +35,62 @@ watch(() => page.url, (newUrl) => {
     });
 });
 
-const toggleMenu = (title: string) => {
-    if (expandedMenus.value.has(title)) {
-        expandedMenus.value.delete(title);
-    } else {
-        expandedMenus.value.add(title);
+// 获取当前激活的菜单项
+const getActiveIndex = () => {
+    const currentUrl = page.url;
+    // 检查主菜单项
+    for (let i = 0; i < props.items.length; i++) {
+        const item = props.items[i];
+        if (item.href === currentUrl) {
+            return String(i + 1);
+        }
+        // 检查子菜单项
+        if (item.children) {
+            for (let j = 0; j < item.children.length; j++) {
+                const child = item.children[j];
+                if (child.href === currentUrl) {
+                    return `${i + 1}-${j + 1}`;
+                }
+            }
+        }
     }
+    return '1';
 };
-
-const isMenuExpanded = (title: string) => {
-    return expandedMenus.value.has(title);
-};
-
-// 检查是否有子菜单被选中
-const hasActiveChild = (item: NavItem) => {
-    if (!item.children) return false;
-    return item.children.some(child => child.href === page.url);
-};
-
-// 检查侧边栏是否收起
-const isSidebarCollapsed = computed(() => sidebarState.value === 'collapsed');
 </script>
 
 <template>
-    <SidebarGroup class="px-2 py-0">
-        <SidebarGroupLabel>平台</SidebarGroupLabel>
-        <SidebarMenu>
-            <SidebarMenuItem v-for="item in items" :key="item.title">
-                <!-- 有子菜单的项目 -->
-                <div v-if="item.children && item.children.length > 0">
-                    <SidebarMenuSubButton 
-                        @click="toggleMenu(item.title)" 
-                        class="pl-2 cursor-pointer"
-                        :class="{ 'bg-sidebar-accent text-sidebar-accent-foreground': hasActiveChild(item) }"
-                    >
-                        <component :is="item.icon" />
-                        <span>{{ item.title }}</span>
-                        <ChevronDown 
-                            class="ml-auto h-4 w-4 transition-transform" 
-                            :class="{ 'rotate-180': isMenuExpanded(item.title) }" 
-                        />
-                    </SidebarMenuSubButton>
-                    
-                    <!-- 子菜单项 - 根据展开状态和侧边栏状态控制显示 -->
-                    <div v-if="isMenuExpanded(item.title) && !isSidebarCollapsed" class="ml-3">
-                        <SidebarMenuSubItem v-for="child in item.children" :key="child.title">
-                            <SidebarMenuButton as-child :is-active="child.href === page.url" class="pl-6">
-                                <Link v-if="child.href" :href="child.href">
-                                    <component :is="child.icon" />
-                                    <span>{{ child.title }}</span>
-                                </Link>
-                            </SidebarMenuButton>
-                        </SidebarMenuSubItem>
-                    </div>
-                </div>
-                
-                <!-- 没有子菜单的项目 -->
-                <SidebarMenuButton v-else as-child :is-active="item.href === page.url">
-                    <Link v-if="item.href" :href="item.href">
-                        <component :is="item.icon" />
-                        <span>{{ item.title }}</span>
+    <el-menu 
+        :default-active="getActiveIndex()" 
+        class="border-0 h-full"
+        @open="(key: string) => expandedMenus.add(key)"
+        @close="(key: string) => expandedMenus.delete(key)"
+    >
+        <template v-for="(item, index) in items" :key="item.title">
+            <!-- 有子菜单的项目 -->
+            <el-sub-menu v-if="item.children && item.children.length > 0" :index="String(index + 1)">
+                <template #title>
+                    <component :is="item.icon" class="mr-2 h-4 w-4" />
+                    <span>{{ item.title }}</span>
+                </template>
+                <el-menu-item 
+                    v-for="(child, childIndex) in item.children" 
+                    :key="child.title"
+                    :index="`${index + 1}-${childIndex + 1}`"
+                >
+                    <Link v-if="child.href" :href="child.href" class="flex items-center w-full">
+                        <component :is="child.icon" class="mr-2 h-4 w-4" />
+                        <span>{{ child.title }}</span>
                     </Link>
-                </SidebarMenuButton>
-            </SidebarMenuItem>
-        </SidebarMenu>
-    </SidebarGroup>
+                </el-menu-item>
+            </el-sub-menu>
+            
+            <!-- 没有子菜单的项目 -->
+            <el-menu-item v-else :index="String(index + 1)">
+                <Link v-if="item.href" :href="item.href" class="flex items-center w-full">
+                    <component :is="item.icon" class="mr-2 h-4 w-4" />
+                    <span>{{ item.title }}</span>
+                </Link>
+            </el-menu-item>
+        </template>
+    </el-menu>
 </template>

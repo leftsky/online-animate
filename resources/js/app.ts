@@ -7,6 +7,13 @@ import { createApp, h } from 'vue';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import { initializeTheme } from './composables/useAppearance';
 
+// Element Plus 导入
+import ElementPlus from 'element-plus';
+import 'element-plus/dist/index.css';
+// 移除默认主题，添加暗黑模式支持
+import 'element-plus/theme-chalk/dark/css-vars.css';
+import zhCn from 'element-plus/es/locale/lang/zh-cn';
+
 // Extend ImportMeta interface for Vite...
 declare module 'vite/client' {
     interface ImportMetaEnv {
@@ -29,6 +36,9 @@ createInertiaApp({
         createApp({ render: () => h(App, props) })
             .use(plugin)
             .use(ZiggyVue)
+            .use(ElementPlus, {
+                locale: zhCn,
+            })
             .mount(el);
     },
     progress: {

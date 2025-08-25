@@ -90,3 +90,64 @@ html {
         @apply bg-background text-foreground;
     }
 }
+
+/* Element Plus 主题微调 */
+@layer base {
+    :root {
+        /* 自定义 Element Plus 主题色，与项目主题保持一致 */
+        --el-color-primary: hsl(var(--primary));
+        --el-color-primary-light-3: hsl(var(--primary) / 0.8);
+        --el-color-primary-light-5: hsl(var(--primary) / 0.6);
+        --el-color-primary-light-7: hsl(var(--primary) / 0.4);
+        --el-color-primary-light-8: hsl(var(--primary) / 0.3);
+        --el-color-primary-light-9: hsl(var(--primary) / 0.1);
+        --el-color-primary-dark-2: hsl(var(--primary) / 1.2);
+        
+        /* 背景色 */
+        --el-bg-color: hsl(var(--background));
+        --el-bg-color-overlay: hsl(var(--card));
+        
+        /* 文字色 */
+        --el-text-color-primary: hsl(var(--foreground));
+        --el-text-color-regular: hsl(var(--foreground));
+        --el-text-color-secondary: hsl(var(--muted-foreground));
+        
+        /* 边框色 */
+        --el-border-color: hsl(var(--border));
+        --el-border-color-light: hsl(var(--border));
+        
+        /* 填充色 */
+        --el-fill-color: hsl(var(--muted));
+        --el-fill-color-light: hsl(var(--accent));
+        --el-fill-color-blank: hsl(var(--background));
+    }
+    
+    .dark {
+        /* 深色模式下的主题色调整 */
+        --el-color-primary: hsl(var(--primary));
+        --el-color-primary-light-3: hsl(var(--primary) / 0.8);
+        --el-color-primary-light-5: hsl(var(--primary) / 0.6);
+        --el-color-primary-light-7: hsl(var(--primary) / 0.4);
+        --el-color-primary-light-8: hsl(var(--primary) / 0.3);
+        --el-color-primary-light-9: hsl(var(--primary) / 0.1);
+        --el-color-primary-dark-2: hsl(var(--primary) / 1.2);
+        
+        /* 背景色 */
+        --el-bg-color: hsl(var(--background));
+        --el-bg-color-overlay: hsl(var(--card));
+        
+        /* 文字色 */
+        --el-text-color-primary: hsl(var(--foreground));
+        --el-text-color-regular: hsl(var(--foreground));
+        --el-text-color-secondary: hsl(var(--muted-foreground));
+        
+        /* 边框色 */
+        --el-border-color: hsl(var(--border));
+        --el-border-color-light: hsl(var(--border));
+        
+        /* 填充色 */
+        --el-fill-color: hsl(var(--muted));
+        --el-fill-color-light: hsl(var(--accent));
+        --el-fill-color-blank: hsl(var(--background));
+    }
+}
