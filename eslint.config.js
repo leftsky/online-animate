@@ -13,6 +13,7 @@ export default defineConfigWithVueTs(
         rules: {
             'vue/multi-word-component-names': 'off',
             '@typescript-eslint/no-explicit-any': 'off',
+            'vue/block-lang': 'off', // 允许 script 标签不指定 lang 属性
         },
     },
     prettier,

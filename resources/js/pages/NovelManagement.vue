@@ -199,7 +199,7 @@
   </AppLayout>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
@@ -207,47 +207,16 @@ import AppLayout from '@/layouts/AppLayout.vue'
 import ConfirmDialog from '@/pages/storyboard/components/ConfirmDialog.vue'
 import { apiGet, apiPost, apiDelete, uploadApi } from '@/utils/api'
 
-interface Chapter {
-  id: number
-  title: string
-  content: string
-  chapter_number: number
-  word_count: number
-}
-
-interface Novel {
-  id: number
-  title: string
-  description: string
-  author: string
-  cover_image: string | null
-  source_file_url: string
-  status: number
-  created_at: string
-  updated_at: string
-  chapters?: Chapter[]
-  chapters_count?: number // Added chapters_count
-}
-
-interface ImportResult {
-  success: boolean
-  message: string
-  data?: {
-    novel_id: number
-    title: string
-    chapter_count: number
-    file_url: string
-  }
-}
+// 类型注释（仅用于文档，不进行类型检查）
 
 const { toast } = useToast()
 const { confirm } = useConfirm()
 
 const isImporting = ref(false)
-const importResult = ref<ImportResult | null>(null)
-const novels = ref<Novel[]>([])
-const selectedNovel = ref<Novel | null>(null)
-const chapters = ref<Chapter[]>([])
+const importResult = ref(null)
+const novels = ref([])
+const selectedNovel = ref(null)
+const chapters = ref([])
 
 // 分页相关
 const pageSize = 10
@@ -266,8 +235,8 @@ const selectNovelFile = async () => {
     input.accept = '.txt,.doc,.docx,.pdf'
     input.multiple = false
     
-    input.onchange = async (e: Event) => {
-      const files = Array.from((e.target as HTMLInputElement).files || [])
+    input.onchange = async (e) => {
+      const files = Array.from(e.target.files || [])
       if (files.length > 0) {
         // 自动开始导入流程
         await autoImportNovel(files[0])
@@ -282,7 +251,7 @@ const selectNovelFile = async () => {
 }
 
 // 自动导入小说
-const autoImportNovel = async (file: File) => {
+const autoImportNovel = async (file) => {
   // 验证输入
   if (!file) {
     toast.error('请选择小说文件')
@@ -352,14 +321,14 @@ const loadNovels = async () => {
 }
 
 // 选择小说
-const selectNovel = async (novel: Novel) => {
+const selectNovel = async (novel) => {
   selectedNovel.value = novel
   currentPage.value = 1
   await loadChapters(novel.id)
 }
 
 // 加载章节列表
-const loadChapters = async (novelId: number) => {
+const loadChapters = async (novelId) => {
   try {
     const result = await apiGet(`/novels/${novelId}/chapters?limit=1000&offset=0`)
     
@@ -378,7 +347,7 @@ const loadChapters = async (novelId: number) => {
 }
 
 // 删除小说
-const deleteNovel = async (novel: Novel) => {
+const deleteNovel = async (novel) => {
   const confirmed = await confirm({
     title: '确认删除',
     message: `确定要删除小说"${novel.title}"吗？此操作不可逆。`,
@@ -419,14 +388,14 @@ const paginatedChapters = computed(() => {
 })
 
 // 切换页面
-const changePage = (page: number) => {
+const changePage = (page) => {
   if (page >= 1 && page <= totalPages.value) {
     currentPage.value = page
   }
 }
 
 // 格式化日期
-const formatDate = (dateString: string) => {
+const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString('zh-CN')
 }
 
